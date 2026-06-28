@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Registro de Expedientes – Asuntos Jurídicos</title>
-<!-- v2 con mapa Leaflet -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,sans-serif;background:#f5f5f3;color:#1a1a1a;min-height:100vh}
@@ -12,7 +12,7 @@ body{font-family:system-ui,sans-serif;background:#f5f5f3;color:#1a1a1a;min-heigh
 .topbar h1{font-size:17px;font-weight:600}
 .topbar span{font-size:13px;color:#888}
 .container{max-width:1200px;margin:0 auto;padding:24px 16px}
-.tabs{display:flex;gap:4px;border-bottom:1px solid #e0e0d8;margin-bottom:24px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid #e0e0d8;margin-bottom:24px;flex-wrap:wrap}
 .tab{padding:8px 18px;font-size:14px;cursor:pointer;border:none;background:none;color:#888;border-bottom:2px solid transparent;transition:all .15s}
 .tab.active{color:#1a1a1a;border-bottom:2px solid #185FA5;font-weight:500}
 .section{display:none}.section.active{display:block}
@@ -20,7 +20,7 @@ body{font-family:system-ui,sans-serif;background:#f5f5f3;color:#1a1a1a;min-heigh
 .metric{background:#fff;border-radius:10px;padding:14px 18px;border:1px solid #e0e0d8}
 .metric .lbl{font-size:12px;color:#888;margin-bottom:4px}
 .metric .val{font-size:24px;font-weight:600}
-.metric .val.blue{color:#185FA5}.metric .val.green{color:#3B6D11}.metric .val.amber{color:#854F0B}.metric .val.purple{color:#6B3FA0}
+.metric .val.blue{color:#185FA5}.metric .val.green{color:#3B6D11}.metric .val.amber{color:#854F0B}
 .btn{padding:8px 16px;border-radius:8px;border:1px solid #d0d0c8;background:#fff;color:#1a1a1a;font-size:14px;cursor:pointer;transition:background .15s}
 .btn:hover{background:#f0f0ee}
 .btn.primary{background:#185FA5;color:#fff;border-color:#185FA5}
@@ -65,8 +65,8 @@ tr:last-child td{border-bottom:none}
 .toast.show{opacity:1}
 .agente-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f0ee}
 .agente-item:last-child{border-bottom:none}
+#mapa-leaflet{width:100%;height:480px;border-radius:10px;overflow:hidden}
 </style>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 </head>
 <body>
 
@@ -154,18 +154,12 @@ tr:last-child td{border-bottom:none}
       <div class="chart-wrap" style="height:260px"><canvas id="chart-diario"></canvas></div>
       <div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px">
         <div>
-          <div style="font-size:13px;font-weight:600;color:#185FA5;margin-bottom:8px">📥 Ingresos por día</div>
-          <table>
-            <thead><tr><th>Fecha</th><th>Cantidad</th></tr></thead>
-            <tbody id="tbody-ingresos"></tbody>
-          </table>
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#185FA5">📥 Ingresos por día</div>
+          <table><thead><tr><th>Fecha</th><th>Cantidad</th></tr></thead><tbody id="tbody-ingresos"></tbody></table>
         </div>
         <div>
-          <div style="font-size:13px;font-weight:600;color:#F0A045;margin-bottom:8px">📤 Egresos por día</div>
-          <table>
-            <thead><tr><th>Fecha</th><th>Cantidad</th></tr></thead>
-            <tbody id="tbody-egresos"></tbody>
-          </table>
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#F0A045">📤 Egresos por día</div>
+          <table><thead><tr><th>Fecha</th><th>Cantidad</th></tr></thead><tbody id="tbody-egresos"></tbody></table>
         </div>
       </div>
     </div>
@@ -177,17 +171,14 @@ tr:last-child td{border-bottom:none}
       <div style="font-size:15px;font-weight:600">Programas</div>
       <button class="btn primary" onclick="abrirModalPrograma()">+ Nuevo programa</button>
     </div>
-    <!-- Sub-pestañas dentro de Programas -->
     <div class="tabs" style="margin-bottom:16px" id="prog-subtabs">
       <button class="tab active" onclick="switchSubTab('lista')">Lista</button>
       <button class="tab" onclick="switchSubTab('mapa')">📊 Mapa</button>
     </div>
-    <!-- Sub-sección Lista -->
     <div id="subprog-lista">
       <div class="tabs" id="prog-tabs" style="margin-bottom:16px"></div>
       <div id="prog-contenido"></div>
     </div>
-    <!-- Sub-sección Mapa -->
     <div id="subprog-mapa" style="display:none">
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
@@ -196,52 +187,14 @@ tr:last-child td{border-bottom:none}
             <option value="">Todos los programas</option>
           </select>
         </div>
-        <div style="display:flex;justify-content:center;margin-bottom:20px">
-          <svg id="mapa-er" viewBox="0 0 300 500" style="width:300px;height:500px;background:#dbeafe;border-radius:10px;display:block"></svg>
-        </div>
-        <div>
+        <div id="mapa-leaflet"></div>
+        <div style="margin-top:16px">
           <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#555">Expedientes por departamento</div>
           <div id="mapa-tabla-depto" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:4px"></div>
-        </div>
-        <div style="margin-top:16px;display:flex;align-items:center;gap:10px">
-          <div style="font-size:11px;color:#888">Sin datos</div>
-          <div style="width:120px;height:10px;border-radius:4px;background:linear-gradient(to right,#dbeafe,#1e40af)"></div>
-          <div style="font-size:11px;color:#888">Máximo</div>
         </div>
         <div style="margin-top:12px;padding:10px;background:#fafaf8;border-radius:8px;font-size:12px;color:#888;border:1px solid #e0e0d8">
           💡 Formato en "Tema": <strong style="color:#555">Programa - Localidad - Departamento</strong> &nbsp;·&nbsp; Ej: <em>Juventud Emprende - Crespo - Paraná</em>
         </div>
-      </div>
-      <div id="mapa-tooltip" style="display:none;position:fixed;background:#1a1a1a;color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;pointer-events:none;z-index:999;line-height:1.8;min-width:160px"></div>
-    </div>
-  </div>
-
-  <!-- MODAL ASIGNAR -->
-  <div class="overlay" id="overlay-asignar">
-    <div class="modal">
-      <h3>Asignar expediente al programa</h3>
-      <div class="fg" style="margin-bottom:12px">
-        <label>Expediente</label>
-        <select id="as-expte"><option value="">Seleccionar...</option></select>
-      </div>
-      <div class="modal-actions">
-        <button class="btn" onclick="cerrarModalAsignar()">Cancelar</button>
-        <button class="btn primary" onclick="asignarExpediente()">Asignar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL NUEVO PROGRAMA -->
-  <div class="overlay" id="overlay-programa">
-    <div class="modal">
-      <h3>Nuevo programa</h3>
-      <div class="fg" style="margin-bottom:12px">
-        <label>Nombre del programa</label>
-        <input type="text" id="np-nombre" placeholder="Ej: Juventud Emprende">
-      </div>
-      <div class="modal-actions">
-        <button class="btn" onclick="document.getElementById('overlay-programa').classList.remove('show')">Cancelar</button>
-        <button class="btn primary" onclick="guardarPrograma()">Guardar</button>
       </div>
     </div>
   </div>
@@ -264,38 +217,47 @@ tr:last-child td{border-bottom:none}
   <div class="modal">
     <h3 id="modal-title">Nuevo expediente</h3>
     <div class="form-grid">
-      <div class="fg">
-        <label>Expte. *</label>
-        <input type="text" id="m-expte" placeholder="Ej: 12345-D-2026">
-      </div>
-      <div class="fg">
-        <label>Iniciador</label>
-        <input type="text" id="m-iniciador" placeholder="Nombre del iniciador">
-      </div>
-      <div class="fg">
-        <label>Fecha de ingreso *</label>
-        <input type="date" id="m-ingreso">
-      </div>
-      <div class="fg">
-        <label>Reparto</label>
-        <input type="date" id="m-reparto">
-      </div>
-      <div class="fg">
-        <label>Resp. Asignado *</label>
-        <select id="m-agente"><option value="">Seleccionar...</option></select>
-      </div>
-      <div class="fg">
-        <label>Fecha de salida</label>
-        <input type="date" id="m-salio">
-      </div>
-      <div class="fg full">
-        <label>Tema</label>
-        <textarea id="m-tema" placeholder="Descripción del tema..."></textarea>
-      </div>
+      <div class="fg"><label>Expte. *</label><input type="text" id="m-expte" placeholder="Ej: 12345-D-2026"></div>
+      <div class="fg"><label>Iniciador</label><input type="text" id="m-iniciador" placeholder="Nombre del iniciador"></div>
+      <div class="fg"><label>Fecha de ingreso *</label><input type="date" id="m-ingreso"></div>
+      <div class="fg"><label>Reparto</label><input type="date" id="m-reparto"></div>
+      <div class="fg"><label>Resp. Asignado *</label><select id="m-agente"><option value="">Seleccionar...</option></select></div>
+      <div class="fg"><label>Fecha de salida</label><input type="date" id="m-salio"></div>
+      <div class="fg full"><label>Tema</label><textarea id="m-tema" placeholder="Descripción del tema..."></textarea></div>
     </div>
     <div class="modal-actions">
       <button class="btn" onclick="cerrarModal()">Cancelar</button>
       <button class="btn primary" id="btn-guardar" onclick="guardar()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ASIGNAR -->
+<div class="overlay" id="overlay-asignar">
+  <div class="modal">
+    <h3>Asignar expediente al programa</h3>
+    <div class="fg" style="margin-bottom:12px">
+      <label>Expediente</label>
+      <select id="as-expte"><option value="">Seleccionar...</option></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="cerrarModalAsignar()">Cancelar</button>
+      <button class="btn primary" onclick="asignarExpediente()">Asignar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NUEVO PROGRAMA -->
+<div class="overlay" id="overlay-programa">
+  <div class="modal">
+    <h3>Nuevo programa</h3>
+    <div class="fg" style="margin-bottom:12px">
+      <label>Nombre del programa</label>
+      <input type="text" id="np-nombre" placeholder="Ej: Juventud Emprende">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="document.getElementById('overlay-programa').classList.remove('show')">Cancelar</button>
+      <button class="btn primary" onclick="guardarPrograma()">Guardar</button>
     </div>
   </div>
 </div>
@@ -309,8 +271,19 @@ const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwsWA-32RIsFCJ6ILuon
 
 let expedientes = [];
 let agentes = [];
+let programasData = [];
+let programaActivo = null;
 let editIdx = null;
-let chartA = null, chartM = null;
+let chartA = null, chartM = null, chartD = null;
+let sortCol = null, sortDir = 1;
+let leafletMap = null, geojsonLayer = null, geoCache = null;
+
+const PROGRAMAS_DEFAULT = ['Juventud Emprende','Juventud en el Centro','Juventud en la Comunidad'];
+const KEYWORDS = {
+  'Juventud Emprende': ['juventud emprende','emprende'],
+  'Juventud en el Centro': ['juventud en el centro','en el centro'],
+  'Juventud en la Comunidad': ['juventud en la comunidad','en la comunidad']
+};
 
 async function api(params) {
   if (params.method === 'GET') {
@@ -349,7 +322,6 @@ function fmt(d) {
     return `${dd}/${mm}/${yy}`;
   } catch { return d; }
 }
-
 function toInput(d) {
   if (!d) return '';
   try {
@@ -361,44 +333,37 @@ function toInput(d) {
     return `${yy}-${mm}-${dd}`;
   } catch { return ''; }
 }
-
-// Obtiene el número de expediente sin importar si el encabezado tiene punto o no
-function getExpte(e) {
-  return e['expte.'] || e['expte'] || e['Expte.'] || e['Expte'] || '';
-}
-
-// Un expediente está egresado si tiene fecha en "salio"
-function estaEgresado(e) {
-  const s = e['salio'] || e['salió'] || e['Salio'] || e['Salió'] || '';
-  return !!s && s !== '';
-}
-
-function getRespAsig(e) {
-  return e['resp. asig'] || e['resp.asig'] || e['resp asig'] || e['Resp. Asig'] || e['Resp. Asig.'] || '';
-}
-
-function getTema(e) { return e['tema'] || e['Tema'] || ''; }
-function getIniciador(e) { return e['iniciador'] || e['Iniciador'] || ''; }
-function getReparto(e) { return e['reparto'] || e['Reparto'] || ''; }
-function getSalio(e) { return e['salio'] || e['salió'] || e['Salio'] || e['Salió'] || ''; }
-
-function initials(s) { return (s||'?').slice(0,2).toUpperCase(); }
-function toast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
-}
+function getExpte(e){return e['expte.']||e['expte']||e['Expte.']||e['Expte']||'';}
+function estaEgresado(e){const s=e['salio']||e['salió']||e['Salio']||e['Salió']||'';return !!s&&s!=='';}
+function getRespAsig(e){return e['resp. asig']||e['resp.asig']||e['resp asig']||e['Resp. Asig']||e['Resp. Asig.']||'';}
+function getTema(e){return e['tema']||e['Tema']||'';}
+function getIniciador(e){return e['iniciador']||e['Iniciador']||'';}
+function getReparto(e){return e['reparto']||e['Reparto']||'';}
+function getSalio(e){return e['salio']||e['salió']||e['Salio']||e['Salió']||'';}
+function normalizar(s){return (s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
+function dias(a,b){if(!a||!b)return null;const da=new Date(toInput(a)),db=new Date(toInput(b));return Math.round((db-da)/86400000);}
+function initials(s){return (s||'?').slice(0,2).toUpperCase();}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 
 function switchTab(t) {
-  document.querySelectorAll('.tab').forEach((el,i) => {
+  document.querySelectorAll('.container > .tabs > .tab').forEach((el,i) => {
     el.classList.toggle('active', ['registro','agentes','analisis','programas','config'][i] === t);
   });
   document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
   if (t === 'analisis') { setTimeout(renderCharts, 50); setTimeout(renderDiario, 80); }
-  if (t === 'programas') renderProgramas();
   if (t === 'agentes') renderPorAgente();
   if (t === 'config') renderConfigAgentes();
+  if (t === 'programas') renderProgramas();
+}
+
+function switchSubTab(t) {
+  document.querySelectorAll('#prog-subtabs .tab').forEach((el,i) => {
+    el.classList.toggle('active', ['lista','mapa'][i] === t);
+  });
+  document.getElementById('subprog-lista').style.display = t==='lista' ? 'block' : 'none';
+  document.getElementById('subprog-mapa').style.display  = t==='mapa'  ? 'block' : 'none';
+  if (t==='mapa') setTimeout(renderMapa, 100);
 }
 
 function renderMetrics(target) {
@@ -412,39 +377,48 @@ function renderMetrics(target) {
     <div class="metric"><div class="lbl">Agentes activos</div><div class="val amber">${agentes.length}</div></div>`;
 }
 
+function getValorOrden(e, col) {
+  switch(col) {
+    case 'expte': return getExpte(e).toLowerCase();
+    case 'iniciador': return getIniciador(e).toLowerCase();
+    case 'ingreso': return toInput(e.ingreso||e.Ingreso)||'';
+    case 'reparto': return toInput(getReparto(e))||'';
+    case 'agente': return getRespAsig(e).toLowerCase();
+    case 'tema': return getTema(e).toLowerCase();
+    case 'estado': return estaEgresado(e)?'z':'a';
+    case 'salio': return toInput(getSalio(e))||'';
+    default: return '';
+  }
+}
+function ordenarPor(col) {
+  if (sortCol===col) sortDir*=-1; else { sortCol=col; sortDir=1; }
+  renderTabla();
+}
+
 function renderTabla() {
   const buscar = document.getElementById('f-buscar').value.toLowerCase();
   const agente = document.getElementById('f-agente').value;
   const estado = document.getElementById('f-estado').value;
-  const filtrado = expedientes.filter(e => {
+  let filtrado = expedientes.filter(e => {
     const egr = estaEgresado(e);
-    const matchEstado = !estado || (estado==='egresado' && egr) || (estado==='en_direccion' && !egr);
-    const matchAgente = !agente || getRespAsig(e) === agente;
-    // Busca en todos los valores del objeto sin importar el nombre del campo
-    const todoElTexto = Object.values(e).join(' ').toLowerCase();
-    const matchBuscar = !buscar || todoElTexto.includes(buscar);
+    const matchEstado = !estado || (estado==='egresado'&&egr) || (estado==='en_direccion'&&!egr);
+    const matchAgente = !agente || getRespAsig(e)===agente;
+    const todoTexto = Object.values(e).join(' ').toLowerCase();
+    const matchBuscar = !buscar || todoTexto.includes(buscar);
     return matchEstado && matchAgente && matchBuscar;
   });
-  // Ordenar
   if (sortCol) {
-    filtrado.sort((a, b) => {
-      const va = getValorOrden(a, sortCol);
-      const vb = getValorOrden(b, sortCol);
-      return va < vb ? -sortDir : va > vb ? sortDir : 0;
-    });
+    filtrado.sort((a,b)=>{const va=getValorOrden(a,sortCol),vb=getValorOrden(b,sortCol);return va<vb?-sortDir:va>vb?sortDir:0;});
   }
-
-  // Actualizar indicadores de orden
-  ['expte','iniciador','ingreso','reparto','agente','tema','estado','salio'].forEach(c => {
-    const el = document.getElementById('sort-'+c);
-    if (el) el.textContent = sortCol===c ? (sortDir===1?'▲':'▼') : '';
+  ['expte','iniciador','ingreso','reparto','agente','tema','estado','salio'].forEach(c=>{
+    const el=document.getElementById('sort-'+c);
+    if(el) el.textContent=sortCol===c?(sortDir===1?'▲':'▼'):'';
   });
-
-  document.getElementById('loading').style.display = 'none';
-  document.getElementById('no-results').style.display = filtrado.length ? 'none' : 'block';
-  document.getElementById('tabla').style.display = filtrado.length ? 'table' : 'none';
-  document.getElementById('tabla-body').innerHTML = filtrado.map(e => {
-    const egr = estaEgresado(e);
+  document.getElementById('loading').style.display='none';
+  document.getElementById('no-results').style.display=filtrado.length?'none':'block';
+  document.getElementById('tabla').style.display=filtrado.length?'table':'none';
+  document.getElementById('tabla-body').innerHTML=filtrado.map(e=>{
+    const egr=estaEgresado(e);
     return `<tr>
       <td style="font-weight:500;white-space:nowrap">${getExpte(e)||'—'}</td>
       <td>${getIniciador(e)||'—'}</td>
@@ -463,13 +437,20 @@ function renderTabla() {
   }).join('');
 }
 
+function consultarExpte(nro) {
+  if (!nro) { alert('Este expediente no tiene número cargado.'); return; }
+  const soloNumeros = String(nro).replace(/\D/g,'');
+  if (!soloNumeros) { alert('No se pudo extraer el número.'); return; }
+  window.open('https://apps2.entrerios.gov.ar/consulta/expedientes/#/ver?nro='+soloNumeros, '_blank');
+}
+
 function renderPorAgente() {
-  const max = Math.max(...agentes.map(a => expedientes.filter(e => getRespAsig(e)===a).length), 1);
-  document.getElementById('agentes-lista').innerHTML = agentes.map(a => {
-    const total = expedientes.filter(e => getRespAsig(e)===a).length;
-    const enDir = expedientes.filter(e => getRespAsig(e)===a && !estaEgresado(e)).length;
-    const egr = total - enDir;
-    const pct = Math.round(total/max*100);
+  const max = Math.max(...agentes.map(a=>expedientes.filter(e=>getRespAsig(e)===a).length),1);
+  document.getElementById('agentes-lista').innerHTML = agentes.map(a=>{
+    const total=expedientes.filter(e=>getRespAsig(e)===a).length;
+    const enDir=expedientes.filter(e=>getRespAsig(e)===a&&!estaEgresado(e)).length;
+    const egr=total-enDir;
+    const pct=Math.round(total/max*100);
     return `<div class="agent-row">
       <div class="avatar">${initials(a)}</div>
       <div class="bar-wrap">
@@ -484,21 +465,15 @@ function renderPorAgente() {
 }
 
 function renderCharts() {
-  const counts = agentes.map(a => expedientes.filter(e => getRespAsig(e)===a).length);
-  const enDir = agentes.map(a => expedientes.filter(e => getRespAsig(e)===a && !estaEgresado(e)).length);
-  const meses = {};
-  expedientes.forEach(e => {
-    const raw = toInput(e.ingreso || e.Ingreso);
-    if (raw) { const m = raw.slice(0,7); meses[m] = (meses[m]||0)+1; }
-  });
-  const mKeys = Object.keys(meses).sort();
-  const mLabels = mKeys.map(k => {
-    const [y,m] = k.split('-');
-    return ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][+m-1]+' '+y.slice(2);
-  });
-  if (chartA) chartA.destroy();
-  if (chartM) chartM.destroy();
-  chartA = new Chart(document.getElementById('chart-agentes'), {
+  const counts=agentes.map(a=>expedientes.filter(e=>getRespAsig(e)===a).length);
+  const enDir=agentes.map(a=>expedientes.filter(e=>getRespAsig(e)===a&&!estaEgresado(e)).length);
+  const meses={};
+  expedientes.forEach(e=>{const raw=toInput(e.ingreso||e.Ingreso);if(raw){const m=raw.slice(0,7);meses[m]=(meses[m]||0)+1;}});
+  const mKeys=Object.keys(meses).sort();
+  const mLabels=mKeys.map(k=>{const[y,m]=k.split('-');return['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][+m-1]+' '+y.slice(2);});
+  if(chartA)chartA.destroy();
+  if(chartM)chartM.destroy();
+  chartA=new Chart(document.getElementById('chart-agentes'),{
     type:'bar',
     data:{labels:agentes.map(a=>a.split(',')[0]),datasets:[
       {label:'En Dirección',data:enDir,backgroundColor:'#378ADD'},
@@ -506,544 +481,297 @@ function renderCharts() {
     ]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{font:{size:11}}},y:{stacked:true,beginAtZero:true,ticks:{stepSize:1}}}}
   });
-  chartM = new Chart(document.getElementById('chart-meses'), {
+  chartM=new Chart(document.getElementById('chart-meses'),{
     type:'line',
     data:{labels:mLabels,datasets:[{label:'Ingresos',data:mKeys.map(k=>meses[k]),borderColor:'#185FA5',backgroundColor:'rgba(55,138,221,0.1)',fill:true,tension:.3,pointRadius:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:11},maxRotation:45,autoSkip:false}},y:{beginAtZero:true,ticks:{stepSize:1}}}}
   });
 }
 
-function renderConfigAgentes() {
-  document.getElementById('agentes-config-lista').innerHTML = agentes.length
-    ? agentes.map((a,i) => `
-        <div class="agente-item">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div class="avatar">${initials(a)}</div>
-            <span style="font-size:14px">${a}</span>
-          </div>
-          <button class="btn sm danger" onclick="eliminarAgente(${i})">🗑️ Eliminar</button>
-        </div>`).join('')
-    : '<div class="alert">No hay agentes cargados todavía.</div>';
-}
-
-function fillSelects() {
-  const fSel = document.getElementById('f-agente');
-  const mSel = document.getElementById('m-agente');
-  const curF = fSel.value, curM = mSel.value;
-  fSel.innerHTML = '<option value="">Todos los agentes</option>' + agentes.map(a=>`<option value="${a}">${a}</option>`).join('');
-  mSel.innerHTML = '<option value="">Seleccionar...</option>' + agentes.map(a=>`<option value="${a}">${a}</option>`).join('');
-  fSel.value = curF; mSel.value = curM;
-}
-
-function abrirModal(idx=null) {
-  editIdx = idx;
-  document.getElementById('modal-title').textContent = idx !== null ? 'Editar expediente' : 'Nuevo expediente';
-  const today = new Date().toISOString().slice(0,10);
-  if (idx !== null) {
-    const e = expedientes[idx];
-    document.getElementById('m-expte').value = getExpte(e);
-    document.getElementById('m-iniciador').value = getIniciador(e);
-    document.getElementById('m-ingreso').value = toInput(e.ingreso||e.Ingreso);
-    document.getElementById('m-reparto').value = toInput(getReparto(e));
-    document.getElementById('m-agente').value = getRespAsig(e);
-    document.getElementById('m-tema').value = getTema(e);
-    document.getElementById('m-salio').value = toInput(getSalio(e));
-  } else {
-    ['m-expte','m-iniciador','m-reparto','m-tema','m-salio'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('m-ingreso').value = today;
-    document.getElementById('m-agente').value = '';
-  }
-  document.getElementById('overlay').classList.add('show');
-}
-function cerrarModal() { document.getElementById('overlay').classList.remove('show'); }
-
-async function guardar() {
-  const expte = document.getElementById('m-expte').value.trim();
-  const ingreso = document.getElementById('m-ingreso').value;
-  const agente = document.getElementById('m-agente').value;
-  if (!expte||!ingreso||!agente) { alert('Completá los campos obligatorios (Expte., Ingreso y Resp. Asignado).'); return; }
-  const datos = {
-    'expte.': expte,
-    'iniciador': document.getElementById('m-iniciador').value,
-    'ingreso': fmt(ingreso),
-    'reparto': fmt(document.getElementById('m-reparto').value),
-    'resp. asig': agente,
-    'tema': document.getElementById('m-tema').value,
-    'salio': fmt(document.getElementById('m-salio').value)
-  };
-  const btn = document.getElementById('btn-guardar');
-  btn.disabled = true; btn.textContent = 'Guardando...';
-  try {
-    if (editIdx !== null) {
-      datos._fila = expedientes[editIdx]._fila;
-      await api({accion:'editar', hoja:'expedientes', datos});
-      toast('Expediente actualizado ✓');
-    } else {
-      await api({accion:'agregar', hoja:'expedientes', datos});
-      toast('Expediente guardado ✓');
-    }
-    cerrarModal();
-    await cargar();
-  } catch(e) {
-    alert('Error al guardar: '+e.message);
-  }
-  btn.disabled = false; btn.textContent = 'Guardar';
-}
-
-async function eliminar(idx) {
-  if (!confirm('¿Eliminás este expediente? Esta acción no se puede deshacer.')) return;
-  try {
-    await api({accion:'eliminar', hoja:'expedientes', datos:{_fila: expedientes[idx]._fila}});
-    toast('Expediente eliminado');
-    await cargar();
-  } catch(e) { alert('Error: '+e.message); }
-}
-
-async function agregarAgente() {
-  const inp = document.getElementById('nuevo-agente');
-  const nombre = inp.value.trim();
-  if (!nombre) return;
-  try {
-    await api({accion:'agregar', hoja:'agentes', datos:{nombre}});
-    inp.value = '';
-    agentes.push(nombre);
-    fillSelects();
-    renderConfigAgentes();
-    toast('Agente agregado ✓');
-  } catch(e) { alert('Error: '+e.message); }
-}
-
-async function eliminarAgente(i) {
-  if (!confirm(`¿Eliminás a "${agentes[i]}"?`)) return;
-  try {
-    await api({accion:'eliminar', hoja:'agentes', datos:{id: i+2}});
-    agentes.splice(i,1);
-    fillSelects();
-    renderConfigAgentes();
-    toast('Agente eliminado ✓');
-  } catch(e) { alert('Error: '+e.message); }
-}
-
-let chartD = null;
-let sortCol = null;
-let sortDir = 1;
-
-function ordenarPor(col) {
-  if (sortCol === col) sortDir *= -1;
-  else { sortCol = col; sortDir = 1; }
-  renderTabla();
-}
-
-function getValorOrden(e, col) {
-  switch(col) {
-    case 'expte': return getExpte(e).toLowerCase();
-    case 'iniciador': return getIniciador(e).toLowerCase();
-    case 'ingreso': return toInput(e.ingreso||e.Ingreso)||'';
-    case 'reparto': return toInput(getReparto(e))||'';
-    case 'agente': return getRespAsig(e).toLowerCase();
-    case 'tema': return getTema(e).toLowerCase();
-    case 'estado': return estaEgresado(e) ? 'z' : 'a';
-    case 'salio': return toInput(getSalio(e))||'';
-    default: return '';
-  }
-}
-
 function renderDiario() {
-  if (!chartD && !document.getElementById('chart-diario')) return;
-  const desde = document.getElementById('f-desde').value;
-  const hasta = document.getElementById('f-hasta').value;
-
-  // Recolectar ingresos por día
-  const ing_dias = {};
-  const egr_dias = {};
-  expedientes.forEach(e => {
-    const ing = toInput(e.ingreso || e.Ingreso);
-    const sal = toInput(getSalio(e));
-    if (ing && (!desde || ing >= desde) && (!hasta || ing <= hasta)) {
-      ing_dias[ing] = (ing_dias[ing]||0) + 1;
-    }
-    if (sal && sal.length === 10 && (!desde || sal >= desde) && (!hasta || sal <= hasta)) {
-      egr_dias[sal] = (egr_dias[sal]||0) + 1;
-    }
+  const desde=document.getElementById('f-desde').value;
+  const hasta=document.getElementById('f-hasta').value;
+  const ing_dias={}, egr_dias={};
+  expedientes.forEach(e=>{
+    const ing=toInput(e.ingreso||e.Ingreso);
+    const sal=toInput(getSalio(e));
+    if(ing&&(!desde||ing>=desde)&&(!hasta||ing<=hasta)) ing_dias[ing]=(ing_dias[ing]||0)+1;
+    if(sal&&sal.length===10&&(!desde||sal>=desde)&&(!hasta||sal<=hasta)) egr_dias[sal]=(egr_dias[sal]||0)+1;
   });
-
-  const todasFechas = [...new Set([...Object.keys(ing_dias), ...Object.keys(egr_dias)])].sort();
-
-  if (!todasFechas.length) {
-    document.getElementById('tbody-ingresos').innerHTML = '<tr><td colspan="2" style="text-align:center;color:#888">Sin datos.</td></tr>';
-    document.getElementById('tbody-egresos').innerHTML = '<tr><td colspan="2" style="text-align:center;color:#888">Sin datos.</td></tr>';
-    if (chartD) { chartD.destroy(); chartD = null; }
+  const todas=[...new Set([...Object.keys(ing_dias),...Object.keys(egr_dias)])].sort();
+  if(!todas.length){
+    document.getElementById('tbody-ingresos').innerHTML='<tr><td colspan="2" style="text-align:center;color:#888">Sin datos.</td></tr>';
+    document.getElementById('tbody-egresos').innerHTML='<tr><td colspan="2" style="text-align:center;color:#888">Sin datos.</td></tr>';
+    if(chartD){chartD.destroy();chartD=null;}
     return;
   }
-
-  const labels = todasFechas.map(f => fmt(f));
-  const ingArr = todasFechas.map(f => ing_dias[f]||0);
-  const egrArr = todasFechas.map(f => egr_dias[f]||0);
-
-  if (chartD) chartD.destroy();
-  chartD = new Chart(document.getElementById('chart-diario'), {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        {label:'Ingresos', data:ingArr, backgroundColor:'#378ADD'},
-        {label:'Egresos',  data:egrArr, backgroundColor:'#F0A045'}
-      ]
-    },
-    options: {
-      responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:true, position:'top'}},
-      scales:{x:{ticks:{font:{size:11},maxRotation:45,autoSkip:true}}, y:{beginAtZero:true,ticks:{stepSize:1}}}
-    }
+  const labels=todas.map(f=>fmt(f));
+  if(chartD)chartD.destroy();
+  chartD=new Chart(document.getElementById('chart-diario'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Ingresos',data:todas.map(f=>ing_dias[f]||0),backgroundColor:'#378ADD'},
+      {label:'Egresos',data:todas.map(f=>egr_dias[f]||0),backgroundColor:'#F0A045'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top'}},scales:{x:{ticks:{font:{size:11},maxRotation:45,autoSkip:true}},y:{beginAtZero:true,ticks:{stepSize:1}}}}
   });
-
-  // Tablas separadas
-  const ingFechas = Object.keys(ing_dias).sort();
-  const egrFechas = Object.keys(egr_dias).sort();
-
-  document.getElementById('tbody-ingresos').innerHTML = ingFechas.length
-    ? ingFechas.map(f => `<tr><td style="white-space:nowrap">${fmt(f)}</td><td style="color:#185FA5;font-weight:600">${ing_dias[f]}</td></tr>`).join('')
-    : '<tr><td colspan="2" style="text-align:center;color:#888">Sin ingresos.</td></tr>';
-
-  document.getElementById('tbody-egresos').innerHTML = egrFechas.length
-    ? egrFechas.map(f => `<tr><td style="white-space:nowrap">${fmt(f)}</td><td style="color:#F0A045;font-weight:600">${egr_dias[f]}</td></tr>`).join('')
-    : '<tr><td colspan="2" style="text-align:center;color:#888">Sin egresos.</td></tr>';
+  const ingF=Object.keys(ing_dias).sort(), egrF=Object.keys(egr_dias).sort();
+  document.getElementById('tbody-ingresos').innerHTML=ingF.length?ingF.map(f=>`<tr><td style="white-space:nowrap">${fmt(f)}</td><td style="color:#185FA5;font-weight:600">${ing_dias[f]}</td></tr>`).join(''):'<tr><td colspan="2" style="text-align:center;color:#888">Sin ingresos.</td></tr>';
+  document.getElementById('tbody-egresos').innerHTML=egrF.length?egrF.map(f=>`<tr><td style="white-space:nowrap">${fmt(f)}</td><td style="color:#F0A045;font-weight:600">${egr_dias[f]}</td></tr>`).join(''):'<tr><td colspan="2" style="text-align:center;color:#888">Sin egresos.</td></tr>';
 }
-
-function initFechas() {
-  const hoy = new Date().toISOString().slice(0,10);
-  const hace30 = new Date(Date.now() - 30*86400000).toISOString().slice(0,10);
-  document.getElementById('f-desde').value = hace30;
-  document.getElementById('f-hasta').value = hoy;
-}
-
-function consultarExpte(nro) {
-  if (!nro) { alert('Este expediente no tiene número cargado.'); return; }
-  // Extrae solo los dígitos del número de expediente
-  const soloNumeros = nro.replace(/\D/g, '');
-  if (!soloNumeros) { alert('No se pudo extraer el número de expediente.'); return; }
-  window.open('https://apps2.entrerios.gov.ar/consulta/expedientes/#/ver?nro=' + soloNumeros, '_blank');
-}
-
-let programasData = []; // [{programa, expte}]
-let programaActivo = null;
-
-const PROGRAMAS_DEFAULT = ['Juventud Emprende','Juventud en el Centro','Juventud en la Comunidad'];
-const KEYWORDS = {
-  'Juventud Emprende': ['juventud emprende','emprende'],
-  'Juventud en el Centro': ['juventud en el centro','en el centro'],
-  'Juventud en la Comunidad': ['juventud en la comunidad','en la comunidad']
-};
 
 function getProgramas() {
-  const nombres = [...new Set(programasData.map(p => p.programa).filter(Boolean))];
-  PROGRAMAS_DEFAULT.forEach(p => { if (!nombres.includes(p)) nombres.push(p); });
+  const nombres=[...new Set(programasData.map(p=>p.programa).filter(Boolean))];
+  PROGRAMAS_DEFAULT.forEach(p=>{if(!nombres.includes(p))nombres.push(p);});
   return nombres;
 }
-
 function getExptesDeProg(prog) {
-  // Asignados manualmente en la hoja programas
-  const manuales = programasData
-    .filter(p => p.programa === prog && p.expte)
-    .map(p => String(p.expte).trim());
-  // Detectados automáticamente por tema
-  const keys = KEYWORDS[prog] || [prog.toLowerCase()];
-  const porTema = expedientes
-    .filter(e => {
-      const tema = getTema(e).toLowerCase();
-      return keys.some(k => tema.includes(k));
-    })
-    .map(e => String(getExpte(e)).trim());
-  // Unión sin duplicados
-  const todos = [...new Set([...porTema, ...manuales])];
-  return expedientes.filter(e => todos.includes(String(getExpte(e)).trim()));
-}
-
-function switchSubTab(t) {
-  document.querySelectorAll('#prog-subtabs .tab').forEach((el,i) => {
-    el.classList.toggle('active', ['lista','mapa'][i] === t);
-  });
-  document.getElementById('subprog-lista').style.display = t==='lista' ? 'block' : 'none';
-  document.getElementById('subprog-mapa').style.display  = t==='mapa'  ? 'block' : 'none';
-  if (t==='mapa') setTimeout(renderMapa, 50);
+  const manuales=programasData.filter(p=>p.programa===prog&&p.expte).map(p=>String(p.expte).trim());
+  const keys=KEYWORDS[prog]||[prog.toLowerCase()];
+  const porTema=expedientes.filter(e=>{const tema=getTema(e).toLowerCase();return keys.some(k=>tema.includes(k));}).map(e=>String(getExpte(e)).trim());
+  const todos=[...new Set([...porTema,...manuales])];
+  return expedientes.filter(e=>todos.includes(String(getExpte(e)).trim()));
 }
 
 function renderProgramas() {
-  const progs = getProgramas();
-  if (!programaActivo || !progs.includes(programaActivo)) programaActivo = progs[0];
-
-  document.getElementById('prog-tabs').innerHTML = progs.map(p => `
-    <button class="tab ${p===programaActivo?'active':''}" onclick="switchPrograma('${p}')">${p}</button>
-  `).join('');
-
+  const progs=getProgramas();
+  if(!programaActivo||!progs.includes(programaActivo)) programaActivo=progs[0];
+  document.getElementById('prog-tabs').innerHTML=progs.map(p=>`<button class="tab ${p===programaActivo?'active':''}" onclick="switchPrograma('${p}')">${p}</button>`).join('');
   renderPrograma(programaActivo);
 }
-
-function switchPrograma(p) {
-  programaActivo = p;
-  renderProgramas();
-}
+function switchPrograma(p){programaActivo=p;renderProgramas();}
 
 function renderPrograma(prog) {
-  const exps = getExptesDeProg(prog);
-  const contenido = document.getElementById('prog-contenido');
-  contenido.innerHTML = `
+  const exps=getExptesDeProg(prog);
+  document.getElementById('prog-contenido').innerHTML=`
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-        <div>
-          <span style="font-size:14px;font-weight:600">${prog}</span>
-          <span style="font-size:12px;color:#888;margin-left:8px">${exps.length} expediente${exps.length!==1?'s':''}</span>
-        </div>
+        <div><span style="font-size:14px;font-weight:600">${prog}</span><span style="font-size:12px;color:#888;margin-left:8px">${exps.length} expediente${exps.length!==1?'s':''}</span></div>
         <div style="display:flex;gap:8px">
           <button class="btn sm primary" onclick="abrirModalAsignar('${prog}')">+ Asignar expediente</button>
           <button class="btn sm danger" onclick="eliminarPrograma('${prog}')">🗑️ Eliminar programa</button>
         </div>
       </div>
-      ${exps.length ? `
-      <div style="overflow-x:auto">
-        <table>
-          <thead><tr>
-            <th>Expte.</th><th>Iniciador</th><th>Ingreso</th><th>Resp. Asig.</th><th>Tema</th><th>Estado</th><th></th>
-          </tr></thead>
-          <tbody>${exps.map(e => `
-            <tr>
-              <td style="font-weight:500">${getExpte(e)||'—'}</td>
-              <td>${getIniciador(e)||'—'}</td>
-              <td style="white-space:nowrap">${fmt(e.ingreso||e.Ingreso)}</td>
-              <td>${getRespAsig(e)||'—'}</td>
-              <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${getTema(e)}">${getTema(e)||'—'}</td>
-              <td><span class="badge ${estaEgresado(e)?'egresado':'activo'}">${estaEgresado(e)?'Egresado':'En Dirección'}</span></td>
-              <td><button class="btn sm danger" onclick="desasignar('${prog}','${getExpte(e)}')">✕</button></td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>` : '<div class="alert">No hay expedientes asignados a este programa todavía.</div>'}
+      ${exps.length?`<div style="overflow-x:auto"><table>
+        <thead><tr><th>Expte.</th><th>Iniciador</th><th>Ingreso</th><th>Resp. Asig.</th><th>Tema</th><th>Estado</th><th></th></tr></thead>
+        <tbody>${exps.map(e=>`<tr>
+          <td style="font-weight:500">${getExpte(e)||'—'}</td>
+          <td>${getIniciador(e)||'—'}</td>
+          <td style="white-space:nowrap">${fmt(e.ingreso||e.Ingreso)}</td>
+          <td>${getRespAsig(e)||'—'}</td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${getTema(e)}">${getTema(e)||'—'}</td>
+          <td><span class="badge ${estaEgresado(e)?'egresado':'activo'}">${estaEgresado(e)?'Egresado':'En Dirección'}</span></td>
+          <td><button class="btn sm danger" onclick="desasignar('${prog}','${getExpte(e)}')">✕</button></td>
+        </tr>`).join('')}</tbody></table></div>`:'<div class="alert">No hay expedientes asignados a este programa todavía.</div>'}
     </div>`;
 }
 
-function abrirModalPrograma() {
-  document.getElementById('np-nombre').value = '';
-  document.getElementById('overlay-programa').classList.add('show');
-}
-
+function abrirModalPrograma(){document.getElementById('np-nombre').value='';document.getElementById('overlay-programa').classList.add('show');}
 async function guardarPrograma() {
-  const nombre = document.getElementById('np-nombre').value.trim();
-  if (!nombre) { alert('Ingresá un nombre para el programa.'); return; }
-  if (getProgramas().includes(nombre)) { alert('Ya existe un programa con ese nombre.'); return; }
-  // Guardar en sheets una fila placeholder
-  await api({accion:'agregar', hoja:'programas', datos:{programa:nombre, expte:''}});
-  programasData.push({programa:nombre, expte:''});
+  const nombre=document.getElementById('np-nombre').value.trim();
+  if(!nombre){alert('Ingresá un nombre.');return;}
+  if(getProgramas().includes(nombre)){alert('Ya existe ese programa.');return;}
+  await api({accion:'agregar',hoja:'programas',datos:{programa:nombre,expte:''}});
+  programasData.push({programa:nombre,expte:''});
   document.getElementById('overlay-programa').classList.remove('show');
-  programaActivo = nombre;
-  renderProgramas();
-  toast('Programa creado ✓');
+  programaActivo=nombre;renderProgramas();toast('Programa creado ✓');
 }
 
-let progAsignar = null;
+let progAsignar=null;
 function abrirModalAsignar(prog) {
-  progAsignar = prog;
-  const yaAsignados = getExptesDeProg(prog).map(e => getExpte(e));
-  const disponibles = expedientes.filter(e => !yaAsignados.includes(getExpte(e)));
-  const sel = document.getElementById('as-expte');
-  sel.innerHTML = '<option value="">Seleccionar...</option>' +
-    disponibles.map(e => `<option value="${getExpte(e)}">${getExpte(e)} — ${getTema(e)||getIniciador(e)||'sin tema'}</option>`).join('');
+  progAsignar=prog;
+  const ya=getExptesDeProg(prog).map(e=>getExpte(e));
+  const disp=expedientes.filter(e=>!ya.includes(getExpte(e)));
+  document.getElementById('as-expte').innerHTML='<option value="">Seleccionar...</option>'+disp.map(e=>`<option value="${getExpte(e)}">${getExpte(e)} — ${getTema(e)||getIniciador(e)||'sin tema'}</option>`).join('');
   document.getElementById('overlay-asignar').classList.add('show');
 }
-function cerrarModalAsignar() { document.getElementById('overlay-asignar').classList.remove('show'); }
-
+function cerrarModalAsignar(){document.getElementById('overlay-asignar').classList.remove('show');}
 async function asignarExpediente() {
-  const expte = document.getElementById('as-expte').value;
-  if (!expte) { alert('Seleccioná un expediente.'); return; }
-  await api({accion:'agregar', hoja:'programas', datos:{programa:progAsignar, expte}});
-  programasData.push({programa:progAsignar, expte});
-  cerrarModalAsignar();
-  renderPrograma(progAsignar);
-  toast('Expediente asignado ✓');
+  const expte=document.getElementById('as-expte').value;
+  if(!expte){alert('Seleccioná un expediente.');return;}
+  await api({accion:'agregar',hoja:'programas',datos:{programa:progAsignar,expte}});
+  programasData.push({programa:progAsignar,expte});
+  cerrarModalAsignar();renderPrograma(progAsignar);toast('Expediente asignado ✓');
 }
-
-async function desasignar(prog, expte) {
-  if (!confirm(`¿Quitás este expediente del programa "${prog}"?`)) return;
-  // Buscar si fue asignado manualmente
-  const idx = programasData.findIndex(p => p.programa === prog && String(p.expte).trim() === String(expte).trim());
-  if (idx === -1) {
-    toast('Este expediente fue detectado por el tema automáticamente, no se puede quitar desde acá.');
-    return;
-  }
-  // La fila en sheets es idx+2 (fila 1 = encabezados)
-  await api({accion:'eliminar', hoja:'programas', datos:{_fila: idx + 2}});
-  programasData.splice(idx, 1);
-  renderPrograma(prog);
-  toast('Expediente quitado del programa ✓');
+async function desasignar(prog,expte) {
+  if(!confirm(`¿Quitás este expediente del programa "${prog}"?`))return;
+  const idx=programasData.findIndex(p=>p.programa===prog&&String(p.expte).trim()===String(expte).trim());
+  if(idx===-1){toast('Detectado por tema automáticamente, no se puede quitar desde acá.');return;}
+  await api({accion:'eliminar',hoja:'programas',datos:{_fila:idx+2}});
+  programasData.splice(idx,1);renderPrograma(prog);toast('Expediente quitado ✓');
 }
-
 async function eliminarPrograma(prog) {
-  if (!confirm(`¿Eliminás el programa "${prog}"? Los expedientes no se borran.`)) return;
-  const indices = programasData.map((p,i) => p.programa===prog ? i : -1).filter(i=>i>=0);
-  for (const i of indices.reverse()) {
-    await api({accion:'eliminar', hoja:'programas', datos:{_fila:i+2}});
-    programasData.splice(i,1);
-  }
-  programaActivo = getProgramas()[0] || null;
-  renderProgramas();
-  toast('Programa eliminado ✓');
-}
-
-// ── MAPA ────────────────────────────────────────────────
-// Centroides aproximados de los 17 departamentos de Entre Ríos
-// para renderizado SVG simplificado (x,y en viewBox 0 0 400 500)
-const DEPTOS_ER = [
-  {nombre:'CONCORDIA',     cx:310, cy:120},
-  {nombre:'SAN SALVADOR',  cx:310, cy:175},
-  {nombre:'COLON',         cx:330, cy:220},
-  {nombre:'VILLAGUAY',     cx:245, cy:190},
-  {nombre:'FEDERAL',       cx:230, cy:100},
-  {nombre:'LA PAZ',        cx:150, cy:130},
-  {nombre:'FELICIANO',     cx:175, cy:80},
-  {nombre:'FEDERAL',       cx:230, cy:100},
-  {nombre:'PARANA',        cx:155, cy:250},
-  {nombre:'DIAMANTE',      cx:140, cy:300},
-  {nombre:'VICTORIA',      cx:120, cy:360},
-  {nombre:'GUALEGUAY',     cx:185, cy:330},
-  {nombre:'GUALEGUAYCHU', cx:240, cy:400},
-  {nombre:'ISLAS',         cx:80,  cy:300},
-  {nombre:'TALA',          cx:260, cy:270},
-  {nombre:'NOGOYA',        cx:200, cy:290},
-  {nombre:'URUGUAY',       cx:300, cy:320},
-];
-
-// Polígonos SVG simplificados de los 17 departamentos de Entre Ríos
-const DEPTOS_POLY = {
-  'CONCORDIA':    '310,60 360,70 370,130 340,160 290,150 280,100',
-  'SAN SALVADOR': '310,160 340,160 350,200 320,215 285,200 290,165',
-  'COLON':        '340,160 375,170 380,240 350,255 315,235 320,215 350,200',
-  'VILLAGUAY':    '215,155 285,150 290,165 285,200 255,215 220,220 205,190',
-  'FEDERAL':      '180,55 255,50 270,110 235,130 195,125 175,90',
-  'FELICIANO':    '155,40 180,55 175,90 145,95 130,65',
-  'LA PAZ':       '100,100 175,90 195,125 170,160 125,155 95,130',
-  'PARANA':       '100,200 170,185 205,190 220,220 195,255 150,265 95,240',
-  'DIAMANTE':     '95,240 150,265 160,305 125,320 80,305',
-  'VICTORIA':     '80,305 125,320 130,375 95,385 60,355 65,320',
-  'GUALEGUAY':    '150,265 195,255 220,220 255,215 260,270 230,300 185,310 160,305',
-  'TALA':         '220,220 285,200 315,235 290,275 260,270 255,215',
-  'NOGOYA':       '195,255 230,300 210,335 175,330 150,305 160,265',
-  'GUALEGUAYCHU': '210,335 260,270 290,275 310,320 290,385 260,410 225,395 205,360',
-  'URUGUAY':      '290,275 315,235 350,255 360,310 335,355 310,320',
-  'ISLAS':        '60,250 95,240 80,305 65,320 40,300 45,265',
-  'CAPITAL':      '100,200 130,190 145,215 120,235 95,230',
-};
-
-function parseTema(tema) {
-  // Formato esperado: "Programa - Localidad - Departamento"
-  const partes = (tema||'').split('-').map(s=>s.trim());
-  return {
-    programa: partes[0]||'',
-    localidad: partes[1]||'',
-    departamento: (partes[2]||'').toUpperCase()
-  };
+  if(!confirm(`¿Eliminás el programa "${prog}"? Los expedientes no se borran.`))return;
+  const indices=programasData.map((p,i)=>p.programa===prog?i:-1).filter(i=>i>=0);
+  for(const i of indices.reverse()){await api({accion:'eliminar',hoja:'programas',datos:{_fila:i+2}});programasData.splice(i,1);}
+  programaActivo=getProgramas()[0]||null;renderProgramas();toast('Programa eliminado ✓');
 }
 
 function getDatosMapaProg(filtroProg) {
-  const progs = getProgramas();
-  const conteo = {}; // {depto: {total, porProg:{prog:n}}}
-
-  progs.forEach(prog => {
-    if (filtroProg && prog !== filtroProg) return;
-    const exps = getExptesDeProg(prog);
-    exps.forEach(e => {
-      const {departamento} = parseTema(getTema(e));
-      if (!departamento) return;
-      // Normalizar nombre
-      const dep = departamento.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-      if (!conteo[dep]) conteo[dep] = {total:0, porProg:{}};
+  const progs=getProgramas();
+  const conteo={};
+  progs.forEach(prog=>{
+    if(filtroProg&&prog!==filtroProg)return;
+    getExptesDeProg(prog).forEach(e=>{
+      const partes=(getTema(e)||'').split('-').map(s=>s.trim());
+      const departamento=partes[2]||'';
+      if(!departamento)return;
+      const dep=normalizar(departamento);
+      if(!conteo[dep])conteo[dep]={total:0,porProg:{}};
       conteo[dep].total++;
-      conteo[dep].porProg[prog] = (conteo[dep].porProg[prog]||0)+1;
+      conteo[dep].porProg[prog]=(conteo[dep].porProg[prog]||0)+1;
     });
   });
   return conteo;
 }
-
-function colorDepto(val, max) {
-  if (!val || !max) return '#EAF3DE';
-  const t = val/max;
-  const r = Math.round(234 + (24-234)*t);
-  const g = Math.round(243 + (95-243)*t);
-  const b = Math.round(222 + (165-222)*t);
+function interpolarColorLeaflet(t) {
+  const r=Math.round(219-(219-30)*t);
+  const g=Math.round(234-(234-64)*t);
+  const b=Math.round(254-(254-175)*t);
   return `rgb(${r},${g},${b})`;
 }
 
-function renderMapa() {
-  const filtroProg = document.getElementById('mapa-filtro-prog').value;
-  const datos = getDatosMapaProg(filtroProg);
-  const max = Math.max(...Object.values(datos).map(d=>d.total), 1);
-  const tooltip = document.getElementById('mapa-tooltip');
-  const svg = document.getElementById('mapa-er');
+async function renderMapa() {
+  const filtroProg=document.getElementById('mapa-filtro-prog').value;
+  const datos=getDatosMapaProg(filtroProg);
+  const maxVal=Math.max(...Object.values(datos).map(d=>d.total),1);
 
-  // Actualizar select de programas
-  const sel = document.getElementById('mapa-filtro-prog');
-  const curVal = sel.value;
-  sel.innerHTML = '<option value="">Todos los programas</option>' +
-    getProgramas().map(p=>`<option value="${p}" ${p===curVal?'selected':''}>${p}</option>`).join('');
+  if(!leafletMap){
+    leafletMap=L.map('mapa-leaflet',{zoomControl:true,scrollWheelZoom:false}).setView([-31.7,-58.8],7);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO',maxZoom:12}).addTo(leafletMap);
+  }
+  if(geojsonLayer){leafletMap.removeLayer(geojsonLayer);geojsonLayer=null;}
 
-  // Dibujar polígonos
-  svg.innerHTML = '';
-  Object.entries(DEPTOS_POLY).forEach(([nombre, poly]) => {
-    const key = nombre.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-    const info = datos[key] || {total:0, porProg:{}};
-    const color = colorDepto(info.total, max);
-
-    const polygon = document.createElementNS('http://www.w3.org/2000/svg','polygon');
-    polygon.setAttribute('points', poly);
-    polygon.setAttribute('fill', color);
-    polygon.setAttribute('stroke', '#fff');
-    polygon.setAttribute('stroke-width', '1.5');
-    polygon.style.cursor = 'pointer';
-    polygon.style.transition = 'opacity .15s';
-
-    polygon.addEventListener('mouseenter', ev => {
-      polygon.setAttribute('opacity','0.8');
-      const progLines = Object.entries(info.porProg).map(([p,n])=>`· ${p}: ${n}`).join('<br>');
-      tooltip.innerHTML = `<strong>${nombre}</strong><br>Total: ${info.total}${progLines?'<br>'+progLines:''}`;
-      tooltip.style.display = 'block';
-    });
-    polygon.addEventListener('mousemove', ev => {
-      tooltip.style.left = (ev.clientX+14)+'px';
-      tooltip.style.top  = (ev.clientY-10)+'px';
-    });
-    polygon.addEventListener('mouseleave', () => {
-      polygon.setAttribute('opacity','1');
-      tooltip.style.display = 'none';
-    });
-    svg.appendChild(polygon);
-
-    // Etiqueta con nombre abreviado
-    const cx = DEPTOS_ER.find(d=>d.nombre===nombre)?.cx;
-    const cy = DEPTOS_ER.find(d=>d.nombre===nombre)?.cy;
-    if (cx && cy) {
-      const text = document.createElementNS('http://www.w3.org/2000/svg','text');
-      text.setAttribute('x', cx);
-      text.setAttribute('y', cy);
-      text.setAttribute('text-anchor','middle');
-      text.setAttribute('font-size','7');
-      text.setAttribute('fill','#333');
-      text.setAttribute('pointer-events','none');
-      const abrev = nombre.length > 8 ? nombre.slice(0,7)+'.' : nombre;
-      text.textContent = abrev + (info.total ? ` (${info.total})` : '');
-      svg.appendChild(text);
+  try {
+    document.getElementById('mapa-tabla-depto').innerHTML='<div style="color:#888;font-size:12px">Cargando mapa...</div>';
+    if(!geoCache){
+      const resp=await fetch('https://raw.githubusercontent.com/mgaitan/departamentos_argentina/master/departamentos-entre_rios.json');
+      geoCache=await resp.json();
     }
-  });
+    geojsonLayer=L.geoJSON(geoCache,{
+      style:feat=>{
+        const nombre=feat.properties.departamento||feat.properties.nombre||'';
+        const info=datos[normalizar(nombre)]||{total:0};
+        const t=info.total/maxVal;
+        return {fillColor:info.total>0?interpolarColorLeaflet(t):'#e8f4fd',fillOpacity:0.75,color:'#1e40af',weight:1.2,opacity:0.7};
+      },
+      onEachFeature:(feat,layer)=>{
+        const nombre=feat.properties.departamento||feat.properties.nombre||'';
+        const info=datos[normalizar(nombre)]||{total:0,porProg:{}};
+        const lines=Object.entries(info.porProg).map(([p,n])=>`<b>${p}:</b> ${n}`).join('<br>');
+        layer.bindTooltip(`<div style="font-size:13px"><b>${nombre}</b><br>Total: <b>${info.total}</b>${lines?'<br>'+lines:''}</div>`,{sticky:true,opacity:0.95});
+        layer.on('mouseover',function(){this.setStyle({fillOpacity:0.95,weight:2.5});});
+        layer.on('mouseout',function(){geojsonLayer.resetStyle(this);});
+      }
+    }).addTo(leafletMap);
+    leafletMap.fitBounds(geojsonLayer.getBounds(),{padding:[10,10]});
+    setTimeout(()=>leafletMap.invalidateSize(),150);
 
-  // Tabla lateral
-  const sorted = Object.entries(datos).sort((a,b)=>b[1].total-a[1].total);
-  document.getElementById('mapa-tabla-depto').innerHTML = sorted.length
-    ? sorted.map(([dep,info])=>`
-        <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f0ee;font-size:12px">
-          <span>${dep.charAt(0)+dep.slice(1).toLowerCase()}</span>
-          <span style="font-weight:600;color:#185FA5">${info.total}</span>
-        </div>`).join('')
-    : '<div style="color:#aaa;font-size:12px">Sin datos. Cargá expedientes con el formato:<br><em>Programa - Localidad - Departamento</em></div>';
+    const sorted=Object.entries(datos).sort((a,b)=>b[1].total-a[1].total);
+    document.getElementById('mapa-tabla-depto').innerHTML=sorted.length?sorted.map(([dep,info])=>`<div style="display:flex;justify-content:space-between;padding:5px 8px;background:#f5f5f3;border-radius:6px;font-size:12px"><span>${dep.charAt(0)+dep.slice(1).toLowerCase()}</span><span style="font-weight:600;color:#185FA5">${info.total}</span></div>`).join(''):'<div style="color:#aaa;font-size:12px">Sin datos aún. Cargá expedientes con el formato Programa - Localidad - Departamento.</div>';
+  } catch(err) {
+    document.getElementById('mapa-tabla-depto').innerHTML=`<div style="color:#A32D2D;font-size:12px">Error al cargar el mapa: ${err.message}</div>`;
+  }
+
+  const sel=document.getElementById('mapa-filtro-prog');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">Todos los programas</option>'+getProgramas().map(p=>`<option value="${p}" ${p===cur?'selected':''}>${p}</option>`).join('');
 }
 
-// ── FIN MAPA ─────────────────────────────────────────────
+function renderConfigAgentes() {
+  document.getElementById('agentes-config-lista').innerHTML=agentes.length?agentes.map((a,i)=>`<div class="agente-item"><div style="display:flex;align-items:center;gap:10px"><div class="avatar">${initials(a)}</div><span style="font-size:14px">${a}</span></div><button class="btn sm danger" onclick="eliminarAgente(${i})">🗑️ Eliminar</button></div>`).join(''):'<div class="alert">No hay agentes cargados todavía.</div>';
+}
+function fillSelects() {
+  const fSel=document.getElementById('f-agente'), mSel=document.getElementById('m-agente');
+  const curF=fSel.value, curM=mSel.value;
+  fSel.innerHTML='<option value="">Todos los agentes</option>'+agentes.map(a=>`<option value="${a}">${a}</option>`).join('');
+  mSel.innerHTML='<option value="">Seleccionar...</option>'+agentes.map(a=>`<option value="${a}">${a}</option>`).join('');
+  fSel.value=curF; mSel.value=curM;
+}
+
+function abrirModal(idx=null) {
+  editIdx=idx;
+  document.getElementById('modal-title').textContent=idx!==null?'Editar expediente':'Nuevo expediente';
+  const today=new Date().toISOString().slice(0,10);
+  if(idx!==null){
+    const e=expedientes[idx];
+    document.getElementById('m-expte').value=getExpte(e);
+    document.getElementById('m-iniciador').value=getIniciador(e);
+    document.getElementById('m-ingreso').value=toInput(e.ingreso||e.Ingreso);
+    document.getElementById('m-reparto').value=toInput(getReparto(e));
+    document.getElementById('m-agente').value=getRespAsig(e);
+    document.getElementById('m-tema').value=getTema(e);
+    document.getElementById('m-salio').value=toInput(getSalio(e));
+  } else {
+    ['m-expte','m-iniciador','m-reparto','m-tema','m-salio'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('m-ingreso').value=today;
+    document.getElementById('m-agente').value='';
+  }
+  document.getElementById('overlay').classList.add('show');
+}
+function cerrarModal(){document.getElementById('overlay').classList.remove('show');}
+
+async function guardar() {
+  const expte=document.getElementById('m-expte').value.trim();
+  const ingreso=document.getElementById('m-ingreso').value;
+  const agente=document.getElementById('m-agente').value;
+  if(!expte||!ingreso||!agente){alert('Completá los campos obligatorios (Expte., Ingreso y Resp. Asignado).');return;}
+  const datos={
+    'expte.':expte,
+    'iniciador':document.getElementById('m-iniciador').value,
+    'ingreso':fmt(ingreso),
+    'reparto':fmt(document.getElementById('m-reparto').value),
+    'resp. asig':agente,
+    'tema':document.getElementById('m-tema').value,
+    'salio':fmt(document.getElementById('m-salio').value)
+  };
+  const btn=document.getElementById('btn-guardar');
+  btn.disabled=true;btn.textContent='Guardando...';
+  try {
+    if(editIdx!==null){
+      datos._fila=expedientes[editIdx]._fila;
+      await api({accion:'editar',hoja:'expedientes',datos});
+      toast('Expediente actualizado ✓');
+    } else {
+      await api({accion:'agregar',hoja:'expedientes',datos});
+      toast('Expediente guardado ✓');
+    }
+    cerrarModal();await cargar();
+  } catch(e){alert('Error al guardar: '+e.message);}
+  btn.disabled=false;btn.textContent='Guardar';
+}
+
+async function eliminar(idx) {
+  if(!confirm('¿Eliminás este expediente? Esta acción no se puede deshacer.'))return;
+  try {
+    await api({accion:'eliminar',hoja:'expedientes',datos:{_fila:expedientes[idx]._fila}});
+    toast('Expediente eliminado');await cargar();
+  } catch(e){alert('Error: '+e.message);}
+}
+
+async function agregarAgente() {
+  const inp=document.getElementById('nuevo-agente');
+  const nombre=inp.value.trim();
+  if(!nombre)return;
+  try {
+    await api({accion:'agregar',hoja:'agentes',datos:{nombre}});
+    inp.value='';agentes.push(nombre);fillSelects();renderConfigAgentes();toast('Agente agregado ✓');
+  } catch(e){alert('Error: '+e.message);}
+}
+async function eliminarAgente(i) {
+  if(!confirm(`¿Eliminás a "${agentes[i]}"?`))return;
+  try {
+    await api({accion:'eliminar',hoja:'agentes',datos:{_fila:i+2}});
+    agentes.splice(i,1);fillSelects();renderConfigAgentes();toast('Agente eliminado ✓');
+  } catch(e){alert('Error: '+e.message);}
+}
+
+function initFechas() {
+  const hoy=new Date().toISOString().slice(0,10);
+  const hace30=new Date(Date.now()-30*86400000).toISOString().slice(0,10);
+  document.getElementById('f-desde').value=hace30;
+  document.getElementById('f-hasta').value=hoy;
+}
 
 function renderAll() {
   renderMetrics('metrics-top');
@@ -1051,12 +779,8 @@ function renderAll() {
   fillSelects();
   renderTabla();
   initFechas();
-  // Poblar select de programas del mapa
-  const sel = document.getElementById('mapa-filtro-prog');
-  if (sel) {
-    sel.innerHTML = '<option value="">Todos los programas</option>' +
-      getProgramas().map(p=>`<option value="${p}">${p}</option>`).join('');
-  }
+  const sel=document.getElementById('mapa-filtro-prog');
+  if(sel) sel.innerHTML='<option value="">Todos los programas</option>'+getProgramas().map(p=>`<option value="${p}">${p}</option>`).join('');
 }
 
 cargar();
