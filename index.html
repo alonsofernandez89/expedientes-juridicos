@@ -3,649 +3,177 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Registro de Expedientes – DGAJ MDH Entre Ríos</title>
+<title>Registro de Expedientes – Asuntos Jurídicos</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-/* ── TOKENS — Paleta oficial MDH Entre Ríos ── */
-:root {
-  /* Verde institucional extraído del membrete oficial */
-  --verde-estado:  #4A8C1C;   /* verde oscuro del isologotipo ER */
-  --verde-acento:  #5CA022;   /* verde medio, interactivo */
-  --verde-hover:   #3A6E14;   /* hover más oscuro */
-  --verde-claro:   #EDF5E3;   /* fondo chips y badges activos */
-  --verde-claro2:  #F2F8EC;   /* hover de filas */
-
-  /* Neutrales — papel de expediente */
-  --tinta:         #1C1C1E;
-  --tinta-2:       #4A4A4F;
-  --tinta-3:       #8E8E93;
-  --folio:         #F7F6F2;   /* fondo general — papel envejecido */
-  --folio-2:       #EFEDE7;   /* fondo secundario */
-  --borde:         #D8D5CC;
-  --borde-tabla:   #E8E6E0;
-  --blanco:        #FFFFFF;
-
-  /* Semánticos */
-  --activo-color:  #1E6B3C;
-  --activo-bg:     #E6F4EC;
-  --rojo:          #A02B2B;
-  --rojo-bg:       #FAEAEA;
-  --amber:         #7A4A00;
-  --amber-bg:      #FEF3DC;
-  --azul-link:     #1B5299;   /* para el botón de consulta al sistema provincial */
-
-  --margen-ancho:  6px;
-}
-
-/* ── RESET ── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { height: 100%; }
-body {
-  font-family: 'Inter', system-ui, sans-serif;
-  background: var(--folio);
-  color: var(--tinta);
-  min-height: 100vh;
-  /* SIGNATURE: franja lateral izquierda como margen del folio oficial */
-  background-image: linear-gradient(to right, var(--verde-estado) var(--margen-ancho), transparent var(--margen-ancho));
-}
-
-/* ── TOPBAR ── */
-.topbar {
-  background: var(--blanco);
-  border-bottom: 1px solid var(--borde);
-  padding: 0 28px 0 calc(var(--margen-ancho) + 22px);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 56px;
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  box-shadow: 0 1px 4px rgba(0,0,0,.06);
-}
-.topbar-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.topbar-brand .titulo {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--tinta);
-  letter-spacing: -0.01em;
-}
-.topbar-brand .subtitulo {
-  font-size: 11px;
-  color: var(--tinta-3);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  font-weight: 500;
-}
-.topbar-meta {
-  font-size: 12px;
-  color: var(--tinta-3);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.topbar-meta .sello {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--verde-claro);
-  color: var(--verde-estado);
-  border-radius: 4px;
-  padding: 2px 10px;
-  font-weight: 700;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  border: 1px solid rgba(74,140,28,.2);
-}
-
-/* ── LAYOUT ── */
-.container {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 24px 24px 24px calc(var(--margen-ancho) + 18px);
-}
-
-/* ── TABS ── */
-.tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 2px solid var(--borde);
-  margin-bottom: 24px;
-  flex-wrap: wrap;
-}
-.tab {
-  padding: 9px 20px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  border: none;
-  background: none;
-  color: var(--tinta-3);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  transition: color .15s, border-color .15s;
-  letter-spacing: 0.01em;
-}
-.tab:hover { color: var(--verde-acento); }
-.tab.active { color: var(--verde-estado); border-bottom-color: var(--verde-estado); font-weight: 600; }
-.section { display: none; }
-.section.active { display: block; }
-
-/* ── MÉTRICAS ── */
-.metric-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 24px;
-}
-.metric {
-  background: var(--blanco);
-  border-radius: 8px;
-  padding: 16px 18px;
-  border: 1px solid var(--borde);
-  position: relative;
-  overflow: hidden;
-}
-.metric::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 3px;
-  background: var(--verde-estado);
-  border-radius: 3px 0 0 3px;
-}
-.metric .lbl {
-  font-size: 11px;
-  color: var(--tinta-3);
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-.metric .val {
-  font-family: 'DM Serif Display', serif;
-  font-size: 32px;
-  line-height: 1;
-  color: var(--tinta);
-}
-.metric .val.blue  { color: var(--verde-acento); }
-.metric .val.green { color: var(--verde); }
-.metric .val.amber { color: var(--amber); }
-
-/* ── BOTONES ── */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 7px 14px;
-  border-radius: 6px;
-  border: 1px solid var(--borde);
-  background: var(--blanco);
-  color: var(--tinta);
-  font-size: 13px;
-  font-family: 'Inter', sans-serif;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background .12s, border-color .12s, color .12s;
-  white-space: nowrap;
-}
-.btn:hover { background: var(--folio-2); border-color: #bbb; }
-.btn.primary {
-  background: var(--verde-estado);
-  color: var(--blanco);
-  border-color: var(--verde-estado);
-}
-.btn.primary:hover { background: var(--verde-hover); border-color: var(--verde-hover); }
-.btn.sm { font-size: 12px; padding: 4px 10px; border-radius: 5px; }
-.btn.danger { color: var(--rojo); border-color: #dbb; background: none; }
-.btn.danger:hover { background: var(--rojo-bg); border-color: var(--rojo); }
-.btn.ghost { border-color: transparent; background: none; }
-.btn.ghost:hover { background: var(--folio-2); border-color: var(--borde); }
-
-/* ── FILTROS ── */
-.filters {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 14px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-.filters input,
-.filters select {
-  font-size: 13px;
-  font-family: 'Inter', sans-serif;
-  padding: 7px 10px;
-  border: 1px solid var(--borde);
-  border-radius: 6px;
-  background: var(--blanco);
-  color: var(--tinta);
-  transition: border-color .12s;
-}
-.filters input:focus,
-.filters select:focus { outline: none; border-color: var(--verde-acento); }
-.filters input { flex: 1; min-width: 160px; }
-
-/* ── TABLA ── */
-.tabla-wrap {
-  background: var(--blanco);
-  border-radius: 8px;
-  border: 1px solid var(--borde);
-  overflow: hidden;
-}
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th {
-  text-align: left;
-  padding: 9px 12px;
-  font-weight: 600;
-  font-size: 11px;
-  color: var(--tinta-3);
-  border-bottom: 1px solid var(--borde-tabla);
-  background: var(--folio);
-  white-space: nowrap;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  user-select: none;
-}
-th.sortable { cursor: pointer; }
-th.sortable:hover { color: var(--verde-acento); }
-td {
-  padding: 9px 12px;
-  border-bottom: 1px solid var(--borde-tabla);
-  color: var(--tinta);
-  vertical-align: middle;
-}
-tbody tr:last-child td { border-bottom: none; }
-tbody tr { transition: background .1s; }
-tbody tr:hover td { background: var(--verde-claro); }
-.expte-num {
-  font-weight: 600;
-  font-family: 'DM Serif Display', serif;
-  font-size: 14px;
-  color: var(--verde-estado);
-  white-space: nowrap;
-}
-
-/* ── BADGES ── */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 9px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-.badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
-.badge.activo  { background: var(--activo-bg); color: var(--verde); }
-.badge.activo::before { background: var(--verde); }
-.badge.egresado { background: var(--folio-2); color: var(--tinta-3); }
-.badge.egresado::before { background: var(--tinta-3); }
-
-/* ── CARD ── */
-.card {
-  background: var(--blanco);
-  border-radius: 8px;
-  border: 1px solid var(--borde);
-  padding: 20px;
-  margin-bottom: 16px;
-}
-.card-title {
-  font-family: 'DM Serif Display', serif;
-  font-size: 16px;
-  color: var(--verde-estado);
-  margin-bottom: 16px;
-}
-
-/* ── AGENTE ── */
-.agent-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--borde-tabla);
-}
-.agent-row:last-child { border-bottom: none; }
-.avatar {
-  width: 36px; height: 36px;
-  border-radius: 50%;
-  background: var(--verde-claro);
-  border: 2px solid var(--verde-estado);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700;
-  color: var(--verde-estado);
-  flex-shrink: 0;
-  letter-spacing: 0.02em;
-}
-.bar-wrap { flex: 1; min-width: 0; }
-.bar-label {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: var(--tinta-3);
-  margin-bottom: 5px;
-}
-.bar-label strong { color: var(--tinta); font-weight: 600; font-size: 13px; }
-.bar-bg { background: var(--folio-2); border-radius: 4px; height: 6px; overflow: hidden; }
-.bar-fill { height: 6px; border-radius: 4px; background: var(--verde-acento); transition: width .5s cubic-bezier(.4,0,.2,1); }
-
-/* ── CHARTS ── */
-.chart-wrap { position: relative; width: 100%; height: 220px; }
-
-/* ── ALERT ── */
-.alert {
-  background: var(--folio-2);
-  border: 1px solid var(--borde);
-  border-radius: 8px;
-  padding: 14px;
-  font-size: 13px;
-  color: var(--tinta-3);
-  text-align: center;
-  margin: 12px 0;
-}
-
-/* ── OVERLAY / MODAL ── */
-.overlay {
-  display: none;
-  position: fixed; inset: 0;
-  background: rgba(27,63,107,.35);
-  z-index: 100;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(2px);
-}
-.overlay.show { display: flex; }
-.modal {
-  background: var(--blanco);
-  border-radius: 10px;
-  width: 540px;
-  max-width: 95vw;
-  max-height: 92vh;
-  overflow-y: auto;
-  border: 1px solid var(--borde);
-  box-shadow: 0 20px 60px rgba(0,0,0,.18);
-}
-.modal-header {
-  background: var(--verde-estado);
-  padding: 16px 20px;
-  border-radius: 10px 10px 0 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.modal-header h3 {
-  font-family: 'DM Serif Display', serif;
-  font-size: 17px;
-  color: var(--blanco);
-  font-weight: 400;
-}
-.modal-header .close-btn {
-  background: none; border: none;
-  color: rgba(255,255,255,.7);
-  font-size: 20px; cursor: pointer;
-  line-height: 1;
-  padding: 2px;
-  border-radius: 4px;
-  transition: color .15s;
-}
-.modal-header .close-btn:hover { color: var(--blanco); }
-.modal-body { padding: 20px; }
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 4px;
-}
-.fg { display: flex; flex-direction: column; gap: 4px; }
-.fg label { font-size: 12px; color: var(--tinta-2); font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; }
-.fg input, .fg select, .fg textarea {
-  padding: 8px 10px;
-  font-size: 13px;
-  font-family: 'Inter', sans-serif;
-  border: 1px solid var(--borde);
-  border-radius: 6px;
-  background: var(--blanco);
-  color: var(--tinta);
-  transition: border-color .12s;
-}
-.fg input:focus, .fg select:focus, .fg textarea:focus {
-  outline: none;
-  border-color: var(--verde-acento);
-  box-shadow: 0 0 0 3px rgba(37,99,168,.1);
-}
-.fg textarea { resize: vertical; min-height: 64px; }
-.fg.full { grid-column: 1 / -1; }
-.modal-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--borde);
-}
-
-/* ── SPINNER ── */
-.spinner {
-  display: inline-block;
-  width: 15px; height: 15px;
-  border: 2px solid var(--borde);
-  border-top-color: var(--verde-acento);
-  border-radius: 50%;
-  animation: spin .7s linear infinite;
-  vertical-align: middle;
-  margin-right: 6px;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ── TOAST ── */
-.toast {
-  position: fixed; bottom: 24px; right: 24px;
-  background: var(--verde-estado);
-  color: var(--blanco);
-  padding: 10px 18px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  z-index: 200;
-  opacity: 0;
-  transform: translateY(8px);
-  transition: opacity .25s, transform .25s;
-  pointer-events: none;
-  box-shadow: 0 4px 16px rgba(0,0,0,.2);
-}
-.toast.show { opacity: 1; transform: translateY(0); }
-
-/* ── AGENTES CONFIG ── */
-.agente-item {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--borde-tabla);
-}
-.agente-item:last-child { border-bottom: none; }
-
-/* ── MAPA ── */
-#mapa-leaflet { width: 100%; height: 460px; border-radius: 8px; overflow: hidden; border: 1px solid var(--borde); }
-
-/* ── PROG CONTENIDO ── */
-.prog-header {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 16px; flex-wrap: wrap; gap: 8px;
-}
-.prog-title {
-  font-family: 'DM Serif Display', serif;
-  font-size: 17px;
-  color: var(--verde-estado);
-}
-.prog-count {
-  font-size: 12px;
-  color: var(--tinta-3);
-  margin-left: 6px;
-}
-
-/* ── ACCIONES TABLA ── */
-.acciones { display: flex; gap: 4px; align-items: center; }
-
-/* ── FECHA INPUTS ── */
-input[type="date"] {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  padding: 6px 10px;
-  border: 1px solid var(--borde);
-  border-radius: 6px;
-  background: var(--blanco);
-  color: var(--tinta);
-}
-input[type="date"]:focus { outline: none; border-color: var(--verde-acento); }
-
-/* ── RESPONSIVE ── */
-@media (max-width: 720px) {
-  :root { --margen-ancho: 4px; }
-  .metric-grid { grid-template-columns: 1fr 1fr; }
-  .form-grid { grid-template-columns: 1fr; }
-  .topbar-brand .subtitulo { display: none; }
-}
-@media (max-width: 480px) {
-  .metric-grid { grid-template-columns: 1fr; }
-}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f5f5f3;color:#1a1a1a;min-height:100vh}
+.topbar{background:#fff;border-bottom:1px solid #e0e0d8;padding:12px 24px;display:flex;align-items:center;justify-content:space-between}
+.topbar h1{font-size:17px;font-weight:600}
+.topbar span{font-size:13px;color:#888}
+.container{max-width:1200px;margin:0 auto;padding:24px 16px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid #e0e0d8;margin-bottom:24px;flex-wrap:wrap}
+.tab{padding:8px 18px;font-size:14px;cursor:pointer;border:none;background:none;color:#888;border-bottom:2px solid transparent;transition:all .15s}
+.tab.active{color:#1a1a1a;border-bottom:2px solid #185FA5;font-weight:500}
+.section{display:none}.section.active{display:block}
+.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.metric{background:#fff;border-radius:10px;padding:14px 18px;border:1px solid #e0e0d8}
+.metric .lbl{font-size:12px;color:#888;margin-bottom:4px}
+.metric .val{font-size:24px;font-weight:600}
+.metric .val.blue{color:#185FA5}.metric .val.green{color:#3B6D11}.metric .val.amber{color:#854F0B}
+.btn{padding:8px 16px;border-radius:8px;border:1px solid #d0d0c8;background:#fff;color:#1a1a1a;font-size:14px;cursor:pointer;transition:background .15s}
+.btn:hover{background:#f0f0ee}
+.btn.primary{background:#185FA5;color:#fff;border-color:#185FA5}
+.btn.primary:hover{background:#0C447C}
+.btn.sm{font-size:12px;padding:4px 10px}
+.btn.danger{color:#A32D2D;border-color:#A32D2D;background:none}
+.btn.danger:hover{background:#fdf0f0}
+.filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.filters input,.filters select{font-size:13px;padding:7px 10px;border:1px solid #d0d0c8;border-radius:8px;background:#fff;color:#1a1a1a}
+table{width:100%;border-collapse:collapse;font-size:13px;background:#fff;border-radius:10px;overflow:hidden;border:1px solid #e0e0d8}
+th{text-align:left;padding:10px 12px;font-weight:500;font-size:12px;color:#888;border-bottom:1px solid #e0e0d8;background:#fafaf8;white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid #f0f0ee;color:#1a1a1a}
+tr:last-child td{border-bottom:none}
+.badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:500}
+.badge.activo{background:#EAF3DE;color:#3B6D11}
+.badge.egresado{background:#F1EFE8;color:#5F5E5A}
+.agent-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f0f0ee}
+.agent-row:last-child{border-bottom:none}
+.avatar{width:38px;height:38px;border-radius:50%;background:#B5D4F4;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#0C447C;flex-shrink:0}
+.bar-wrap{flex:1}
+.bar-label{display:flex;justify-content:space-between;font-size:12px;color:#888;margin-bottom:5px}
+.bar-bg{background:#f0f0ee;border-radius:4px;height:8px;overflow:hidden}
+.bar-fill{height:8px;border-radius:4px;background:#185FA5;transition:width .4s}
+.chart-wrap{position:relative;width:100%;height:220px}
+.section-title{font-size:15px;font-weight:600;margin-bottom:16px}
+.alert{background:#fafaf8;border-radius:8px;padding:12px;font-size:13px;color:#888;text-align:center;margin:16px 0;border:1px solid #e0e0d8}
+.card{background:#fff;border-radius:10px;border:1px solid #e0e0d8;padding:20px;margin-bottom:16px}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center}
+.overlay.show{display:flex}
+.modal{background:#fff;border-radius:12px;padding:24px;width:520px;max-width:95vw;border:1px solid #e0e0d8;max-height:90vh;overflow-y:auto}
+.modal h3{font-size:16px;font-weight:600;margin-bottom:16px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px}
+.fg{display:flex;flex-direction:column;gap:4px}
+.fg label{font-size:13px;color:#555;font-weight:500}
+.fg input,.fg select,.fg textarea{padding:8px 10px;font-size:14px;border:1px solid #d0d0c8;border-radius:8px;background:#fff;color:#1a1a1a}
+.fg textarea{resize:vertical;min-height:60px}
+.fg.full{grid-column:1/-1}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid #ccc;border-top-color:#185FA5;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:24px;right:24px;background:#1a1a1a;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:200;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+.agente-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f0ee}
+.agente-item:last-child{border-bottom:none}
+#mapa-leaflet{width:100%;height:480px;border-radius:10px;overflow:hidden}
 </style>
 </head>
 <body>
 
-<!-- TOPBAR -->
 <div class="topbar">
-  <div class="topbar-brand">
-    <!-- Isologotipo ER simplificado en verde institucional -->
-    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" style="flex-shrink:0">
-      <rect width="36" height="36" rx="4" fill="#4A8C1C"/>
-      <text x="18" y="24" font-family="'Inter',sans-serif" font-weight="700" font-size="14" fill="white" text-anchor="middle" letter-spacing="1">ER</text>
-    </svg>
-    <div>
-      <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#4A8C1C;line-height:1.2">Ministerio de Desarrollo Humano</div>
-      <span class="titulo">Dirección General de Asuntos Jurídicos</span>
-    </div>
-  </div>
-  <div class="topbar-meta">
-    <span class="sello">DGAJ · Entre Ríos</span>
-  </div>
+  <h1>📂 Registro de Expedientes</h1>
+  <span>Oficina de Asuntos Jurídicos</span>
 </div>
 
 <div class="container">
-
-  <div style="display:flex;justify-content:flex-end;margin-bottom:18px">
-    <button class="btn primary" onclick="abrirModal()">
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-      Nuevo expediente
-    </button>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+    <button class="btn primary" onclick="abrirModal()">+ Nuevo expediente</button>
   </div>
 
-  <!-- TABS -->
   <div class="tabs">
     <button class="tab active" onclick="switchTab('registro')">Registro</button>
     <button class="tab" onclick="switchTab('agentes')">Por agente</button>
     <button class="tab" onclick="switchTab('analisis')">Análisis</button>
     <button class="tab" onclick="switchTab('programas')">Programas</button>
-    <button class="tab" onclick="switchTab('config')">⚙ Agentes</button>
+    <button class="tab" onclick="switchTab('config')">⚙️ Agentes</button>
   </div>
 
-  <!-- ══ REGISTRO ══ -->
+  <!-- REGISTRO -->
   <div class="section active" id="tab-registro">
     <div class="metric-grid" id="metrics-top"></div>
     <div class="filters">
-      <input type="text" id="f-buscar" placeholder="Buscar por número, iniciador o tema…" oninput="renderTabla()" style="flex:1;min-width:160px">
+      <input type="text" id="f-buscar" placeholder="Buscar expediente o tema..." oninput="renderTabla()" style="flex:1;min-width:140px">
       <select id="f-agente" onchange="renderTabla()"><option value="">Todos los agentes</option></select>
       <select id="f-estado" onchange="renderTabla()">
-        <option value="">Todos los estados</option>
+        <option value="">Todos</option>
         <option value="en_direccion">En la Dirección</option>
         <option value="egresado">Egresados</option>
       </select>
     </div>
-    <div id="loading" class="alert"><span class="spinner"></span>Cargando expedientes…</div>
-    <div class="tabla-wrap" id="tabla-wrap" style="display:none">
-      <div style="overflow-x:auto">
-        <table id="tabla">
-          <thead><tr>
-            <th class="sortable" onclick="ordenarPor('expte')">Expte. <span id="sort-expte"></span></th>
-            <th class="sortable" onclick="ordenarPor('iniciador')">Iniciador <span id="sort-iniciador"></span></th>
-            <th class="sortable" onclick="ordenarPor('ingreso')">Ingreso <span id="sort-ingreso"></span></th>
-            <th class="sortable" onclick="ordenarPor('reparto')">Reparto <span id="sort-reparto"></span></th>
-            <th class="sortable" onclick="ordenarPor('agente')">Resp. Asig. <span id="sort-agente"></span></th>
-            <th class="sortable" onclick="ordenarPor('tema')">Tema <span id="sort-tema"></span></th>
-            <th class="sortable" onclick="ordenarPor('estado')">Estado <span id="sort-estado"></span></th>
-            <th class="sortable" onclick="ordenarPor('salio')">Salida <span id="sort-salio"></span></th>
-            <th></th>
-          </tr></thead>
-          <tbody id="tabla-body"></tbody>
-        </table>
-      </div>
+    <div id="loading" class="alert"><span class="spinner"></span>Cargando expedientes...</div>
+    <div style="overflow-x:auto">
+      <table id="tabla" style="display:none">
+        <thead><tr>
+          <th onclick="ordenarPor('expte')" style="cursor:pointer">Expte. <span id="sort-expte"></span></th>
+          <th onclick="ordenarPor('iniciador')" style="cursor:pointer">Iniciador <span id="sort-iniciador"></span></th>
+          <th onclick="ordenarPor('ingreso')" style="cursor:pointer">Ingreso <span id="sort-ingreso"></span></th>
+          <th onclick="ordenarPor('reparto')" style="cursor:pointer">Reparto <span id="sort-reparto"></span></th>
+          <th onclick="ordenarPor('agente')" style="cursor:pointer">Resp. Asig. <span id="sort-agente"></span></th>
+          <th onclick="ordenarPor('tema')" style="cursor:pointer">Tema <span id="sort-tema"></span></th>
+          <th onclick="ordenarPor('estado')" style="cursor:pointer">Estado <span id="sort-estado"></span></th>
+          <th onclick="ordenarPor('salio')" style="cursor:pointer">Salió <span id="sort-salio"></span></th>
+          <th></th>
+        </tr></thead>
+        <tbody id="tabla-body"></tbody>
+      </table>
     </div>
-    <div class="alert" id="no-results" style="display:none">No se encontraron expedientes con esos criterios.</div>
+    <div class="alert" id="no-results" style="display:none">No se encontraron expedientes.</div>
   </div>
 
-  <!-- ══ POR AGENTE ══ -->
+  <!-- POR AGENTE -->
   <div class="section" id="tab-agentes">
     <div class="card">
-      <div class="card-title">Carga de trabajo por agente</div>
+      <div class="section-title">Carga de trabajo por agente</div>
       <div id="agentes-lista"></div>
     </div>
   </div>
 
-  <!-- ══ ANÁLISIS ══ -->
+  <!-- ANÁLISIS -->
   <div class="section" id="tab-analisis">
     <div class="metric-grid" id="metrics-analisis"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
       <div class="card">
-        <div class="card-title">Expedientes por agente</div>
+        <div class="section-title">Expedientes por agente</div>
         <div class="chart-wrap"><canvas id="chart-agentes"></canvas></div>
       </div>
       <div class="card">
-        <div class="card-title">Ingresos por mes</div>
+        <div class="section-title">Ingresos por mes</div>
         <div class="chart-wrap"><canvas id="chart-meses"></canvas></div>
       </div>
     </div>
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-        <div class="card-title" style="margin:0">Movimiento diario</div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <input type="date" id="f-desde">
-          <span style="font-size:12px;color:var(--tinta-3)">hasta</span>
-          <input type="date" id="f-hasta">
+        <div class="section-title" style="margin:0">Movimiento diario</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="date" id="f-desde" style="padding:6px 10px;font-size:13px;border:1px solid #d0d0c8;border-radius:8px">
+          <span style="font-size:13px;color:#888">hasta</span>
+          <input type="date" id="f-hasta" style="padding:6px 10px;font-size:13px;border:1px solid #d0d0c8;border-radius:8px">
           <button class="btn sm primary" onclick="renderDiario()">Filtrar</button>
         </div>
       </div>
-      <div class="chart-wrap" style="height:240px"><canvas id="chart-diario"></canvas></div>
+      <div class="chart-wrap" style="height:260px"><canvas id="chart-diario"></canvas></div>
       <div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px">
         <div>
-          <div style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--verde-acento);margin-bottom:8px">Ingresos por día</div>
-          <table><thead><tr><th>Fecha</th><th>Cant.</th></tr></thead><tbody id="tbody-ingresos"></tbody></table>
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#185FA5">📥 Ingresos por día</div>
+          <table><thead><tr><th>Fecha</th><th>Cantidad</th></tr></thead><tbody id="tbody-ingresos"></tbody></table>
         </div>
         <div>
-          <div style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--amber);margin-bottom:8px">Egresos por día</div>
-          <table><thead><tr><th>Fecha</th><th>Cant.</th></tr></thead><tbody id="tbody-egresos"></tbody></table>
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#F0A045">📤 Egresos por día</div>
+          <table><thead><tr><th>Fecha</th><th>Cantidad</th></tr></thead><tbody id="tbody-egresos"></tbody></table>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ══ PROGRAMAS ══ -->
+  <!-- PROGRAMAS -->
   <div class="section" id="tab-programas">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-      <div style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--verde-estado)">Programas</div>
-      <button class="btn primary" onclick="abrirModalPrograma()">
-        <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        Nuevo programa
-      </button>
+      <div style="font-size:15px;font-weight:600">Programas</div>
+      <button class="btn primary" onclick="abrirModalPrograma()">+ Nuevo programa</button>
     </div>
     <div class="tabs" style="margin-bottom:16px" id="prog-subtabs">
       <button class="tab active" onclick="switchSubTab('lista')">Lista</button>
-      <button class="tab" onclick="switchSubTab('mapa')">Mapa geográfico</button>
+      <button class="tab" onclick="switchSubTab('mapa')">📊 Mapa</button>
     </div>
     <div id="subprog-lista">
       <div class="tabs" id="prog-tabs" style="margin-bottom:16px"></div>
@@ -654,98 +182,82 @@ input[type="date"]:focus { outline: none; border-color: var(--verde-acento); }
     <div id="subprog-mapa" style="display:none">
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-          <div class="card-title" style="margin:0">Distribución geográfica — Entre Ríos</div>
-          <select id="mapa-filtro-prog" onchange="renderMapa()" style="padding:7px 10px;font-size:13px;font-family:'Inter',sans-serif;border:1px solid var(--borde);border-radius:6px;background:var(--blanco)">
+          <div class="section-title" style="margin:0">Distribución geográfica – Entre Ríos</div>
+          <select id="mapa-filtro-prog" onchange="renderMapa()" style="padding:7px 10px;font-size:13px;border:1px solid #d0d0c8;border-radius:8px;background:#fff">
             <option value="">Todos los programas</option>
           </select>
         </div>
         <div id="mapa-leaflet"></div>
-        <div style="margin-top:14px">
-          <div style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--tinta-3);margin-bottom:8px">Expedientes por departamento</div>
+        <div style="margin-top:16px">
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#555">Expedientes por departamento</div>
           <div id="mapa-tabla-depto" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:4px"></div>
         </div>
-        <div style="margin-top:12px;padding:10px 12px;background:var(--folio-2);border-radius:6px;font-size:12px;color:var(--tinta-3);border:1px solid var(--borde)">
-          Formato en "Tema": <strong style="color:var(--tinta-2)">Programa — Localidad — Departamento</strong> · Ej: <em>Juventud Emprende — Crespo — Paraná</em>
+        <div style="margin-top:12px;padding:10px;background:#fafaf8;border-radius:8px;font-size:12px;color:#888;border:1px solid #e0e0d8">
+          💡 Formato en "Tema": <strong style="color:#555">Programa - Localidad - Departamento</strong> &nbsp;·&nbsp; Ej: <em>Juventud Emprende - Crespo - Paraná</em>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ══ CONFIG AGENTES ══ -->
+  <!-- CONFIG AGENTES -->
   <div class="section" id="tab-config">
     <div class="card">
-      <div class="card-title">Gestión de agentes</div>
+      <div class="section-title">Gestión de agentes</div>
       <div style="display:flex;gap:8px;margin-bottom:16px">
-        <input type="text" id="nuevo-agente" placeholder="Nombre del agente (ej: Pérez, J.)" style="flex:1;padding:8px 10px;font-size:13px;font-family:'Inter',sans-serif;border:1px solid var(--borde);border-radius:6px">
+        <input type="text" id="nuevo-agente" placeholder="Nombre del agente (ej: Pérez, J.)" style="flex:1;padding:8px 10px;font-size:14px;border:1px solid #d0d0c8;border-radius:8px">
         <button class="btn primary" onclick="agregarAgente()">+ Agregar</button>
       </div>
       <div id="agentes-config-lista"></div>
     </div>
   </div>
+</div>
 
-</div><!-- /container -->
-
-<!-- ══ MODAL EXPEDIENTE ══ -->
+<!-- MODAL EXPEDIENTE -->
 <div class="overlay" id="overlay">
   <div class="modal">
-    <div class="modal-header">
-      <h3 id="modal-title">Nuevo expediente</h3>
-      <button class="close-btn" onclick="cerrarModal()">✕</button>
+    <h3 id="modal-title">Nuevo expediente</h3>
+    <div class="form-grid">
+      <div class="fg"><label>Expte. *</label><input type="text" id="m-expte" placeholder="Ej: 12345-D-2026"></div>
+      <div class="fg"><label>Iniciador</label><input type="text" id="m-iniciador" placeholder="Nombre del iniciador"></div>
+      <div class="fg"><label>Fecha de ingreso *</label><input type="date" id="m-ingreso"></div>
+      <div class="fg"><label>Reparto</label><input type="date" id="m-reparto"></div>
+      <div class="fg"><label>Resp. Asignado *</label><select id="m-agente"><option value="">Seleccionar...</option></select></div>
+      <div class="fg"><label>Fecha de salida</label><input type="date" id="m-salio"></div>
+      <div class="fg full"><label>Tema</label><textarea id="m-tema" placeholder="Descripción del tema..."></textarea></div>
     </div>
-    <div class="modal-body">
-      <div class="form-grid">
-        <div class="fg"><label>Expte. *</label><input type="text" id="m-expte" placeholder="Ej: 12345-D-2026"></div>
-        <div class="fg"><label>Iniciador</label><input type="text" id="m-iniciador" placeholder="Nombre del iniciador"></div>
-        <div class="fg"><label>Fecha de ingreso *</label><input type="date" id="m-ingreso"></div>
-        <div class="fg"><label>Fecha de reparto</label><input type="date" id="m-reparto"></div>
-        <div class="fg"><label>Resp. asignado *</label><select id="m-agente"><option value="">Seleccionar…</option></select></div>
-        <div class="fg"><label>Fecha de salida</label><input type="date" id="m-salio"></div>
-        <div class="fg full"><label>Tema</label><textarea id="m-tema" placeholder="Descripción del tema o asunto del expediente…"></textarea></div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn" onclick="cerrarModal()">Cancelar</button>
-        <button class="btn primary" id="btn-guardar" onclick="guardar()">Guardar expediente</button>
-      </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn primary" id="btn-guardar" onclick="guardar()">Guardar</button>
     </div>
   </div>
 </div>
 
-<!-- ══ MODAL ASIGNAR ══ -->
+<!-- MODAL ASIGNAR -->
 <div class="overlay" id="overlay-asignar">
   <div class="modal">
-    <div class="modal-header">
-      <h3>Asignar expediente al programa</h3>
-      <button class="close-btn" onclick="cerrarModalAsignar()">✕</button>
+    <h3>Asignar expediente al programa</h3>
+    <div class="fg" style="margin-bottom:12px">
+      <label>Expediente</label>
+      <select id="as-expte"><option value="">Seleccionar...</option></select>
     </div>
-    <div class="modal-body">
-      <div class="fg" style="margin-bottom:16px">
-        <label>Expediente</label>
-        <select id="as-expte"><option value="">Seleccionar…</option></select>
-      </div>
-      <div class="modal-actions">
-        <button class="btn" onclick="cerrarModalAsignar()">Cancelar</button>
-        <button class="btn primary" onclick="asignarExpediente()">Asignar</button>
-      </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="cerrarModalAsignar()">Cancelar</button>
+      <button class="btn primary" onclick="asignarExpediente()">Asignar</button>
     </div>
   </div>
 </div>
 
-<!-- ══ MODAL NUEVO PROGRAMA ══ -->
+<!-- MODAL NUEVO PROGRAMA -->
 <div class="overlay" id="overlay-programa">
   <div class="modal">
-    <div class="modal-header">
-      <h3>Nuevo programa</h3>
-      <button class="close-btn" onclick="document.getElementById('overlay-programa').classList.remove('show')">✕</button>
+    <h3>Nuevo programa</h3>
+    <div class="fg" style="margin-bottom:12px">
+      <label>Nombre del programa</label>
+      <input type="text" id="np-nombre" placeholder="Ej: Juventud Emprende">
     </div>
-    <div class="modal-body">
-      <div class="fg" style="margin-bottom:16px">
-        <label>Nombre del programa</label>
-        <input type="text" id="np-nombre" placeholder="Ej: Juventud Emprende">
-      </div>
-      <div class="modal-actions">
-        <button class="btn" onclick="document.getElementById('overlay-programa').classList.remove('show')">Cancelar</button>
-        <button class="btn primary" onclick="guardarPrograma()">Crear programa</button>
-      </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="document.getElementById('overlay-programa').classList.remove('show')">Cancelar</button>
+      <button class="btn primary" onclick="guardarPrograma()">Guardar</button>
     </div>
   </div>
 </div>
@@ -757,8 +269,11 @@ input[type="date"]:focus { outline: none; border-color: var(--verde-acento); }
 <script>
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwsWA-32RIsFCJ6ILuonHLAtjg6pr6Q3gWyEXBHgxDUix3-NgvodC1bXSu9gmqoirnq/exec';
 
-let expedientes = [], agentes = [], programasData = [];
-let programaActivo = null, editIdx = null;
+let expedientes = [];
+let agentes = [];
+let programasData = [];
+let programaActivo = null;
+let editIdx = null;
 let chartA = null, chartM = null, chartD = null;
 let sortCol = null, sortDir = 1;
 let leafletMap = null, geojsonLayer = null, geoCache = null;
@@ -770,43 +285,41 @@ const KEYWORDS = {
   'Juventud en la Comunidad': ['juventud en la comunidad','en la comunidad']
 };
 
-// Chart.js defaults
-Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
-Chart.defaults.font.size = 11;
-Chart.defaults.color = '#8E8E93';
-
 async function api(params) {
   if (params.method === 'GET') {
     const r = await fetch(SCRIPT_URL + '?hoja=' + params.hoja);
     return r.json();
+  } else {
+    const r = await fetch(SCRIPT_URL, { method:'POST', body:JSON.stringify(params) });
+    return r.json();
   }
-  const r = await fetch(SCRIPT_URL, { method:'POST', body:JSON.stringify(params) });
-  return r.json();
 }
 
 async function cargar() {
   document.getElementById('loading').style.display = 'block';
-  document.getElementById('tabla-wrap').style.display = 'none';
+  document.getElementById('tabla').style.display = 'none';
   try {
     [expedientes, agentes, programasData] = await Promise.all([
-      api({method:'GET',hoja:'expedientes'}),
-      api({method:'GET',hoja:'agentes'}),
-      api({method:'GET',hoja:'programas'})
+      api({method:'GET', hoja:'expedientes'}),
+      api({method:'GET', hoja:'agentes'}),
+      api({method:'GET', hoja:'programas'})
     ]);
     agentes = agentes.map(a => a.nombre).filter(Boolean);
     renderAll();
   } catch(e) {
-    document.getElementById('loading').innerHTML = '❌ Error al conectar con Google Sheets. Verificá tu conexión.';
+    document.getElementById('loading').innerHTML = '❌ Error al conectar. Verificá tu conexión.';
   }
 }
 
-// ── UTILS ──
 function fmt(d) {
   if (!d) return '—';
   try {
     const date = new Date(d);
     if (isNaN(date)) return d;
-    return `${String(date.getUTCDate()).padStart(2,'0')}/${String(date.getUTCMonth()+1).padStart(2,'0')}/${date.getUTCFullYear()}`;
+    const dd = String(date.getUTCDate()).padStart(2,'0');
+    const mm = String(date.getUTCMonth()+1).padStart(2,'0');
+    const yy = date.getUTCFullYear();
+    return `${dd}/${mm}/${yy}`;
   } catch { return d; }
 }
 function toInput(d) {
@@ -814,49 +327,49 @@ function toInput(d) {
   try {
     const date = new Date(d);
     if (isNaN(date)) return '';
-    return `${date.getUTCFullYear()}-${String(date.getUTCMonth()+1).padStart(2,'0')}-${String(date.getUTCDate()).padStart(2,'0')}`;
+    const dd = String(date.getUTCDate()).padStart(2,'0');
+    const mm = String(date.getUTCMonth()+1).padStart(2,'0');
+    const yy = date.getUTCFullYear();
+    return `${yy}-${mm}-${dd}`;
   } catch { return ''; }
 }
-const getExpte     = e => e['expte.']||e['expte']||e['Expte.']||e['Expte']||'';
-const estaEgresado = e => { const s=e['salio']||e['salió']||e['Salio']||e['Salió']||''; return !!s&&s!==''; };
-const getRespAsig  = e => e['resp. asig']||e['resp.asig']||e['resp asig']||e['Resp. Asig']||e['Resp. Asig.']||'';
-const getTema      = e => e['tema']||e['Tema']||'';
-const getIniciador = e => e['iniciador']||e['Iniciador']||'';
-const getReparto   = e => e['reparto']||e['Reparto']||'';
-const getSalio     = e => e['salio']||e['salió']||e['Salio']||e['Salió']||'';
-const normalizar   = s => (s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
-const initials     = s => (s||'?').slice(0,2).toUpperCase();
-function toast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2600);
-}
+function getExpte(e){return e['expte.']||e['expte']||e['Expte.']||e['Expte']||'';}
+function estaEgresado(e){const s=e['salio']||e['salió']||e['Salio']||e['Salió']||'';return !!s&&s!=='';}
+function getRespAsig(e){return e['resp. asig']||e['resp.asig']||e['resp asig']||e['Resp. Asig']||e['Resp. Asig.']||'';}
+function getTema(e){return e['tema']||e['Tema']||'';}
+function getIniciador(e){return e['iniciador']||e['Iniciador']||'';}
+function getReparto(e){return e['reparto']||e['Reparto']||'';}
+function getSalio(e){return e['salio']||e['salió']||e['Salio']||e['Salió']||'';}
+function normalizar(s){return (s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
+function dias(a,b){if(!a||!b)return null;const da=new Date(toInput(a)),db=new Date(toInput(b));return Math.round((db-da)/86400000);}
+function initials(s){return (s||'?').slice(0,2).toUpperCase();}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 
-// ── TABS ──
 function switchTab(t) {
-  const tabs = ['registro','agentes','analisis','programas','config'];
-  document.querySelectorAll('.container > .tabs > .tab').forEach((el,i) => el.classList.toggle('active', tabs[i] === t));
+  document.querySelectorAll('.container > .tabs > .tab').forEach((el,i) => {
+    el.classList.toggle('active', ['registro','agentes','analisis','programas','config'][i] === t);
+  });
   document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
-  if (t === 'analisis') { setTimeout(renderCharts,50); setTimeout(renderDiario,80); }
+  if (t === 'analisis') { setTimeout(renderCharts, 50); setTimeout(renderDiario, 80); }
   if (t === 'agentes') renderPorAgente();
   if (t === 'config') renderConfigAgentes();
   if (t === 'programas') renderProgramas();
 }
 
 function switchSubTab(t) {
-  document.querySelectorAll('#prog-subtabs .tab').forEach((el,i) => el.classList.toggle('active', ['lista','mapa'][i] === t));
+  document.querySelectorAll('#prog-subtabs .tab').forEach((el,i) => {
+    el.classList.toggle('active', ['lista','mapa'][i] === t);
+  });
   document.getElementById('subprog-lista').style.display = t==='lista' ? 'block' : 'none';
   document.getElementById('subprog-mapa').style.display  = t==='mapa'  ? 'block' : 'none';
   if (t==='mapa') setTimeout(renderMapa, 100);
 }
 
-// ── MÉTRICAS ──
 function renderMetrics(target) {
-  const total    = expedientes.length;
+  const total = expedientes.length;
   const egresados = expedientes.filter(e => estaEgresado(e)).length;
-  const enDir    = total - egresados;
+  const enDir = total - egresados;
   document.getElementById(target).innerHTML = `
     <div class="metric"><div class="lbl">Total ingresados</div><div class="val">${total}</div></div>
     <div class="metric"><div class="lbl">En la Dirección</div><div class="val blue">${enDir}</div></div>
@@ -864,17 +377,16 @@ function renderMetrics(target) {
     <div class="metric"><div class="lbl">Agentes activos</div><div class="val amber">${agentes.length}</div></div>`;
 }
 
-// ── TABLA ──
 function getValorOrden(e, col) {
   switch(col) {
-    case 'expte':     return getExpte(e).toLowerCase();
+    case 'expte': return getExpte(e).toLowerCase();
     case 'iniciador': return getIniciador(e).toLowerCase();
-    case 'ingreso':   return toInput(e.ingreso||e.Ingreso)||'';
-    case 'reparto':   return toInput(getReparto(e))||'';
-    case 'agente':    return getRespAsig(e).toLowerCase();
-    case 'tema':      return getTema(e).toLowerCase();
-    case 'estado':    return estaEgresado(e) ? 'z' : 'a';
-    case 'salio':     return toInput(getSalio(e))||'';
+    case 'ingreso': return toInput(e.ingreso||e.Ingreso)||'';
+    case 'reparto': return toInput(getReparto(e))||'';
+    case 'agente': return getRespAsig(e).toLowerCase();
+    case 'tema': return getTema(e).toLowerCase();
+    case 'estado': return estaEgresado(e)?'z':'a';
+    case 'salio': return toInput(getSalio(e))||'';
     default: return '';
   }
 }
@@ -889,43 +401,37 @@ function renderTabla() {
   const estado = document.getElementById('f-estado').value;
   let filtrado = expedientes.filter(e => {
     const egr = estaEgresado(e);
-    if (estado==='egresado' && !egr) return false;
-    if (estado==='en_direccion' && egr) return false;
-    if (agente && getRespAsig(e)!==agente) return false;
-    if (buscar && !Object.values(e).join(' ').toLowerCase().includes(buscar)) return false;
-    return true;
+    const matchEstado = !estado || (estado==='egresado'&&egr) || (estado==='en_direccion'&&!egr);
+    const matchAgente = !agente || getRespAsig(e)===agente;
+    const todoTexto = Object.values(e).join(' ').toLowerCase();
+    const matchBuscar = !buscar || todoTexto.includes(buscar);
+    return matchEstado && matchAgente && matchBuscar;
   });
-  if (sortCol) filtrado.sort((a,b) => {
-    const va=getValorOrden(a,sortCol), vb=getValorOrden(b,sortCol);
-    return va<vb ? -sortDir : va>vb ? sortDir : 0;
+  if (sortCol) {
+    filtrado.sort((a,b)=>{const va=getValorOrden(a,sortCol),vb=getValorOrden(b,sortCol);return va<vb?-sortDir:va>vb?sortDir:0;});
+  }
+  ['expte','iniciador','ingreso','reparto','agente','tema','estado','salio'].forEach(c=>{
+    const el=document.getElementById('sort-'+c);
+    if(el) el.textContent=sortCol===c?(sortDir===1?'▲':'▼'):'';
   });
-  ['expte','iniciador','ingreso','reparto','agente','tema','estado','salio'].forEach(c => {
-    const el = document.getElementById('sort-'+c);
-    if (el) el.textContent = sortCol===c ? (sortDir===1?'▲':'▼') : '';
-  });
-  document.getElementById('loading').style.display = 'none';
-  const hayResultados = filtrado.length > 0;
-  document.getElementById('no-results').style.display = hayResultados ? 'none' : 'block';
-  document.getElementById('tabla-wrap').style.display  = hayResultados ? 'block' : 'none';
-
-  document.getElementById('tabla-body').innerHTML = filtrado.map(e => {
-    const egr = estaEgresado(e);
-    const tema = getTema(e);
+  document.getElementById('loading').style.display='none';
+  document.getElementById('no-results').style.display=filtrado.length?'none':'block';
+  document.getElementById('tabla').style.display=filtrado.length?'table':'none';
+  document.getElementById('tabla-body').innerHTML=filtrado.map(e=>{
+    const egr=estaEgresado(e);
     return `<tr>
-      <td><span class="expte-num">${getExpte(e)||'—'}</span></td>
+      <td style="font-weight:500;white-space:nowrap">${getExpte(e)||'—'}</td>
       <td>${getIniciador(e)||'—'}</td>
-      <td style="white-space:nowrap;color:var(--tinta-2)">${fmt(e.ingreso||e.Ingreso)}</td>
-      <td style="white-space:nowrap;color:var(--tinta-2)">${fmt(getReparto(e))}</td>
+      <td style="white-space:nowrap">${fmt(e.ingreso||e.Ingreso)}</td>
+      <td style="white-space:nowrap">${fmt(getReparto(e))}</td>
       <td>${getRespAsig(e)||'—'}</td>
-      <td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--tinta-2)" title="${tema}">${tema||'—'}</td>
+      <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${getTema(e)}">${getTema(e)||'—'}</td>
       <td><span class="badge ${egr?'egresado':'activo'}">${egr?'Egresado':'En Dirección'}</span></td>
-      <td style="white-space:nowrap;color:var(--tinta-2)">${fmt(getSalio(e))}</td>
-      <td>
-        <div class="acciones">
-          <button class="btn sm ghost" onclick="abrirModal(${expedientes.indexOf(e)})" title="Editar">✏️</button>
-          <button class="btn sm ghost danger" onclick="eliminar(${expedientes.indexOf(e)})" title="Eliminar">🗑️</button>
-          <button class="btn sm ghost" style="color:var(--verde-acento)" onclick="consultarExpte('${getExpte(e)}')" title="Consultar en sistema provincial">🔍</button>
-        </div>
+      <td style="white-space:nowrap">${fmt(getSalio(e))}</td>
+      <td style="white-space:nowrap">
+        <button class="btn sm" onclick="abrirModal(${expedientes.indexOf(e)})">✏️</button>
+        <button class="btn sm danger" onclick="eliminar(${expedientes.indexOf(e)})">🗑️</button>
+        <button class="btn sm" style="color:#185FA5;border-color:#185FA5" onclick="consultarExpte('${getExpte(e)}')" title="Consultar en sistema provincial">🔍</button>
       </td>
     </tr>`;
   }).join('');
@@ -938,20 +444,19 @@ function consultarExpte(nro) {
   window.open('https://apps2.entrerios.gov.ar/consulta/expedientes/#/ver?nro='+soloNumeros, '_blank');
 }
 
-// ── POR AGENTE ──
 function renderPorAgente() {
-  const max = Math.max(...agentes.map(a => expedientes.filter(e => getRespAsig(e)===a).length), 1);
-  document.getElementById('agentes-lista').innerHTML = agentes.map(a => {
-    const total = expedientes.filter(e => getRespAsig(e)===a).length;
-    const enDir = expedientes.filter(e => getRespAsig(e)===a && !estaEgresado(e)).length;
-    const egr   = total - enDir;
-    const pct   = Math.round(total/max*100);
+  const max = Math.max(...agentes.map(a=>expedientes.filter(e=>getRespAsig(e)===a).length),1);
+  document.getElementById('agentes-lista').innerHTML = agentes.map(a=>{
+    const total=expedientes.filter(e=>getRespAsig(e)===a).length;
+    const enDir=expedientes.filter(e=>getRespAsig(e)===a&&!estaEgresado(e)).length;
+    const egr=total-enDir;
+    const pct=Math.round(total/max*100);
     return `<div class="agent-row">
       <div class="avatar">${initials(a)}</div>
       <div class="bar-wrap">
         <div class="bar-label">
-          <strong>${a}</strong>
-          <span>${total} total · <span style="color:var(--verde-acento);font-weight:600">${enDir} en dirección</span> · ${egr} egresados</span>
+          <span style="font-size:13px;color:#1a1a1a;font-weight:500">${a}</span>
+          <span>${total} total &nbsp;·&nbsp; <span style="color:#185FA5">${enDir} en dirección</span> &nbsp;·&nbsp; <span style="color:#888">${egr} egresados</span></span>
         </div>
         <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
       </div>
@@ -959,320 +464,311 @@ function renderPorAgente() {
   }).join('') || '<div class="alert">No hay agentes configurados.</div>';
 }
 
-// ── CHARTS ──
 function renderCharts() {
-  const counts = agentes.map(a => expedientes.filter(e => getRespAsig(e)===a).length);
-  const enDir  = agentes.map(a => expedientes.filter(e => getRespAsig(e)===a && !estaEgresado(e)).length);
-  const meses  = {};
-  expedientes.forEach(e => {
-    const raw = toInput(e.ingreso||e.Ingreso);
-    if (raw) { const m=raw.slice(0,7); meses[m]=(meses[m]||0)+1; }
-  });
-  const mKeys   = Object.keys(meses).sort();
-  const mLabels = mKeys.map(k => { const[y,m]=k.split('-'); return ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][+m-1]+' '+y.slice(2); });
-  if (chartA) chartA.destroy();
-  if (chartM) chartM.destroy();
-  chartA = new Chart(document.getElementById('chart-agentes'), {
-    type: 'bar',
-    data: { labels: agentes.map(a=>a.split(',')[0]), datasets: [
-      { label:'En Dirección', data: enDir, backgroundColor: '#5CA022' },
-      { label:'Egresados',    data: counts.map((t,i)=>t-enDir[i]), backgroundColor: '#D8D5CC' }
+  const counts=agentes.map(a=>expedientes.filter(e=>getRespAsig(e)===a).length);
+  const enDir=agentes.map(a=>expedientes.filter(e=>getRespAsig(e)===a&&!estaEgresado(e)).length);
+  const meses={};
+  expedientes.forEach(e=>{const raw=toInput(e.ingreso||e.Ingreso);if(raw){const m=raw.slice(0,7);meses[m]=(meses[m]||0)+1;}});
+  const mKeys=Object.keys(meses).sort();
+  const mLabels=mKeys.map(k=>{const[y,m]=k.split('-');return['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][+m-1]+' '+y.slice(2);});
+  if(chartA)chartA.destroy();
+  if(chartM)chartM.destroy();
+  chartA=new Chart(document.getElementById('chart-agentes'),{
+    type:'bar',
+    data:{labels:agentes.map(a=>a.split(',')[0]),datasets:[
+      {label:'En Dirección',data:enDir,backgroundColor:'#378ADD'},
+      {label:'Egresados',data:counts.map((t,i)=>t-enDir[i]),backgroundColor:'#B4B2A9'}
     ]},
-    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{stacked:true,ticks:{font:{size:11}}},y:{stacked:true,beginAtZero:true,ticks:{stepSize:1}}} }
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{font:{size:11}}},y:{stacked:true,beginAtZero:true,ticks:{stepSize:1}}}}
   });
-  chartM = new Chart(document.getElementById('chart-meses'), {
-    type: 'line',
-    data: { labels: mLabels, datasets:[{ label:'Ingresos', data: mKeys.map(k=>meses[k]), borderColor:'#4A8C1C', backgroundColor:'rgba(74,140,28,.08)', fill:true, tension:.3, pointRadius:4, pointBackgroundColor:'#4A8C1C' }]},
-    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{ticks:{font:{size:11},maxRotation:45,autoSkip:false}},y:{beginAtZero:true,ticks:{stepSize:1}}} }
+  chartM=new Chart(document.getElementById('chart-meses'),{
+    type:'line',
+    data:{labels:mLabels,datasets:[{label:'Ingresos',data:mKeys.map(k=>meses[k]),borderColor:'#185FA5',backgroundColor:'rgba(55,138,221,0.1)',fill:true,tension:.3,pointRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:11},maxRotation:45,autoSkip:false}},y:{beginAtZero:true,ticks:{stepSize:1}}}}
   });
 }
 
 function renderDiario() {
-  const desde = document.getElementById('f-desde').value;
-  const hasta = document.getElementById('f-hasta').value;
+  const desde=document.getElementById('f-desde').value;
+  const hasta=document.getElementById('f-hasta').value;
   const ing_dias={}, egr_dias={};
-  expedientes.forEach(e => {
-    const ing = toInput(e.ingreso||e.Ingreso);
-    const sal = toInput(getSalio(e));
-    if (ing && (!desde||ing>=desde) && (!hasta||ing<=hasta)) ing_dias[ing]=(ing_dias[ing]||0)+1;
-    if (sal && sal.length===10 && (!desde||sal>=desde) && (!hasta||sal<=hasta)) egr_dias[sal]=(egr_dias[sal]||0)+1;
+  expedientes.forEach(e=>{
+    const ing=toInput(e.ingreso||e.Ingreso);
+    const sal=toInput(getSalio(e));
+    if(ing&&(!desde||ing>=desde)&&(!hasta||ing<=hasta)) ing_dias[ing]=(ing_dias[ing]||0)+1;
+    if(sal&&sal.length===10&&(!desde||sal>=desde)&&(!hasta||sal<=hasta)) egr_dias[sal]=(egr_dias[sal]||0)+1;
   });
-  const todas = [...new Set([...Object.keys(ing_dias),...Object.keys(egr_dias)])].sort();
-  if (!todas.length) {
-    document.getElementById('tbody-ingresos').innerHTML='<tr><td colspan="2" style="text-align:center;color:var(--tinta-3)">Sin datos.</td></tr>';
-    document.getElementById('tbody-egresos').innerHTML='<tr><td colspan="2" style="text-align:center;color:var(--tinta-3)">Sin datos.</td></tr>';
-    if (chartD) { chartD.destroy(); chartD=null; }
+  const todas=[...new Set([...Object.keys(ing_dias),...Object.keys(egr_dias)])].sort();
+  if(!todas.length){
+    document.getElementById('tbody-ingresos').innerHTML='<tr><td colspan="2" style="text-align:center;color:#888">Sin datos.</td></tr>';
+    document.getElementById('tbody-egresos').innerHTML='<tr><td colspan="2" style="text-align:center;color:#888">Sin datos.</td></tr>';
+    if(chartD){chartD.destroy();chartD=null;}
     return;
   }
-  if (chartD) chartD.destroy();
-  chartD = new Chart(document.getElementById('chart-diario'), {
-    type: 'bar',
-    data: { labels: todas.map(f=>fmt(f)), datasets:[
-      { label:'Ingresos', data:todas.map(f=>ing_dias[f]||0), backgroundColor:'#5CA022' },
-      { label:'Egresos',  data:todas.map(f=>egr_dias[f]||0), backgroundColor:'#C9832A' }
+  const labels=todas.map(f=>fmt(f));
+  if(chartD)chartD.destroy();
+  chartD=new Chart(document.getElementById('chart-diario'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Ingresos',data:todas.map(f=>ing_dias[f]||0),backgroundColor:'#378ADD'},
+      {label:'Egresos',data:todas.map(f=>egr_dias[f]||0),backgroundColor:'#F0A045'}
     ]},
-    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:true,position:'top'}}, scales:{x:{ticks:{font:{size:11},maxRotation:45,autoSkip:true}},y:{beginAtZero:true,ticks:{stepSize:1}}} }
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top'}},scales:{x:{ticks:{font:{size:11},maxRotation:45,autoSkip:true}},y:{beginAtZero:true,ticks:{stepSize:1}}}}
   });
   const ingF=Object.keys(ing_dias).sort(), egrF=Object.keys(egr_dias).sort();
-  document.getElementById('tbody-ingresos').innerHTML = ingF.length ? ingF.map(f=>`<tr><td style="white-space:nowrap">${fmt(f)}</td><td style="color:var(--verde-acento);font-weight:600">${ing_dias[f]}</td></tr>`).join('') : '<tr><td colspan="2" style="text-align:center;color:var(--tinta-3)">Sin ingresos.</td></tr>';
-  document.getElementById('tbody-egresos').innerHTML  = egrF.length ? egrF.map(f=>`<tr><td style="white-space:nowrap">${fmt(f)}</td><td style="color:var(--amber);font-weight:600">${egr_dias[f]}</td></tr>`).join('') : '<tr><td colspan="2" style="text-align:center;color:var(--tinta-3)">Sin egresos.</td></tr>';
+  document.getElementById('tbody-ingresos').innerHTML=ingF.length?ingF.map(f=>`<tr><td style="white-space:nowrap">${fmt(f)}</td><td style="color:#185FA5;font-weight:600">${ing_dias[f]}</td></tr>`).join(''):'<tr><td colspan="2" style="text-align:center;color:#888">Sin ingresos.</td></tr>';
+  document.getElementById('tbody-egresos').innerHTML=egrF.length?egrF.map(f=>`<tr><td style="white-space:nowrap">${fmt(f)}</td><td style="color:#F0A045;font-weight:600">${egr_dias[f]}</td></tr>`).join(''):'<tr><td colspan="2" style="text-align:center;color:#888">Sin egresos.</td></tr>';
 }
 
-// ── PROGRAMAS ──
 function getProgramas() {
-  const nombres = [...new Set(programasData.map(p=>p.programa).filter(Boolean))];
-  PROGRAMAS_DEFAULT.forEach(p => { if (!nombres.includes(p)) nombres.push(p); });
+  const nombres=[...new Set(programasData.map(p=>p.programa).filter(Boolean))];
+  PROGRAMAS_DEFAULT.forEach(p=>{if(!nombres.includes(p))nombres.push(p);});
   return nombres;
 }
 function getExptesDeProg(prog) {
-  const manuales = programasData.filter(p=>p.programa===prog&&p.expte).map(p=>String(p.expte).trim());
-  const keys = KEYWORDS[prog]||[prog.toLowerCase()];
-  const porTema = expedientes.filter(e=>{const t=getTema(e).toLowerCase();return keys.some(k=>t.includes(k));}).map(e=>String(getExpte(e)).trim());
-  const todos = [...new Set([...porTema,...manuales])];
+  const manuales=programasData.filter(p=>p.programa===prog&&p.expte).map(p=>String(p.expte).trim());
+  const todos=[...new Set(manuales)];
   return expedientes.filter(e=>todos.includes(String(getExpte(e)).trim()));
 }
 
 function renderProgramas() {
-  const progs = getProgramas();
-  if (!programaActivo || !progs.includes(programaActivo)) programaActivo = progs[0];
-  document.getElementById('prog-tabs').innerHTML = progs.map(p =>
-    `<button class="tab ${p===programaActivo?'active':''}" onclick="switchPrograma('${p}')">${p}</button>`
-  ).join('');
+  const progs=getProgramas();
+  if(!programaActivo||!progs.includes(programaActivo)) programaActivo=progs[0];
+  document.getElementById('prog-tabs').innerHTML=progs.map(p=>`<button class="tab ${p===programaActivo?'active':''}" onclick="switchPrograma('${p}')">${p}</button>`).join('');
   renderPrograma(programaActivo);
 }
-function switchPrograma(p) { programaActivo=p; renderProgramas(); }
+function switchPrograma(p){programaActivo=p;renderProgramas();}
 
 function renderPrograma(prog) {
-  const exps = getExptesDeProg(prog);
-  document.getElementById('prog-contenido').innerHTML = `
+  const exps=getExptesDeProg(prog);
+  document.getElementById('prog-contenido').innerHTML=`
     <div class="card">
-      <div class="prog-header">
-        <div><span class="prog-title">${prog}</span><span class="prog-count">${exps.length} expediente${exps.length!==1?'s':''}</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div><span style="font-size:14px;font-weight:600">${prog}</span><span style="font-size:12px;color:#888;margin-left:8px">${exps.length} expediente${exps.length!==1?'s':''}</span></div>
         <div style="display:flex;gap:8px">
-          <button class="btn sm primary" onclick="abrirModalAsignar('${prog}')">+ Asignar</button>
-          <button class="btn sm danger" onclick="eliminarPrograma('${prog}')">🗑️ Eliminar</button>
+          <button class="btn sm primary" onclick="abrirModalAsignar('${prog}')">+ Asignar expediente</button>
+          <button class="btn sm danger" onclick="eliminarPrograma('${prog}')">🗑️ Eliminar programa</button>
         </div>
       </div>
-      ${exps.length ? `<div style="overflow-x:auto"><table>
+      ${exps.length?`<div style="overflow-x:auto"><table>
         <thead><tr><th>Expte.</th><th>Iniciador</th><th>Ingreso</th><th>Resp. Asig.</th><th>Tema</th><th>Estado</th><th></th></tr></thead>
         <tbody>${exps.map(e=>`<tr>
-          <td><span class="expte-num">${getExpte(e)||'—'}</span></td>
+          <td style="font-weight:500">${getExpte(e)||'—'}</td>
           <td>${getIniciador(e)||'—'}</td>
-          <td style="white-space:nowrap;color:var(--tinta-2)">${fmt(e.ingreso||e.Ingreso)}</td>
+          <td style="white-space:nowrap">${fmt(e.ingreso||e.Ingreso)}</td>
           <td>${getRespAsig(e)||'—'}</td>
-          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tinta-2)" title="${getTema(e)}">${getTema(e)||'—'}</td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${getTema(e)}">${getTema(e)||'—'}</td>
           <td><span class="badge ${estaEgresado(e)?'egresado':'activo'}">${estaEgresado(e)?'Egresado':'En Dirección'}</span></td>
-          <td><button class="btn sm ghost danger" onclick="desasignar('${prog}','${getExpte(e)}')">✕</button></td>
-        </tr>`).join('')}</tbody></table></div>`
-        : '<div class="alert">No hay expedientes asignados a este programa todavía.</div>'}
+          <td><button class="btn sm danger" onclick="desasignar('${prog}','${getExpte(e)}')">✕</button></td>
+        </tr>`).join('')}</tbody></table></div>`:'<div class="alert">No hay expedientes asignados a este programa todavía.</div>'}
     </div>`;
 }
 
-function abrirModalPrograma() { document.getElementById('np-nombre').value=''; document.getElementById('overlay-programa').classList.add('show'); }
+function abrirModalPrograma(){document.getElementById('np-nombre').value='';document.getElementById('overlay-programa').classList.add('show');}
 async function guardarPrograma() {
-  const nombre = document.getElementById('np-nombre').value.trim();
-  if (!nombre) { alert('Ingresá un nombre.'); return; }
-  if (getProgramas().includes(nombre)) { alert('Ya existe ese programa.'); return; }
+  const nombre=document.getElementById('np-nombre').value.trim();
+  if(!nombre){alert('Ingresá un nombre.');return;}
+  if(getProgramas().includes(nombre)){alert('Ya existe ese programa.');return;}
   await api({accion:'agregar',hoja:'programas',datos:{programa:nombre,expte:''}});
   programasData.push({programa:nombre,expte:''});
   document.getElementById('overlay-programa').classList.remove('show');
-  programaActivo=nombre; renderProgramas(); toast('Programa creado ✓');
+  programaActivo=nombre;renderProgramas();toast('Programa creado ✓');
 }
 
-let progAsignar = null;
+let progAsignar=null;
 function abrirModalAsignar(prog) {
-  progAsignar = prog;
-  const ya   = getExptesDeProg(prog).map(e=>getExpte(e));
-  const disp = expedientes.filter(e=>!ya.includes(getExpte(e)));
-  document.getElementById('as-expte').innerHTML = '<option value="">Seleccionar…</option>'+disp.map(e=>`<option value="${getExpte(e)}">${getExpte(e)} — ${getTema(e)||getIniciador(e)||'sin tema'}</option>`).join('');
+  progAsignar=prog;
+  const ya=getExptesDeProg(prog).map(e=>getExpte(e));
+  const disp=expedientes.filter(e=>!ya.includes(getExpte(e)));
+  document.getElementById('as-expte').innerHTML='<option value="">Seleccionar...</option>'+disp.map(e=>`<option value="${getExpte(e)}">${getExpte(e)} — ${getTema(e)||getIniciador(e)||'sin tema'}</option>`).join('');
   document.getElementById('overlay-asignar').classList.add('show');
 }
-function cerrarModalAsignar() { document.getElementById('overlay-asignar').classList.remove('show'); }
+function cerrarModalAsignar(){document.getElementById('overlay-asignar').classList.remove('show');}
 async function asignarExpediente() {
-  const expte = document.getElementById('as-expte').value;
-  if (!expte) { alert('Seleccioná un expediente.'); return; }
+  const expte=document.getElementById('as-expte').value;
+  if(!expte){alert('Seleccioná un expediente.');return;}
   await api({accion:'agregar',hoja:'programas',datos:{programa:progAsignar,expte}});
   programasData.push({programa:progAsignar,expte});
-  cerrarModalAsignar(); renderPrograma(progAsignar); toast('Expediente asignado ✓');
+  cerrarModalAsignar();renderPrograma(progAsignar);toast('Expediente asignado ✓');
 }
-async function desasignar(prog, expte) {
-  if (!confirm(`¿Quitás este expediente del programa "${prog}"?`)) return;
-  const idx = programasData.findIndex(p=>p.programa===prog&&String(p.expte).trim()===String(expte).trim());
-  if (idx===-1) { toast('Detectado por tema automáticamente — no se puede quitar desde acá.'); return; }
+async function desasignar(prog,expte) {
+  if(!confirm(`¿Quitás este expediente del programa "${prog}"?`))return;
+  const idx=programasData.findIndex(p=>p.programa===prog&&String(p.expte).trim()===String(expte).trim());
+  if(idx===-1){toast('Detectado por tema automáticamente, no se puede quitar desde acá.');return;}
   await api({accion:'eliminar',hoja:'programas',datos:{_fila:idx+2}});
-  programasData.splice(idx,1); renderPrograma(prog); toast('Expediente quitado ✓');
+  programasData.splice(idx,1);renderPrograma(prog);toast('Expediente quitado ✓');
 }
 async function eliminarPrograma(prog) {
-  if (!confirm(`¿Eliminás el programa "${prog}"? Los expedientes no se borran.`)) return;
-  const indices = programasData.map((p,i)=>p.programa===prog?i:-1).filter(i=>i>=0);
-  for (const i of indices.reverse()) { await api({accion:'eliminar',hoja:'programas',datos:{_fila:i+2}}); programasData.splice(i,1); }
-  programaActivo=getProgramas()[0]||null; renderProgramas(); toast('Programa eliminado ✓');
+  if(!confirm(`¿Eliminás el programa "${prog}"? Los expedientes no se borran.`))return;
+  const indices=programasData.map((p,i)=>p.programa===prog?i:-1).filter(i=>i>=0);
+  for(const i of indices.reverse()){await api({accion:'eliminar',hoja:'programas',datos:{_fila:i+2}});programasData.splice(i,1);}
+  programaActivo=getProgramas()[0]||null;renderProgramas();toast('Programa eliminado ✓');
 }
 
-// ── MAPA ──
 function getDatosMapaProg(filtroProg) {
-  const progs = getProgramas();
-  const conteo = {};
-  progs.forEach(prog => {
-    if (filtroProg && prog!==filtroProg) return;
-    getExptesDeProg(prog).forEach(e => {
-      const partes = (getTema(e)||'').split('-').map(s=>s.trim());
-      const dep = normalizar(partes[2]||'');
-      if (!dep) return;
-      if (!conteo[dep]) conteo[dep]={total:0,porProg:{}};
+  const progs=getProgramas();
+  const conteo={};
+  progs.forEach(prog=>{
+    if(filtroProg&&prog!==filtroProg)return;
+    getExptesDeProg(prog).forEach(e=>{
+      const partes=(getTema(e)||'').split('-').map(s=>s.trim());
+      const departamento=partes[2]||'';
+      if(!departamento)return;
+      const dep=normalizar(departamento);
+      if(!conteo[dep])conteo[dep]={total:0,porProg:{}};
       conteo[dep].total++;
       conteo[dep].porProg[prog]=(conteo[dep].porProg[prog]||0)+1;
     });
   });
   return conteo;
 }
-function interpolarColor(t) {
-  const r=Math.round(237-(237-74)*t), g=Math.round(245-(245-140)*t), b=Math.round(227-(227-28)*t);
+function interpolarColorLeaflet(t) {
+  const r=Math.round(219-(219-30)*t);
+  const g=Math.round(234-(234-64)*t);
+  const b=Math.round(254-(254-175)*t);
   return `rgb(${r},${g},${b})`;
 }
+
 async function renderMapa() {
-  const filtroProg = document.getElementById('mapa-filtro-prog').value;
-  const datos = getDatosMapaProg(filtroProg);
-  const maxVal = Math.max(...Object.values(datos).map(d=>d.total),1);
-  if (!leafletMap) {
-    leafletMap = L.map('mapa-leaflet',{zoomControl:true,scrollWheelZoom:false}).setView([-31.7,-58.8],7);
+  const filtroProg=document.getElementById('mapa-filtro-prog').value;
+  const datos=getDatosMapaProg(filtroProg);
+  const maxVal=Math.max(...Object.values(datos).map(d=>d.total),1);
+
+  if(!leafletMap){
+    leafletMap=L.map('mapa-leaflet',{zoomControl:true,scrollWheelZoom:false}).setView([-31.7,-58.8],7);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO',maxZoom:12}).addTo(leafletMap);
   }
-  if (geojsonLayer) { leafletMap.removeLayer(geojsonLayer); geojsonLayer=null; }
+  if(geojsonLayer){leafletMap.removeLayer(geojsonLayer);geojsonLayer=null;}
+
   try {
-    document.getElementById('mapa-tabla-depto').innerHTML='<div style="color:var(--tinta-3);font-size:12px">Cargando mapa…</div>';
-    if (!geoCache) {
-      const resp = await fetch('https://raw.githubusercontent.com/mgaitan/departamentos_argentina/master/departamentos-entre_rios.json');
-      geoCache = await resp.json();
+    document.getElementById('mapa-tabla-depto').innerHTML='<div style="color:#888;font-size:12px">Cargando mapa...</div>';
+    if(!geoCache){
+      const resp=await fetch('https://raw.githubusercontent.com/mgaitan/departamentos_argentina/master/departamentos-entre_rios.json');
+      geoCache=await resp.json();
     }
-    geojsonLayer = L.geoJSON(geoCache,{
-      style: feat => {
-        const nombre = feat.properties.departamento||feat.properties.nombre||'';
-        const info   = datos[normalizar(nombre)]||{total:0};
-        const t = info.total/maxVal;
-        return { fillColor:info.total>0?interpolarColor(t):'#EDF5E3', fillOpacity:0.8, color:'#4A8C1C', weight:1.5, opacity:0.7 };
+    geojsonLayer=L.geoJSON(geoCache,{
+      style:feat=>{
+        const nombre=feat.properties.departamento||feat.properties.nombre||'';
+        const info=datos[normalizar(nombre)]||{total:0};
+        const t=info.total/maxVal;
+        return {fillColor:info.total>0?interpolarColorLeaflet(t):'#e8f4fd',fillOpacity:0.75,color:'#1e40af',weight:1.2,opacity:0.7};
       },
-      onEachFeature: (feat, layer) => {
-        const nombre = feat.properties.departamento||feat.properties.nombre||'';
-        const info   = datos[normalizar(nombre)]||{total:0,porProg:{}};
-        const lines  = Object.entries(info.porProg).map(([p,n])=>`<b>${p}:</b> ${n}`).join('<br>');
-        layer.bindTooltip(`<div style="font-size:12px;font-family:'Inter',sans-serif"><b>${nombre}</b><br>Total: <b>${info.total}</b>${lines?'<br>'+lines:''}</div>`,{sticky:true,opacity:0.97});
-        layer.on('mouseover',function(){this.setStyle({fillOpacity:1,weight:2.5});});
-        layer.on('mouseout', function(){geojsonLayer.resetStyle(this);});
+      onEachFeature:(feat,layer)=>{
+        const nombre=feat.properties.departamento||feat.properties.nombre||'';
+        const info=datos[normalizar(nombre)]||{total:0,porProg:{}};
+        const lines=Object.entries(info.porProg).map(([p,n])=>`<b>${p}:</b> ${n}`).join('<br>');
+        layer.bindTooltip(`<div style="font-size:13px"><b>${nombre}</b><br>Total: <b>${info.total}</b>${lines?'<br>'+lines:''}</div>`,{sticky:true,opacity:0.95});
+        layer.on('mouseover',function(){this.setStyle({fillOpacity:0.95,weight:2.5});});
+        layer.on('mouseout',function(){geojsonLayer.resetStyle(this);});
       }
     }).addTo(leafletMap);
     leafletMap.fitBounds(geojsonLayer.getBounds(),{padding:[10,10]});
     setTimeout(()=>leafletMap.invalidateSize(),150);
-    const sorted = Object.entries(datos).sort((a,b)=>b[1].total-a[1].total);
-    document.getElementById('mapa-tabla-depto').innerHTML = sorted.length
-      ? sorted.map(([dep,info])=>`<div style="display:flex;justify-content:space-between;padding:5px 10px;background:var(--folio-2);border-radius:5px;font-size:12px;border:1px solid var(--borde)"><span style="text-transform:capitalize">${dep.charAt(0)+dep.slice(1).toLowerCase()}</span><span style="font-weight:700;color:var(--verde-acento)">${info.total}</span></div>`).join('')
-      : '<div style="color:var(--tinta-3);font-size:12px">Sin datos aún.</div>';
+
+    const sorted=Object.entries(datos).sort((a,b)=>b[1].total-a[1].total);
+    document.getElementById('mapa-tabla-depto').innerHTML=sorted.length?sorted.map(([dep,info])=>`<div style="display:flex;justify-content:space-between;padding:5px 8px;background:#f5f5f3;border-radius:6px;font-size:12px"><span>${dep.charAt(0)+dep.slice(1).toLowerCase()}</span><span style="font-weight:600;color:#185FA5">${info.total}</span></div>`).join(''):'<div style="color:#aaa;font-size:12px">Sin datos aún. Cargá expedientes con el formato Programa - Localidad - Departamento.</div>';
   } catch(err) {
-    document.getElementById('mapa-tabla-depto').innerHTML=`<div style="color:var(--rojo);font-size:12px">Error al cargar el mapa: ${err.message}</div>`;
+    document.getElementById('mapa-tabla-depto').innerHTML=`<div style="color:#A32D2D;font-size:12px">Error al cargar el mapa: ${err.message}</div>`;
   }
-  const sel = document.getElementById('mapa-filtro-prog');
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">Todos los programas</option>'+getProgramas().map(p=>`<option value="${p}" ${p===cur?'selected':''}>${p}</option>`).join('');
+
+  const sel=document.getElementById('mapa-filtro-prog');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">Todos los programas</option>'+getProgramas().map(p=>`<option value="${p}" ${p===cur?'selected':''}>${p}</option>`).join('');
 }
 
-// ── CONFIG AGENTES ──
 function renderConfigAgentes() {
-  document.getElementById('agentes-config-lista').innerHTML = agentes.length
-    ? agentes.map((a,i)=>`<div class="agente-item"><div style="display:flex;align-items:center;gap:10px"><div class="avatar">${initials(a)}</div><span style="font-size:14px;font-weight:500">${a}</span></div><button class="btn sm danger" onclick="eliminarAgente(${i})">🗑️ Eliminar</button></div>`).join('')
-    : '<div class="alert">No hay agentes cargados todavía.</div>';
+  document.getElementById('agentes-config-lista').innerHTML=agentes.length?agentes.map((a,i)=>`<div class="agente-item"><div style="display:flex;align-items:center;gap:10px"><div class="avatar">${initials(a)}</div><span style="font-size:14px">${a}</span></div><button class="btn sm danger" onclick="eliminarAgente(${i})">🗑️ Eliminar</button></div>`).join(''):'<div class="alert">No hay agentes cargados todavía.</div>';
 }
-
 function fillSelects() {
   const fSel=document.getElementById('f-agente'), mSel=document.getElementById('m-agente');
   const curF=fSel.value, curM=mSel.value;
   fSel.innerHTML='<option value="">Todos los agentes</option>'+agentes.map(a=>`<option value="${a}">${a}</option>`).join('');
-  mSel.innerHTML='<option value="">Seleccionar…</option>'+agentes.map(a=>`<option value="${a}">${a}</option>`).join('');
+  mSel.innerHTML='<option value="">Seleccionar...</option>'+agentes.map(a=>`<option value="${a}">${a}</option>`).join('');
   fSel.value=curF; mSel.value=curM;
 }
 
-// ── MODAL ──
 function abrirModal(idx=null) {
-  editIdx = idx;
-  document.getElementById('modal-title').textContent = idx!==null ? 'Editar expediente' : 'Nuevo expediente';
-  const today = new Date().toISOString().slice(0,10);
-  if (idx!==null) {
+  editIdx=idx;
+  document.getElementById('modal-title').textContent=idx!==null?'Editar expediente':'Nuevo expediente';
+  const today=new Date().toISOString().slice(0,10);
+  if(idx!==null){
     const e=expedientes[idx];
-    document.getElementById('m-expte').value     = getExpte(e);
-    document.getElementById('m-iniciador').value = getIniciador(e);
-    document.getElementById('m-ingreso').value   = toInput(e.ingreso||e.Ingreso);
-    document.getElementById('m-reparto').value   = toInput(getReparto(e));
-    document.getElementById('m-agente').value    = getRespAsig(e);
-    document.getElementById('m-tema').value      = getTema(e);
-    document.getElementById('m-salio').value     = toInput(getSalio(e));
+    document.getElementById('m-expte').value=getExpte(e);
+    document.getElementById('m-iniciador').value=getIniciador(e);
+    document.getElementById('m-ingreso').value=toInput(e.ingreso||e.Ingreso);
+    document.getElementById('m-reparto').value=toInput(getReparto(e));
+    document.getElementById('m-agente').value=getRespAsig(e);
+    document.getElementById('m-tema').value=getTema(e);
+    document.getElementById('m-salio').value=toInput(getSalio(e));
   } else {
     ['m-expte','m-iniciador','m-reparto','m-tema','m-salio'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('m-ingreso').value = today;
-    document.getElementById('m-agente').value  = '';
+    document.getElementById('m-ingreso').value=today;
+    document.getElementById('m-agente').value='';
   }
   document.getElementById('overlay').classList.add('show');
 }
-function cerrarModal() { document.getElementById('overlay').classList.remove('show'); }
+function cerrarModal(){document.getElementById('overlay').classList.remove('show');}
 
 async function guardar() {
-  const expte   = document.getElementById('m-expte').value.trim();
-  const ingreso = document.getElementById('m-ingreso').value;
-  const agente  = document.getElementById('m-agente').value;
-  if (!expte||!ingreso||!agente) { alert('Completá los campos obligatorios: Expte., Ingreso y Resp. Asignado.'); return; }
-  const datos = {
-    'expte.':   expte,
-    'iniciador': document.getElementById('m-iniciador').value,
-    'ingreso':   fmt(ingreso),
-    'reparto':   fmt(document.getElementById('m-reparto').value),
-    'resp. asig': agente,
-    'tema':      document.getElementById('m-tema').value,
-    'salio':     fmt(document.getElementById('m-salio').value)
+  const expte=document.getElementById('m-expte').value.trim();
+  const ingreso=document.getElementById('m-ingreso').value;
+  const agente=document.getElementById('m-agente').value;
+  if(!expte||!ingreso||!agente){alert('Completá los campos obligatorios (Expte., Ingreso y Resp. Asignado).');return;}
+  const datos={
+    'expte.':expte,
+    'iniciador':document.getElementById('m-iniciador').value,
+    'ingreso':fmt(ingreso),
+    'reparto':fmt(document.getElementById('m-reparto').value),
+    'resp. asig':agente,
+    'tema':document.getElementById('m-tema').value,
+    'salio':fmt(document.getElementById('m-salio').value)
   };
-  const btn = document.getElementById('btn-guardar');
-  btn.disabled=true; btn.textContent='Guardando…';
+  const btn=document.getElementById('btn-guardar');
+  btn.disabled=true;btn.textContent='Guardando...';
   try {
-    if (editIdx!==null) {
-      datos._fila = expedientes[editIdx]._fila;
+    if(editIdx!==null){
+      datos._fila=expedientes[editIdx]._fila;
       await api({accion:'editar',hoja:'expedientes',datos});
       toast('Expediente actualizado ✓');
     } else {
       await api({accion:'agregar',hoja:'expedientes',datos});
       toast('Expediente guardado ✓');
     }
-    cerrarModal(); await cargar();
-  } catch(e) { alert('Error al guardar: '+e.message); }
-  btn.disabled=false; btn.textContent='Guardar expediente';
+    cerrarModal();await cargar();
+  } catch(e){alert('Error al guardar: '+e.message);}
+  btn.disabled=false;btn.textContent='Guardar';
 }
 
 async function eliminar(idx) {
-  if (!confirm('¿Eliminás este expediente? Esta acción no se puede deshacer.')) return;
+  if(!confirm('¿Eliminás este expediente? Esta acción no se puede deshacer.'))return;
   try {
     await api({accion:'eliminar',hoja:'expedientes',datos:{_fila:expedientes[idx]._fila}});
-    toast('Expediente eliminado'); await cargar();
-  } catch(e) { alert('Error: '+e.message); }
+    toast('Expediente eliminado');await cargar();
+  } catch(e){alert('Error: '+e.message);}
 }
 
 async function agregarAgente() {
-  const inp = document.getElementById('nuevo-agente');
-  const nombre = inp.value.trim();
-  if (!nombre) return;
+  const inp=document.getElementById('nuevo-agente');
+  const nombre=inp.value.trim();
+  if(!nombre)return;
   try {
     await api({accion:'agregar',hoja:'agentes',datos:{nombre}});
-    inp.value=''; agentes.push(nombre); fillSelects(); renderConfigAgentes(); toast('Agente agregado ✓');
-  } catch(e) { alert('Error: '+e.message); }
+    inp.value='';agentes.push(nombre);fillSelects();renderConfigAgentes();toast('Agente agregado ✓');
+  } catch(e){alert('Error: '+e.message);}
 }
 async function eliminarAgente(i) {
-  if (!confirm(`¿Eliminás a "${agentes[i]}"?`)) return;
+  if(!confirm(`¿Eliminás a "${agentes[i]}"?`))return;
   try {
     await api({accion:'eliminar',hoja:'agentes',datos:{_fila:i+2}});
-    agentes.splice(i,1); fillSelects(); renderConfigAgentes(); toast('Agente eliminado ✓');
-  } catch(e) { alert('Error: '+e.message); }
+    agentes.splice(i,1);fillSelects();renderConfigAgentes();toast('Agente eliminado ✓');
+  } catch(e){alert('Error: '+e.message);}
 }
 
 function initFechas() {
-  const hoy   = new Date().toISOString().slice(0,10);
-  const hace30 = new Date(Date.now()-30*86400000).toISOString().slice(0,10);
-  document.getElementById('f-desde').value = hace30;
-  document.getElementById('f-hasta').value = hoy;
+  const hoy=new Date().toISOString().slice(0,10);
+  const hace30=new Date(Date.now()-30*86400000).toISOString().slice(0,10);
+  document.getElementById('f-desde').value=hace30;
+  document.getElementById('f-hasta').value=hoy;
 }
 
 function renderAll() {
@@ -1281,8 +777,8 @@ function renderAll() {
   fillSelects();
   renderTabla();
   initFechas();
-  const sel = document.getElementById('mapa-filtro-prog');
-  if (sel) sel.innerHTML = '<option value="">Todos los programas</option>'+getProgramas().map(p=>`<option value="${p}">${p}</option>`).join('');
+  const sel=document.getElementById('mapa-filtro-prog');
+  if(sel) sel.innerHTML='<option value="">Todos los programas</option>'+getProgramas().map(p=>`<option value="${p}">${p}</option>`).join('');
 }
 
 cargar();
