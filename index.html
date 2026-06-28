@@ -8,23 +8,31 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,sans-serif;background:#f5f5f3;color:#1a1a1a;min-height:100vh}
-.topbar{background:#fff;border-bottom:1px solid #e0e0d8;padding:12px 24px;display:flex;align-items:center;justify-content:space-between}
-.topbar h1{font-size:17px;font-weight:600}
-.topbar span{font-size:13px;color:#888}
+.topbar{background:#fff;border-bottom:3px solid #8bc53f;padding:14px 24px;display:flex;align-items:center;gap:18px}
+.logo-er{display:flex;align-items:center;gap:10px}
+.logo-box{background:#8bc53f;border-radius:6px;padding:6px 9px;display:flex;align-items:center;justify-content:center}
+.logo-box span{color:#fff;font-weight:800;font-size:20px;letter-spacing:-1px;line-height:1}
+.logo-text{font-size:10px;font-weight:700;color:#6b6b6b;line-height:1.15;text-transform:uppercase}
+.topbar-divider{width:2px;height:42px;background:#8bc53f}
+.topbar-titles{line-height:1.25}
+.topbar-titles .t1{font-size:12px;font-weight:600;color:#6b6b6b;text-transform:uppercase;letter-spacing:.3px}
+.topbar-titles .t2{font-size:13px;font-weight:600;color:#3a3a3a}
+.footer{text-align:center;padding:24px 16px;color:#999;font-size:13px;border-top:1px solid #e0e0d8;margin-top:32px}
+.footer a{color:#8bc53f;text-decoration:none}
 .container{max-width:1200px;margin:0 auto;padding:24px 16px}
 .tabs{display:flex;gap:4px;border-bottom:1px solid #e0e0d8;margin-bottom:24px;flex-wrap:wrap}
 .tab{padding:8px 18px;font-size:14px;cursor:pointer;border:none;background:none;color:#888;border-bottom:2px solid transparent;transition:all .15s}
-.tab.active{color:#1a1a1a;border-bottom:2px solid #185FA5;font-weight:500}
+.tab.active{color:#1a1a1a;border-bottom:2px solid #8bc53f;font-weight:500}
 .section{display:none}.section.active{display:block}
 .metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
 .metric{background:#fff;border-radius:10px;padding:14px 18px;border:1px solid #e0e0d8}
 .metric .lbl{font-size:12px;color:#888;margin-bottom:4px}
 .metric .val{font-size:24px;font-weight:600}
-.metric .val.blue{color:#185FA5}.metric .val.green{color:#3B6D11}.metric .val.amber{color:#854F0B}
+.metric .val.blue{color:#5a9216}.metric .val.green{color:#3B6D11}.metric .val.amber{color:#854F0B}
 .btn{padding:8px 16px;border-radius:8px;border:1px solid #d0d0c8;background:#fff;color:#1a1a1a;font-size:14px;cursor:pointer;transition:background .15s}
 .btn:hover{background:#f0f0ee}
-.btn.primary{background:#185FA5;color:#fff;border-color:#185FA5}
-.btn.primary:hover{background:#0C447C}
+.btn.primary{background:#8bc53f;color:#fff;border-color:#8bc53f}
+.btn.primary:hover{background:#76aa30}
 .btn.sm{font-size:12px;padding:4px 10px}
 .btn.danger{color:#A32D2D;border-color:#A32D2D;background:none}
 .btn.danger:hover{background:#fdf0f0}
@@ -39,11 +47,11 @@ tr:last-child td{border-bottom:none}
 .badge.egresado{background:#F1EFE8;color:#5F5E5A}
 .agent-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f0f0ee}
 .agent-row:last-child{border-bottom:none}
-.avatar{width:38px;height:38px;border-radius:50%;background:#B5D4F4;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#0C447C;flex-shrink:0}
+.avatar{width:38px;height:38px;border-radius:50%;background:#d9edb8;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#5a9216;flex-shrink:0}
 .bar-wrap{flex:1}
 .bar-label{display:flex;justify-content:space-between;font-size:12px;color:#888;margin-bottom:5px}
 .bar-bg{background:#f0f0ee;border-radius:4px;height:8px;overflow:hidden}
-.bar-fill{height:8px;border-radius:4px;background:#185FA5;transition:width .4s}
+.bar-fill{height:8px;border-radius:4px;background:#8bc53f;transition:width .4s}
 .chart-wrap{position:relative;width:100%;height:220px}
 .section-title{font-size:15px;font-weight:600;margin-bottom:16px}
 .alert{background:#fafaf8;border-radius:8px;padding:12px;font-size:13px;color:#888;text-align:center;margin:16px 0;border:1px solid #e0e0d8}
@@ -59,7 +67,7 @@ tr:last-child td{border-bottom:none}
 .fg textarea{resize:vertical;min-height:60px}
 .fg.full{grid-column:1/-1}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
-.spinner{display:inline-block;width:16px;height:16px;border:2px solid #ccc;border-top-color:#185FA5;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid #ccc;border-top-color:#8bc53f;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .toast{position:fixed;bottom:24px;right:24px;background:#1a1a1a;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:200;opacity:0;transition:opacity .3s;pointer-events:none}
 .toast.show{opacity:1}
@@ -71,8 +79,14 @@ tr:last-child td{border-bottom:none}
 <body>
 
 <div class="topbar">
-  <h1>📂 Registro de Expedientes</h1>
-  <span>Oficina de Asuntos Jurídicos</span>
+  <div class="logo-er">
+    <div class="logo-box"><span>ER</span></div>
+    <div class="logo-text">Ministerio<br>de Desarrollo<br>Humano</div>
+  </div>
+  <div class="topbar-divider"></div>
+  <div class="topbar-titles">
+    <div class="t2">Dirección General de Asuntos Jurídicos</div>
+  </div>
 </div>
 
 <div class="container">
@@ -236,13 +250,11 @@ tr:last-child td{border-bottom:none}
 <div class="overlay" id="overlay-asignar">
   <div class="modal">
     <h3>Asignar expediente al programa</h3>
-    <div class="fg" style="margin-bottom:12px">
-      <label>Expediente</label>
-      <select id="as-expte"><option value="">Seleccionar...</option></select>
-    </div>
+    <input type="text" id="as-buscar" placeholder="Buscar por número, tema o iniciador..." oninput="renderListaAsignar(this.value)" style="width:100%;padding:8px 10px;font-size:14px;border:1px solid #d0d0c8;border-radius:8px;margin-bottom:10px">
+    <div id="as-lista" style="max-height:280px;overflow-y:auto;border:1px solid #e0e0d8;border-radius:8px"></div>
     <div class="modal-actions">
       <button class="btn" onclick="cerrarModalAsignar()">Cancelar</button>
-      <button class="btn primary" onclick="asignarExpediente()">Asignar</button>
+      <button class="btn primary" onclick="asignarExpediente()">Asignar seleccionado</button>
     </div>
   </div>
 </div>
@@ -260,6 +272,11 @@ tr:last-child td{border-bottom:none}
       <button class="btn primary" onclick="guardarPrograma()">Guardar</button>
     </div>
   </div>
+</div>
+
+<div class="footer">
+  Dirección | Teléfono<br>
+  <a href="https://portal.entrerios.gov.ar/desarrollohumano" target="_blank">portal.entrerios.gov.ar/desarrollohumano</a>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -576,19 +593,34 @@ async function guardarPrograma() {
 }
 
 let progAsignar=null;
+let asignarLista=[];
 function abrirModalAsignar(prog) {
   progAsignar=prog;
   const ya=getExptesDeProg(prog).map(e=>getExpte(e));
-  const disp=expedientes.filter(e=>!ya.includes(getExpte(e)));
-  document.getElementById('as-expte').innerHTML='<option value="">Seleccionar...</option>'+disp.map(e=>`<option value="${getExpte(e)}">${getExpte(e)} — ${getTema(e)||getIniciador(e)||'sin tema'}</option>`).join('');
+  asignarLista=expedientes.filter(e=>!ya.includes(getExpte(e)));
+  document.getElementById('as-buscar').value='';
+  renderListaAsignar('');
   document.getElementById('overlay-asignar').classList.add('show');
+  setTimeout(()=>document.getElementById('as-buscar').focus(),100);
 }
+function renderListaAsignar(filtro) {
+  const f=(filtro||'').toLowerCase();
+  const filtrados=asignarLista.filter(e=>!f||Object.values(e).join(' ').toLowerCase().includes(f));
+  const cont=document.getElementById('as-lista');
+  cont.innerHTML=filtrados.length?filtrados.map(e=>`
+    <div onclick="seleccionarAsignar('${getExpte(e)}')" style="padding:8px 10px;border-bottom:1px solid #f0f0ee;cursor:pointer;font-size:13px" onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background='#fff'">
+      <b>${getExpte(e)||'(sin nº)'}</b> — ${getTema(e)||getIniciador(e)||'sin tema'}
+    </div>`).join(''):'<div style="padding:12px;color:#888;font-size:13px;text-align:center">No se encontraron expedientes.</div>';
+}
+function seleccionarAsignar(expte){ asignarSeleccionado=expte; document.querySelectorAll('#as-lista > div').forEach(d=>d.style.background='#fff'); event.currentTarget.style.background='#dbeafe'; }
+let asignarSeleccionado=null;
 function cerrarModalAsignar(){document.getElementById('overlay-asignar').classList.remove('show');}
 async function asignarExpediente() {
-  const expte=document.getElementById('as-expte').value;
-  if(!expte){alert('Seleccioná un expediente.');return;}
+  const expte=asignarSeleccionado;
+  if(!expte){alert('Seleccioná un expediente de la lista.');return;}
   await api({accion:'agregar',hoja:'programas',datos:{programa:progAsignar,expte}});
   programasData.push({programa:progAsignar,expte});
+  asignarSeleccionado=null;
   cerrarModalAsignar();renderPrograma(progAsignar);toast('Expediente asignado ✓');
 }
 async function desasignar(prog,expte) {
