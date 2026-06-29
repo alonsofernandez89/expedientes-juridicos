@@ -356,6 +356,7 @@ let editIdx = null;
 let chartA = null, chartM = null, chartD = null;
 let sortCol = null, sortDir = 1;
 let leafletMap = null, geojsonLayer = null, geoCache = null;
+let licenciasData = [];
 
 const PROGRAMAS_DEFAULT = ['Juventud Emprende','Juventud en el Centro','Juventud en la Comunidad'];
 const KEYWORDS = {
@@ -621,6 +622,142 @@ function renderDiario() {
   document.getElementById('tbody-ingresos').innerHTML=ingF.length?ingF.map(f=>`<tr><td style="white-space:nowrap">${fmt(f)}</td><td style="color:#185FA5;font-weight:600">${ing_dias[f]}</td></tr>`).join(''):'<tr><td colspan="2" style="text-align:center;color:#888">Sin ingresos.</td></tr>';
   document.getElementById('tbody-egresos').innerHTML=egrF.length?egrF.map(f=>`<tr><td style="white-space:nowrap">${fmt(f)}</td><td style="color:#F0A045;font-weight:600">${egr_dias[f]}</td></tr>`).join(''):'<tr><td colspan="2" style="text-align:center;color:#888">Sin egresos.</td></tr>';
 }
+
+// ── LICENCIAS ────────────────────────────────────────────
+let mesActual = new Date().getMonth();
+let anioActual = new Date().getFullYear();
+let editLicId = null;
+
+const TIPOS_LIC = {
+  'Vacaciones':           {color:'#d1fae5', texto:'#065f46', icono:'🏖️'},
+  'Estudio':              {color:'#dbeafe', texto:'#1e40af', icono:'📚'},
+  'Enfermedad':           {color:'#fee2e2', texto:'#991b1b', icono:'🏥'},
+  'Maternidad/Paternidad':{color:'#fce7f3', texto:'#9d174d', icono:'👶'},
+  'Otro':                 {color:'#f3f4f6', texto:'#374151', icono:'📋'},
+};
+
+function cambiarMes(dir) {
+  mesActual += dir;
+  if (mesActual > 11) { mesActual = 0; anioActual++; }
+  if (mesActual < 0)  { mesActual = 11; anioActual--; }
+  renderLicencias();
+}
+
+function renderLicencias() {
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const diasSem = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  document.getElementById('mes-label').textContent = `${meses[mesActual]} ${anioActual}`;
+  const ultimoDia = new Date(anioActual, mesActual + 1, 0);
+  const totalDias = ultimoDia.getDate();
+
+  const licMes = licenciasData.filter(l => {
+    if (!l.desde || !l.hasta) return false;
+    const d = new Date(toInput(l.desde)), h = new Date(toInput(l.hasta));
+    const ini = new Date(anioActual, mesActual, 1), fin = new Date(anioActual, mesActual + 1, 0);
+    return d <= fin && h >= ini;
+  });
+
+  function getLic(agente, dia) {
+    const fecha = new Date(anioActual, mesActual, dia);
+    return licMes.find(l => {
+      if (l.agente !== agente) return false;
+      const d = new Date(toInput(l.desde)), h = new Date(toInput(l.hasta));
+      return fecha >= d && fecha <= h;
+    });
+  }
+
+  const numDias = Array.from({length:totalDias}, (_,i) => i+1);
+  const hoy = new Date();
+
+  let html = `<div style="overflow-x:auto"><table style="min-width:${100+totalDias*34}px;font-size:12px">
+    <thead><tr>
+      <th style="min-width:110px;position:sticky;left:0;background:#fafaf8;z-index:2">Agente</th>
+      ${numDias.map(d=>{
+        const f=new Date(anioActual,mesActual,d);
+        const finde=f.getDay()===0||f.getDay()===6;
+        const esHoy=f.toDateString()===hoy.toDateString();
+        return `<th style="width:34px;text-align:center;padding:4px 2px;${finde?'background:#f0f0ee;':''}${esHoy?'background:#d9edb8;':''}"><div style="font-size:9px;color:#aaa">${diasSem[f.getDay()]}</div><div>${d}</div></th>`;
+      }).join('')}
+    </tr></thead>
+    <tbody>
+      ${agentes.map(ag=>`<tr>
+        <td style="font-weight:500;position:sticky;left:0;background:#fff;z-index:1;border-right:1px solid #e0e0d8">${ag}</td>
+        ${numDias.map(d=>{
+          const f=new Date(anioActual,mesActual,d);
+          const finde=f.getDay()===0||f.getDay()===6;
+          const lic=getLic(ag,d);
+          const tipo=lic?(TIPOS_LIC[lic.tipo]||TIPOS_LIC['Otro']):null;
+          return `<td style="text-align:center;padding:2px;${finde?'background:#f9f9f7;':''}${tipo?`background:${tipo.color};`:''}cursor:${tipo?'pointer':'default'}" title="${tipo?`${lic.tipo}${lic.obs?' - '+lic.obs:''}`:''}" ${tipo?`onclick="eliminarLicencia(${lic._fila},'${ag.replace(/'/g,"")}')"`:''}>${tipo?tipo.icono:''}</td>`;
+        }).join('')}
+      </tr>`).join('')}
+    </tbody></table></div>`;
+
+  html += `<div style="margin-top:12px">${Object.entries(TIPOS_LIC).map(([t,v])=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:12px;background:${v.color};color:${v.texto};margin:3px">${v.icono} ${t}</span>`).join('')}</div>`;
+
+  document.getElementById('calendario-licencias').innerHTML = agentes.length ? html : '<div class="alert">No hay agentes configurados.</div>';
+
+  // Resumen
+  const resumen = agentes.map(ag=>{
+    const lics=licMes.filter(l=>l.agente===ag);
+    const enLicHoy=hoy.getMonth()===mesActual&&hoy.getFullYear()===anioActual&&getLic(ag,hoy.getDate());
+    return {ag,lics,enLicHoy};
+  });
+  document.getElementById('resumen-licencias').innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+    ${resumen.map(({ag,lics,enLicHoy})=>`<div style="padding:12px;border-radius:8px;border:1px solid ${enLicHoy?'#8bc53f':'#e0e0d8'};background:${enLicHoy?'#f0f7e6':'#fff'}">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <div class="avatar" style="width:28px;height:28px;font-size:11px">${initials(ag)}</div>
+        <span style="font-size:13px;font-weight:500">${ag}</span>
+        ${enLicHoy?'<span style="font-size:10px;background:#8bc53f;color:#fff;padding:1px 6px;border-radius:999px">HOY</span>':''}
+      </div>
+      ${lics.length?lics.map(l=>`<div style="font-size:11px;color:#555;margin-top:4px">${TIPOS_LIC[l.tipo]?.icono||'📋'} ${l.tipo}: ${fmt(l.desde)} → ${fmt(l.hasta)}</div>`).join(''):'<div style="font-size:11px;color:#aaa">Sin licencias este mes</div>'}
+    </div>`).join('')}
+  </div>`;
+}
+
+function abrirModalLicencia(id=null) {
+  editLicId = id;
+  document.getElementById('lic-modal-title').textContent = id ? 'Editar licencia' : 'Nueva licencia';
+  document.getElementById('lic-agente').innerHTML = '<option value="">Seleccionar...</option>' + agentes.map(a=>`<option value="${a}">${a}</option>`).join('');
+  document.getElementById('lic-agente').value = '';
+  document.getElementById('lic-tipo').value = 'Vacaciones';
+  document.getElementById('lic-obs').value = '';
+  document.getElementById('lic-desde').value = '';
+  document.getElementById('lic-hasta').value = '';
+  document.getElementById('overlay-licencia').classList.add('show');
+}
+function cerrarModalLicencia() { document.getElementById('overlay-licencia').classList.remove('show'); }
+
+async function guardarLicencia() {
+  const agente = document.getElementById('lic-agente').value;
+  const tipo = document.getElementById('lic-tipo').value;
+  const desde = document.getElementById('lic-desde').value;
+  const hasta = document.getElementById('lic-hasta').value;
+  if (!agente || !desde || !hasta) { alert('Completá agente, fecha inicio y fecha fin.'); return; }
+  if (desde > hasta) { alert('La fecha de inicio no puede ser posterior a la fecha fin.'); return; }
+  const datos = { agente, tipo, desde:fmt(desde), hasta:fmt(hasta), obs:document.getElementById('lic-obs').value };
+  const btn = document.getElementById('btn-guardar-lic');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    await api({accion:'agregar', hoja:'licencias', datos});
+    licenciasData = await api({method:'GET', hoja:'licencias'});
+    licenciasData = Array.isArray(licenciasData) ? licenciasData.filter(l => l.agente) : [];
+    cerrarModalLicencia();
+    renderLicencias();
+    toast('Licencia guardada ✓');
+  } catch(e) { alert('Error: ' + e.message); }
+  btn.disabled = false; btn.textContent = 'Guardar';
+}
+
+async function eliminarLicencia(fila, agente) {
+  if (!confirm(`¿Eliminás esta licencia de ${agente}?`)) return;
+  try {
+    await api({accion:'eliminar', hoja:'licencias', datos:{_fila:fila}});
+    licenciasData = licenciasData.filter(l => l._fila !== fila);
+    renderLicencias();
+    toast('Licencia eliminada ✓');
+  } catch(e) { alert('Error: ' + e.message); }
+}
+// ── FIN LICENCIAS ─────────────────────────────────────────
 
 function getProgramas() {
   const nombres=[...new Set(programasData.map(p=>p.programa).filter(Boolean))];
