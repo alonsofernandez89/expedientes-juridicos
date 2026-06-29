@@ -99,6 +99,7 @@ tr:last-child td{border-bottom:none}
     <button class="tab" onclick="switchTab('agentes')">Por agente</button>
     <button class="tab" onclick="switchTab('analisis')">Análisis</button>
     <button class="tab" onclick="switchTab('programas')">Programas</button>
+    <button class="tab" onclick="switchTab('licencias')">📅 Licencias</button>
     <button class="tab" onclick="switchTab('config')">⚙️ Agentes</button>
   </div>
 
@@ -213,6 +214,67 @@ tr:last-child td{border-bottom:none}
     </div>
   </div>
 
+  <!-- LICENCIAS -->
+  <div class="section" id="tab-licencias">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:15px;font-weight:600">Licencias</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn sm" onclick="cambiarMes(-1)">◀</button>
+        <span id="mes-label" style="font-size:14px;font-weight:600;min-width:140px;text-align:center"></span>
+        <button class="btn sm" onclick="cambiarMes(1)">▶</button>
+        <button class="btn primary" onclick="abrirModalLicencia()">+ Nueva licencia</button>
+      </div>
+    </div>
+    <!-- Calendario -->
+    <div class="card" style="overflow-x:auto">
+      <div id="calendario-licencias"></div>
+    </div>
+    <!-- Resumen del mes -->
+    <div class="card" style="margin-top:0">
+      <div class="section-title">Resumen del mes</div>
+      <div id="resumen-licencias"></div>
+    </div>
+  </div>
+
+  <!-- MODAL LICENCIA -->
+  <div class="overlay" id="overlay-licencia">
+    <div class="modal">
+      <h3 id="lic-modal-title">Nueva licencia</h3>
+      <div class="form-grid">
+        <div class="fg full">
+          <label>Agente *</label>
+          <select id="lic-agente"><option value="">Seleccionar...</option></select>
+        </div>
+        <div class="fg">
+          <label>Tipo de licencia *</label>
+          <select id="lic-tipo">
+            <option value="Vacaciones">Vacaciones</option>
+            <option value="Estudio">Estudio</option>
+            <option value="Enfermedad">Enfermedad</option>
+            <option value="Maternidad/Paternidad">Maternidad/Paternidad</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Observación</label>
+          <input type="text" id="lic-obs" placeholder="Opcional">
+        </div>
+        <div class="fg">
+          <label>Fecha inicio *</label>
+          <input type="date" id="lic-desde">
+        </div>
+        <div class="fg">
+          <label>Fecha fin *</label>
+          <input type="date" id="lic-hasta">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="cerrarModalLicencia()">Cancelar</button>
+        <button class="btn primary" id="btn-guardar-lic" onclick="guardarLicencia()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- CONFIG AGENTES -->
   <div class="section" id="tab-config">
     <div class="card">
@@ -322,6 +384,7 @@ async function cargar() {
       api({method:'GET', hoja:'programas'})
     ]);
     agentes = agentes.map(a => a.nombre).filter(Boolean);
+    await cargarLicencias();
     renderAll();
   } catch(e) {
     document.getElementById('loading').innerHTML = '❌ Error al conectar. Verificá tu conexión.';
@@ -364,13 +427,14 @@ function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t
 
 function switchTab(t) {
   document.querySelectorAll('.container > .tabs > .tab').forEach((el,i) => {
-    el.classList.toggle('active', ['registro','agentes','analisis','programas','config'][i] === t);
+    el.classList.toggle('active', ['registro','agentes','analisis','programas','licencias','config'][i] === t);
   });
   document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
   if (t === 'analisis') { setTimeout(renderCharts, 50); setTimeout(renderDiario, 80); }
   if (t === 'agentes') renderPorAgente();
   if (t === 'config') renderConfigAgentes();
+  if (t === 'licencias') renderLicencias();
   if (t === 'programas') renderProgramas();
 }
 
