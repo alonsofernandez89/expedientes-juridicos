@@ -366,11 +366,21 @@ const KEYWORDS = {
 
 async function api(params) {
   if (params.method === 'GET') {
-    const r = await fetch(SCRIPT_URL + '?hoja=' + params.hoja);
-    return r.json();
+    const r = await fetch(SCRIPT_URL + '?hoja=' + params.hoja, {
+      redirect: 'follow',
+      mode: 'cors'
+    });
+    const text = await r.text();
+    try { return JSON.parse(text); } catch { return []; }
   } else {
-    const r = await fetch(SCRIPT_URL, { method:'POST', body:JSON.stringify(params) });
-    return r.json();
+    const r = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      mode: 'cors',
+      body: JSON.stringify(params)
+    });
+    const text = await r.text();
+    try { return JSON.parse(text); } catch { return {}; }
   }
 }
 
