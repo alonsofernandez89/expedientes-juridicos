@@ -364,20 +364,34 @@ const KEYWORDS = {
   'Juventud en la Comunidad': ['juventud en la comunidad','en la comunidad']
 };
 
-async function api(params) {
-  if (params.method === 'GET') {
-    const r = await fetch(SCRIPT_URL + '?hoja=' + encodeURIComponent(params.hoja));
-    const text = await r.text();
-    try { return JSON.parse(text); } catch { return []; }
-  } else {
-    // POST con text/plain para evitar preflight CORS
-    const r = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(params)
-    });
-    const text = await r.text();
-    try { return JSON.parse(text); } catch { return {}; }
+async function api(params, reintentos = 3) {
+  for (let intento = 0; intento < reintentos; intento++) {
+    try {
+      let r;
+      if (params.method === 'GET') {
+        r = await fetch(SCRIPT_URL + '?hoja=' + encodeURIComponent(params.hoja) + '&t=' + Date.now());
+      } else {
+        r = await fetch(SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(params)
+        });
+      }
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const text = await r.text();
+      try {
+        return JSON.parse(text);
+      } catch {
+        return params.method === 'GET' ? [] : {};
+      }
+    } catch (e) {
+      // Si falla, esperar un momento y reintentar
+      if (intento < reintentos - 1) {
+        await new Promise(res => setTimeout(res, 400 * (intento + 1)));
+      } else {
+        throw e;
+      }
+    }
   }
 }
 
@@ -385,16 +399,16 @@ async function cargar() {
   document.getElementById('loading').style.display = 'block';
   document.getElementById('tabla').style.display = 'none';
   try {
-    [expedientes, agentes, programasData] = await Promise.all([
-      api({method:'GET', hoja:'expedientes'}),
-      api({method:'GET', hoja:'agentes'}),
-      api({method:'GET', hoja:'programas'})
-    ]);
+    // Llamadas secuenciales (no simultáneas) para evitar que Google rechace alguna
+    expedientes = await api({method:'GET', hoja:'expedientes'});
+    agentes = await api({method:'GET', hoja:'agentes'});
+    programasData = await api({method:'GET', hoja:'programas'});
     agentes = agentes.map(a => a.nombre).filter(Boolean);
-    await cargarLicencias();
+    try { licenciasData = await api({method:'GET', hoja:'licencias'}); licenciasData = Array.isArray(licenciasData) ? licenciasData.filter(l => l.agente) : []; }
+    catch { licenciasData = []; }
     renderAll();
   } catch(e) {
-    document.getElementById('loading').innerHTML = '❌ Error al conectar. Verificá tu conexión.';
+    document.getElementById('loading').innerHTML = '❌ Error al conectar. Recargá la página (Ctrl+F5).';
   }
 }
 
