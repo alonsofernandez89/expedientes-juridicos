@@ -366,17 +366,14 @@ const KEYWORDS = {
 
 async function api(params) {
   if (params.method === 'GET') {
-    const r = await fetch(SCRIPT_URL + '?hoja=' + params.hoja, {
-      redirect: 'follow',
-      mode: 'cors'
-    });
+    const r = await fetch(SCRIPT_URL + '?hoja=' + encodeURIComponent(params.hoja));
     const text = await r.text();
     try { return JSON.parse(text); } catch { return []; }
   } else {
+    // POST con text/plain para evitar preflight CORS
     const r = await fetch(SCRIPT_URL, {
       method: 'POST',
-      redirect: 'follow',
-      mode: 'cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(params)
     });
     const text = await r.text();
