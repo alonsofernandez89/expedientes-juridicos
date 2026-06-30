@@ -876,6 +876,64 @@ function getDatosMapaProg(filtroProg) {
   });
   return conteo;
 }
+// Tabla de localidades de Entre Ríos → departamento
+const LOCALIDAD_DEPTO = {
+  // Paraná
+  'parana':'Paraná','oro verde':'Paraná','san benito':'Paraná','colonia avellaneda':'Paraná','viale':'Paraná','crespo':'Paraná','seguí':'Paraná','segui':'Paraná','hasenkamp':'Paraná','maria grande':'Paraná','maría grande':'Paraná','cerrito':'Paraná','tabossi':'Paraná','hernandarias':'Paraná','la picada':'Paraná','sauce montrull':'Paraná','colonia crespo':'Paraná','aldea brasilera':'Paraná','aldea san juan':'Paraná','villa urquiza':'Paraná','pueblo brugo':'Paraná','el palenque':'Paraná','las tunas':'Paraná',
+  // Uruguay (Concepción del Uruguay)
+  'concepcion del uruguay':'Uruguay','concepción del uruguay':'Uruguay','c. del uruguay':'Uruguay','basavilbaso':'Uruguay','villa san marcial':'Uruguay','caseros':'Uruguay','pronunciamiento':'Uruguay','herrera':'Uruguay','1 de mayo':'Uruguay','primero de mayo':'Uruguay','santa anita':'Uruguay','rocamora':'Uruguay','las moscas':'Uruguay',
+  // Concordia
+  'concordia':'Concordia','colonia ayui':'Concordia','colonia ayuí':'Concordia','estacion yuqueri':'Concordia','la criolla':'Concordia','los charruas':'Concordia','los charrúas':'Concordia','pueblo belgrano':'Concordia','puerto yerua':'Concordia','general campos':'Concordia',
+  // Gualeguaychú
+  'gualeguaychu':'Gualeguaychú','gualeguaychú':'Gualeguaychú','urdinarrain':'Gualeguaychú','larroque':'Gualeguaychú','gilbert':'Gualeguaychú','aldea san antonio':'Gualeguaychú','general almada':'Gualeguaychú','enrique carbo':'Gualeguaychú','irazusta':'Gualeguaychú','faustino parera':'Gualeguaychú',
+  // Gualeguay
+  'gualeguay':'Gualeguay','general galarza':'Gualeguay','aldea asuncion':'Gualeguay','aldea asunción':'Gualeguay','puerto ruiz':'Gualeguay',
+  // Colón
+  'colon':'Colón','colón':'Colón','san jose':'Colón','san josé':'Colón','villa elisa':'Colón','ubajay':'Colón','colonia hugues':'Colón','arroyo baru':'Colón','arroyo barú':'Colón','pueblo liebig':'Colón','liebig':'Colón','hocker':'Colón',
+  // Concepción/Federación
+  'federacion':'Federación','federación':'Federación','chajari':'Federación','chajarí':'Federación','santa ana':'Federación','villa del rosario':'Federación','san jaime de la frontera':'Federación','san jaime':'Federación','los conquistadores':'Federación','colonia alemana':'Federación','san pedro':'Federación','san ramirez':'Federación',
+  // La Paz
+  'la paz':'La Paz','santa elena':'La Paz','bovril':'La Paz','san gustavo':'La Paz','piedras blancas':'La Paz','alcaraz':'La Paz','colonia avigdor':'La Paz','el solar':'La Paz',
+  // Villaguay
+  'villaguay':'Villaguay','villa dominguez':'Villaguay','villa domínguez':'Villaguay','villa clara':'Villaguay','jubileo':'Villaguay','ingeniero sajaroff':'Villaguay','lucas gonzalez':'Villaguay','lucas gonzález':'Villaguay','mojones norte':'Villaguay',
+  // Nogoyá
+  'nogoya':'Nogoyá','nogoyá':'Nogoyá','aranguren':'Nogoyá','lucas sur':'Nogoyá','don cristobal':'Nogoyá','hernandez':'Nogoyá','hernández':'Nogoyá','xx de septiembre':'Nogoyá','betbeder':'Nogoyá',
+  // Victoria
+  'victoria':'Victoria','rincon del doll':'Victoria','rincón del doll':'Victoria','molino doll':'Victoria',
+  // Diamante
+  'diamante':'Diamante','general ramirez':'Diamante','general ramírez':'Diamante','ramirez':'Diamante','ramírez':'Diamante','aldea protestante':'Diamante','aldea valle maria':'Diamante','aldea valle maría':'Diamante','valle maria':'Diamante','strobel':'Diamante','las cuevas':'Diamante','la juanita':'Diamante',
+  // Tala (Rosario del Tala)
+  'rosario del tala':'Tala','tala':'Tala','maciel':'Tala','altamirano sur':'Tala','gobernador mansilla':'Tala','mansilla':'Tala','guardamonte':'Tala',
+  // Federal
+  'federal':'Federal','conscripto bernardi':'Federal','nueva vizcaya':'Federal','el cimarron':'Federal','el cimarrón':'Federal','sauce de luna':'Federal','colonia federal':'Federal',
+  // Feliciano
+  'san jose de feliciano':'Feliciano','san josé de feliciano':'Feliciano','feliciano':'Feliciano','san victor':'Feliciano','san víctor':'Feliciano',
+  // San Salvador
+  'san salvador':'San Salvador','general campos sansalvador':'San Salvador',
+  // Islas del Ibicuy
+  'villa paranacito':'Islas del Ibicuy','ibicuy':'Islas del Ibicuy','ceibas':'Islas del Ibicuy','islas del ibicuy':'Islas del Ibicuy',
+};
+
+// Detecta programa y departamento desde el campo Tema
+function detectarProgramaYDepto(tema) {
+  const t = (tema||'').toLowerCase();
+  // Detectar programa por palabras clave
+  let programa = null;
+  if (t.includes('emprende')) programa = 'Juventud Emprende';
+  else if (t.includes('en el centro') || t.includes('juventud en el centro')) programa = 'Juventud en el Centro';
+  else if (t.includes('comunidad') && t.includes('juventud')) programa = 'Juventud en la Comunidad';
+  else if (t.includes('en comunidad')) programa = 'Juventud en la Comunidad';
+
+  // Detectar departamento por localidad mencionada
+  let departamento = null;
+  for (const [loc, dep] of Object.entries(LOCALIDAD_DEPTO)) {
+    // Buscar la localidad como palabra (con separadores - o espacios)
+    const regex = new RegExp('(^|[\\s\\-])' + loc.replace(/[.*+?^${}()|[\]\\]/g,'\\function interpolarColorLeaflet(t) {') + '($|[\\s\\-])', 'i');
+    if (regex.test(t)) { departamento = dep; break; }
+  }
+  return {programa, departamento};
+}
+
 function interpolarColorLeaflet(t) {
   const r=Math.round(219-(219-30)*t);
   const g=Math.round(234-(234-64)*t);
