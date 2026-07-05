@@ -356,10 +356,9 @@ const LOCALIDAD_DEPTO={
   'villa paranacito':'Islas del Ibicuy','ibicuy':'Islas del Ibicuy','ceibas':'Islas del Ibicuy','islas del ibicuy':'Islas del Ibicuy',
 };
 
-// Normaliza texto: minúsculas, sin acentos, sin puntuación extra
 function normTexto(s){
   return (s||'').toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // quita acentos
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
     .replace(/[.,;:]/g,' ')
     .replace(/\s+/g,' ')
     .trim();
@@ -737,20 +736,13 @@ let datosMapaActual={};
 function mostrarDetalleDepto(depKey,nombreDep){
   const info=datosMapaActual[depKey];
   const cont=document.getElementById('mapa-detalle-depto');
-  if(!info||!info.exptes.length){cont.innerHTML='';return;}
-  cont.innerHTML=`<div class="card" style="margin:0">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div style="font-size:14px;font-weight:600">${nombreDep} <span style="font-size:12px;color:#888;font-weight:400">— ${info.total} expediente${info.total!==1?'s':''}</span></div>
-      <button class="btn sm" onclick="document.getElementById('mapa-detalle-depto').innerHTML=''">✕ Cerrar</button>
-    </div>
-    <div style="overflow-x:auto"><table><thead><tr><th>Expte.</th><th>Programa</th><th>Tema</th><th>Resp. Asig.</th></tr></thead>
-      <tbody>${info.exptes.map(({e,prog})=>`<tr>
-        <td style="font-weight:500;white-space:nowrap">${getExpte(e)||'—'}</td>
-        <td style="white-space:nowrap">${prog}</td>
-        <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${getTema(e)}">${getTema(e)||'—'}</td>
-        <td>${getRespAsig(e)||'—'}</td>
-      </tr>`).join('')}</tbody></table></div>
-  </div>`;
+  if(!info||!info.exptes||!info.exptes.length){cont.innerHTML='';return;}
+  let filas='';
+  info.exptes.forEach(function(item){
+    const e=item.e, prog=item.prog;
+    filas+='<tr><td style="font-weight:500;white-space:nowrap">'+(getExpte(e)||'—')+'</td><td style="white-space:nowrap">'+prog+'</td><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+getTema(e)+'">'+(getTema(e)||'—')+'</td><td>'+(getRespAsig(e)||'—')+'</td></tr>';
+  });
+  cont.innerHTML='<div class="card" style="margin:0"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-size:14px;font-weight:600">'+nombreDep+' <span style="font-size:12px;color:#888;font-weight:400">— '+info.total+' expediente'+(info.total!==1?'s':'')+'</span></div><button class="btn sm" onclick="document.getElementById(\'mapa-detalle-depto\').innerHTML=\'\'">✕ Cerrar</button></div><div style="overflow-x:auto"><table><thead><tr><th>Expte.</th><th>Programa</th><th>Tema</th><th>Resp. Asig.</th></tr></thead><tbody>'+filas+'</tbody></table></div></div>';
   cont.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function interpolarColorLeaflet(t){
