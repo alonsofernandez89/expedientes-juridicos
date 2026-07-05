@@ -185,6 +185,7 @@ tr:last-child td{border-bottom:none}
           <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#555">Expedientes por departamento</div>
           <div id="mapa-tabla-depto" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:4px"></div>
         </div>
+        <div id="mapa-detalle-depto" style="margin-top:16px"></div>
         <div style="margin-top:16px;display:flex;align-items:center;gap:10px">
           <div style="font-size:11px;color:#888">Sin datos</div>
           <div style="width:120px;height:10px;border-radius:4px;background:linear-gradient(to right,#eef7e3,#3a731a)"></div>
@@ -317,28 +318,66 @@ const TIPOS_LIC={
   'Otro':{color:'#f3f4f6',texto:'#374151',icono:'📋'},
 };
 
-// Localidad -> Departamento (principales de Entre Ríos)
+// Localidad -> Departamento (Entre Ríos). Las claves se normalizan (sin acentos) al detectar.
 const LOCALIDAD_DEPTO={
-  'parana':'Paraná','oro verde':'Paraná','san benito':'Paraná','viale':'Paraná','crespo':'Paraná','segui':'Paraná','seguí':'Paraná','hasenkamp':'Paraná','maria grande':'Paraná','maría grande':'Paraná','cerrito':'Paraná','tabossi':'Paraná','hernandarias':'Paraná','villa urquiza':'Paraná','colonia avellaneda':'Paraná',
-  'concepcion del uruguay':'Uruguay','concepción del uruguay':'Uruguay','basavilbaso':'Uruguay','caseros':'Uruguay','pronunciamiento':'Uruguay','herrera':'Uruguay','santa anita':'Uruguay','1 de mayo':'Uruguay',
-  'concordia':'Concordia','la criolla':'Concordia','los charruas':'Concordia','los charrúas':'Concordia','pueblo belgrano':'Concordia','puerto yerua':'Concordia','general campos':'Concordia',
-  'gualeguaychu':'Gualeguaychú','gualeguaychú':'Gualeguaychú','urdinarrain':'Gualeguaychú','larroque':'Gualeguaychú','gilbert':'Gualeguaychú','aldea san antonio':'Gualeguaychú',
-  'gualeguay':'Gualeguay','general galarza':'Gualeguay','aldea asuncion':'Gualeguay','aldea asunción':'Gualeguay',
-  'colon':'Colón','colón':'Colón','san jose':'Colón','san josé':'Colón','villa elisa':'Colón','ubajay':'Colón','arroyo baru':'Colón','liebig':'Colón',
-  'federacion':'Federación','federación':'Federación','chajari':'Federación','chajarí':'Federación','santa ana':'Federación','villa del rosario':'Federación','san jaime':'Federación','los conquistadores':'Federación','san pedro':'Federación',
-  'la paz':'La Paz','santa elena':'La Paz','bovril':'La Paz','san gustavo':'La Paz','piedras blancas':'La Paz','alcaraz':'La Paz',
-  'villaguay':'Villaguay','villa dominguez':'Villaguay','villa domínguez':'Villaguay','villa clara':'Villaguay','lucas gonzalez':'Villaguay','lucas gonzález':'Villaguay',
-  'nogoya':'Nogoyá','nogoyá':'Nogoyá','aranguren':'Nogoyá','hernandez':'Nogoyá','hernández':'Nogoyá',
-  'victoria':'Victoria',
-  'diamante':'Diamante','general ramirez':'Diamante','general ramírez':'Diamante','ramirez':'Diamante','ramírez':'Diamante','valle maria':'Diamante','valle maría':'Diamante','aldea valle maria':'Diamante',
-  'rosario del tala':'Tala','tala':'Tala','maciel':'Tala','gobernador mansilla':'Tala','mansilla':'Tala',
-  'federal':'Federal','conscripto bernardi':'Federal','nueva vizcaya':'Federal','sauce de luna':'Federal',
-  'san jose de feliciano':'Feliciano','san josé de feliciano':'Feliciano','feliciano':'Feliciano','san victor':'Feliciano','san víctor':'Feliciano',
+  // PARANÁ
+  'parana':'Paraná','oro verde':'Paraná','san benito':'Paraná','viale':'Paraná','crespo':'Paraná','segui':'Paraná','hasenkamp':'Paraná','maria grande':'Paraná','cerrito':'Paraná','tabossi':'Paraná','hernandarias':'Paraná','villa urquiza':'Paraná','colonia avellaneda':'Paraná','sauce montrull':'Paraná','villa fontana':'Paraná','el pingo':'Paraná','las tunas':'Paraná','sosa':'Paraná','pueblo brugo':'Paraná','la picada':'Paraná','colonia crespo':'Paraná','aldea brasilera':'Paraná','aldea maria luisa':'Paraná','aldea san juan':'Paraná','aldea spatzenkutter':'Paraná','villa gobernador etchevehere':'Paraná',
+  // URUGUAY
+  'concepcion del uruguay':'Uruguay','c del uruguay':'Uruguay','basavilbaso':'Uruguay','caseros':'Uruguay','pronunciamiento':'Uruguay','herrera':'Uruguay','santa anita':'Uruguay','1 de mayo':'Uruguay','primero de mayo':'Uruguay','villa san marcial':'Uruguay','las moscas':'Uruguay','rocamora':'Uruguay',
+  // CONCORDIA
+  'concordia':'Concordia','la criolla':'Concordia','los charruas':'Concordia','pueblo belgrano':'Concordia','puerto yerua':'Concordia','general campos':'Concordia','colonia ayui':'Concordia','estacion yuqueri':'Concordia',
+  // GUALEGUAYCHÚ
+  'gualeguaychu':'Gualeguaychú','urdinarrain':'Gualeguaychú','larroque':'Gualeguaychú','gilbert':'Gualeguaychú','aldea san antonio':'Gualeguaychú','general almada':'Gualeguaychú','enrique carbo':'Gualeguaychú','irazusta':'Gualeguaychú','faustino m parera':'Gualeguaychú','pastor britos':'Gualeguaychú',
+  // GUALEGUAY
+  'gualeguay':'Gualeguay','general galarza':'Gualeguay','aldea asuncion':'Gualeguay','puerto ruiz':'Gualeguay',
+  // COLÓN
+  'colon':'Colón','san jose':'Colón','villa elisa':'Colón','ubajay':'Colón','arroyo baru':'Colón','liebig':'Colón','pueblo liebig':'Colón','colonia hugues':'Colón','hocker':'Colón','1 de mayo colon':'Colón',
+  // FEDERACIÓN
+  'federacion':'Federación','chajari':'Federación','santa ana':'Federación','villa del rosario':'Federación','san jaime':'Federación','san jaime de la frontera':'Federación','los conquistadores':'Federación','san pedro':'Federación','san ramon':'Federación','colonia alemana':'Federación',
+  // LA PAZ
+  'la paz':'La Paz','santa elena':'La Paz','bovril':'La Paz','san gustavo':'La Paz','piedras blancas':'La Paz','alcaraz':'La Paz','colonia avigdor':'La Paz','el solar':'La Paz',
+  // VILLAGUAY
+  'villaguay':'Villaguay','villa dominguez':'Villaguay','villa clara':'Villaguay','lucas gonzalez':'Villaguay','jubileo':'Villaguay','ingeniero sajaroff':'Villaguay','villa mantero':'Villaguay',
+  // NOGOYÁ
+  'nogoya':'Nogoyá','aranguren':'Nogoyá','hernandez':'Nogoyá','xx de septiembre':'Nogoyá','betbeder':'Nogoyá','don cristobal':'Nogoyá',
+  // VICTORIA
+  'victoria':'Victoria','rincon del doll':'Victoria',
+  // DIAMANTE
+  'diamante':'Diamante','general ramirez':'Diamante','ramirez':'Diamante','valle maria':'Diamante','aldea valle maria':'Diamante','aldea protestante':'Diamante','strobel':'Diamante','las cuevas':'Diamante','general alvear':'Diamante',
+  // TALA
+  'rosario del tala':'Tala','tala':'Tala','maciel':'Tala','gobernador mansilla':'Tala','mansilla':'Tala','guardamonte':'Tala','altamirano sur':'Tala',
+  // FEDERAL
+  'federal':'Federal','conscripto bernardi':'Federal','nueva vizcaya':'Federal','sauce de luna':'Federal','el cimarron':'Federal',
+  // FELICIANO
+  'san jose de feliciano':'Feliciano','feliciano':'Feliciano','san victor':'Feliciano',
+  // SAN SALVADOR
   'san salvador':'San Salvador',
+  // ISLAS DEL IBICUY
   'villa paranacito':'Islas del Ibicuy','ibicuy':'Islas del Ibicuy','ceibas':'Islas del Ibicuy','islas del ibicuy':'Islas del Ibicuy',
 };
 
+// Normaliza texto: minúsculas, sin acentos, sin puntuación extra
+function normTexto(s){
+  return (s||'').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // quita acentos
+    .replace(/[.,;:]/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+
 function detectarProgramaYDepto(tema){
+  const t=normTexto(tema);
+  let programa=null;
+  if(t.includes('emprende')) programa='Juventud Emprende';
+  else if(t.includes('en el centro')||t.includes('en centro')) programa='Juventud en el Centro';
+  else if((t.includes('comunidad')&&t.includes('juventud'))||t.includes('en comunidad')||t.includes('en la comunidad')) programa='Juventud en la Comunidad';
+
+  let departamento=null;
+  // Ordenar localidades de más larga a más corta para priorizar coincidencias específicas
+  const locs=Object.keys(LOCALIDAD_DEPTO).map(l=>({orig:l,norm:normTexto(l)})).sort((a,b)=>b.norm.length-a.norm.length);
+  for(const {orig,norm} of locs){
+    // Coincidencia como palabra completa: precedida y seguida por límite (inicio/fin, espacio o guion)
+    const re=new RegExp('(^|[\\s\\-])'+norm.replace(/[.*+?^${}()|[\]\\]/g,'\\function detectarProgramaYDepto(tema){
   const t=(tema||'').toLowerCase();
   let programa=null;
   if(t.includes('emprende')) programa='Juventud Emprende';
@@ -348,6 +387,10 @@ function detectarProgramaYDepto(tema){
   for(const [loc,dep] of Object.entries(LOCALIDAD_DEPTO)){
     const re=new RegExp('(^|[\\s\\-])'+loc.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'($|[\\s\\-])','i');
     if(re.test(t)){departamento=dep;break;}
+  }
+  return {programa,departamento};
+}')+'($|[\\s\\-])');
+    if(re.test(t)){departamento=LOCALIDAD_DEPTO[orig];break;}
   }
   return {programa,departamento};
 }
@@ -666,22 +709,49 @@ async function eliminarPrograma(prog){
 }
 
 // ── MAPA ──
+// Devuelve el departamento de un expediente (por formato explícito o por localidad detectada)
+function deptoDeExpte(e){
+  const tema=getTema(e);
+  const partes=tema.split('-').map(s=>s.trim());
+  let departamento=partes.length>=3&&partes[2]?partes[2]:'';
+  if(!departamento){const det=detectarProgramaYDepto(tema);if(det.departamento)departamento=det.departamento;}
+  return departamento;
+}
 function getDatosMapaProg(filtroProg){
   const progs=getProgramas();const conteo={};
   progs.forEach(prog=>{
     if(filtroProg&&prog!==filtroProg)return;
     getExptesDeProg(prog).forEach(e=>{
-      const tema=getTema(e);
-      const partes=tema.split('-').map(s=>s.trim());
-      let departamento=partes.length>=3?partes[2]:'';
-      if(!departamento){const det=detectarProgramaYDepto(tema);if(det.departamento)departamento=det.departamento;}
+      const departamento=deptoDeExpte(e);
       if(!departamento)return;
       const dep=normalizar(departamento);
-      if(!conteo[dep])conteo[dep]={total:0,porProg:{}};
-      conteo[dep].total++;conteo[dep].porProg[prog]=(conteo[dep].porProg[prog]||0)+1;
+      if(!conteo[dep])conteo[dep]={total:0,porProg:{},exptes:[]};
+      conteo[dep].total++;
+      conteo[dep].porProg[prog]=(conteo[dep].porProg[prog]||0)+1;
+      conteo[dep].exptes.push({e,prog});
     });
   });
   return conteo;
+}
+let datosMapaActual={};
+function mostrarDetalleDepto(depKey,nombreDep){
+  const info=datosMapaActual[depKey];
+  const cont=document.getElementById('mapa-detalle-depto');
+  if(!info||!info.exptes.length){cont.innerHTML='';return;}
+  cont.innerHTML=`<div class="card" style="margin:0">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:600">${nombreDep} <span style="font-size:12px;color:#888;font-weight:400">— ${info.total} expediente${info.total!==1?'s':''}</span></div>
+      <button class="btn sm" onclick="document.getElementById('mapa-detalle-depto').innerHTML=''">✕ Cerrar</button>
+    </div>
+    <div style="overflow-x:auto"><table><thead><tr><th>Expte.</th><th>Programa</th><th>Tema</th><th>Resp. Asig.</th></tr></thead>
+      <tbody>${info.exptes.map(({e,prog})=>`<tr>
+        <td style="font-weight:500;white-space:nowrap">${getExpte(e)||'—'}</td>
+        <td style="white-space:nowrap">${prog}</td>
+        <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${getTema(e)}">${getTema(e)||'—'}</td>
+        <td>${getRespAsig(e)||'—'}</td>
+      </tr>`).join('')}</tbody></table></div>
+  </div>`;
+  cont.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function interpolarColorLeaflet(t){
   const r=Math.round(230-(230-58)*t);
@@ -692,6 +762,8 @@ function interpolarColorLeaflet(t){
 async function renderMapa(){
   const filtroProg=document.getElementById('mapa-filtro-prog').value;
   const datos=getDatosMapaProg(filtroProg);
+  datosMapaActual=datos;
+  document.getElementById('mapa-detalle-depto').innerHTML='';
   const maxVal=Math.max(...Object.values(datos).map(d=>d.total),1);
   if(!leafletMap){
     leafletMap=L.map('mapa-leaflet',{zoomControl:true,scrollWheelZoom:false}).setView([-31.7,-58.8],7);
@@ -705,17 +777,19 @@ async function renderMapa(){
       style:feat=>{const nom=feat.properties.departamento||feat.properties.nombre||'';const info=datos[normalizar(nom)]||{total:0};const t=info.total/maxVal;return{fillColor:info.total>0?interpolarColorLeaflet(t):'#eef7e3',fillOpacity:0.8,color:'#5a9216',weight:1.2,opacity:0.8};},
       onEachFeature:(feat,layer)=>{
         const nom=feat.properties.departamento||feat.properties.nombre||'';
-        const info=datos[normalizar(nom)]||{total:0,porProg:{}};
+        const key=normalizar(nom);
+        const info=datos[key]||{total:0,porProg:{}};
         const lines=Object.entries(info.porProg).map(([p,n])=>`<b>${p}:</b> ${n}`).join('<br>');
-        layer.bindTooltip(`<div style="font-size:13px"><b>${nom}</b><br>Total: <b>${info.total}</b>${lines?'<br>'+lines:''}</div>`,{sticky:true,opacity:0.95});
+        layer.bindTooltip(`<div style="font-size:13px"><b>${nom}</b><br>Total: <b>${info.total}</b>${lines?'<br>'+lines:''}<br><span style="color:#8bc53f">Click para ver detalle</span></div>`,{sticky:true,opacity:0.95});
         layer.on('mouseover',function(){this.setStyle({fillOpacity:0.95,weight:2.5,color:'#3B6D11'});});
         layer.on('mouseout',function(){geojsonLayer.resetStyle(this);});
+        layer.on('click',function(){mostrarDetalleDepto(key,nom);});
       }
     }).addTo(leafletMap);
     leafletMap.fitBounds(geojsonLayer.getBounds(),{padding:[10,10]});
     setTimeout(()=>leafletMap.invalidateSize(),150);
     const sorted=Object.entries(datos).sort((a,b)=>b[1].total-a[1].total);
-    document.getElementById('mapa-tabla-depto').innerHTML=sorted.length?sorted.map(([dep,info])=>`<div style="display:flex;justify-content:space-between;padding:5px 8px;background:#f5f5f3;border-radius:6px;font-size:12px"><span>${dep.charAt(0)+dep.slice(1).toLowerCase()}</span><span style="font-weight:600;color:#5a9216">${info.total}</span></div>`).join(''):'<div style="color:#aaa;font-size:12px">Sin datos. Cargá expedientes con localidad/departamento en el Tema.</div>';
+    document.getElementById('mapa-tabla-depto').innerHTML=sorted.length?sorted.map(([dep,info])=>`<div onclick="mostrarDetalleDepto('${dep}','${dep.charAt(0)+dep.slice(1).toLowerCase()}')" style="display:flex;justify-content:space-between;padding:5px 8px;background:#f5f5f3;border-radius:6px;font-size:12px;cursor:pointer" onmouseover="this.style.background='#e6f2d5'" onmouseout="this.style.background='#f5f5f3'"><span>${dep.charAt(0)+dep.slice(1).toLowerCase()}</span><span style="font-weight:600;color:#5a9216">${info.total}</span></div>`).join(''):'<div style="color:#aaa;font-size:12px">Sin datos. Cargá expedientes con localidad/departamento en el Tema.</div>';
   }catch(err){document.getElementById('mapa-tabla-depto').innerHTML=`<div style="color:#A32D2D;font-size:12px">Error: ${err.message}</div>`;}
   const sel=document.getElementById('mapa-filtro-prog');const cur=sel.value;
   sel.innerHTML='<option value="">Todos los programas</option>'+getProgramas().map(p=>`<option value="${p}" ${p===cur?'selected':''}>${p}</option>`).join('');
