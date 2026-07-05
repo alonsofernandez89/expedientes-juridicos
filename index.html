@@ -318,42 +318,24 @@ const TIPOS_LIC={
   'Otro':{color:'#f3f4f6',texto:'#374151',icono:'📋'},
 };
 
-// Localidad -> Departamento (Entre Ríos). Las claves se normalizan (sin acentos) al detectar.
-const LOCALIDAD_DEPTO={
-  // PARANÁ
-  'parana':'Paraná','oro verde':'Paraná','san benito':'Paraná','viale':'Paraná','crespo':'Paraná','segui':'Paraná','hasenkamp':'Paraná','maria grande':'Paraná','cerrito':'Paraná','tabossi':'Paraná','hernandarias':'Paraná','villa urquiza':'Paraná','colonia avellaneda':'Paraná','sauce montrull':'Paraná','villa fontana':'Paraná','el pingo':'Paraná','las tunas':'Paraná','sosa':'Paraná','pueblo brugo':'Paraná','la picada':'Paraná','colonia crespo':'Paraná','aldea brasilera':'Paraná','aldea maria luisa':'Paraná','aldea san juan':'Paraná','aldea spatzenkutter':'Paraná','villa gobernador etchevehere':'Paraná',
-  // URUGUAY
-  'concepcion del uruguay':'Uruguay','c del uruguay':'Uruguay','basavilbaso':'Uruguay','caseros':'Uruguay','pronunciamiento':'Uruguay','herrera':'Uruguay','santa anita':'Uruguay','1 de mayo':'Uruguay','primero de mayo':'Uruguay','villa san marcial':'Uruguay','las moscas':'Uruguay','rocamora':'Uruguay',
-  // CONCORDIA
-  'concordia':'Concordia','la criolla':'Concordia','los charruas':'Concordia','pueblo belgrano':'Concordia','puerto yerua':'Concordia','general campos':'Concordia','colonia ayui':'Concordia','estacion yuqueri':'Concordia',
-  // GUALEGUAYCHÚ
-  'gualeguaychu':'Gualeguaychú','urdinarrain':'Gualeguaychú','larroque':'Gualeguaychú','gilbert':'Gualeguaychú','aldea san antonio':'Gualeguaychú','general almada':'Gualeguaychú','enrique carbo':'Gualeguaychú','irazusta':'Gualeguaychú','faustino m parera':'Gualeguaychú','pastor britos':'Gualeguaychú',
-  // GUALEGUAY
-  'gualeguay':'Gualeguay','general galarza':'Gualeguay','aldea asuncion':'Gualeguay','puerto ruiz':'Gualeguay',
-  // COLÓN
-  'colon':'Colón','san jose':'Colón','villa elisa':'Colón','ubajay':'Colón','arroyo baru':'Colón','liebig':'Colón','pueblo liebig':'Colón','colonia hugues':'Colón','hocker':'Colón','1 de mayo colon':'Colón',
-  // FEDERACIÓN
-  'federacion':'Federación','chajari':'Federación','santa ana':'Federación','villa del rosario':'Federación','san jaime':'Federación','san jaime de la frontera':'Federación','los conquistadores':'Federación','san pedro':'Federación','san ramon':'Federación','colonia alemana':'Federación',
-  // LA PAZ
-  'la paz':'La Paz','santa elena':'La Paz','bovril':'La Paz','san gustavo':'La Paz','piedras blancas':'La Paz','alcaraz':'La Paz','colonia avigdor':'La Paz','el solar':'La Paz',
-  // VILLAGUAY
-  'villaguay':'Villaguay','villa dominguez':'Villaguay','villa clara':'Villaguay','lucas gonzalez':'Villaguay','jubileo':'Villaguay','ingeniero sajaroff':'Villaguay','villa mantero':'Villaguay',
-  // NOGOYÁ
-  'nogoya':'Nogoyá','aranguren':'Nogoyá','hernandez':'Nogoyá','xx de septiembre':'Nogoyá','betbeder':'Nogoyá','don cristobal':'Nogoyá',
-  // VICTORIA
-  'victoria':'Victoria','rincon del doll':'Victoria',
-  // DIAMANTE
-  'diamante':'Diamante','general ramirez':'Diamante','ramirez':'Diamante','valle maria':'Diamante','aldea valle maria':'Diamante','aldea protestante':'Diamante','strobel':'Diamante','las cuevas':'Diamante','general alvear':'Diamante',
-  // TALA
-  'rosario del tala':'Tala','tala':'Tala','maciel':'Tala','gobernador mansilla':'Tala','mansilla':'Tala','guardamonte':'Tala','altamirano sur':'Tala',
-  // FEDERAL
-  'federal':'Federal','conscripto bernardi':'Federal','nueva vizcaya':'Federal','sauce de luna':'Federal','el cimarron':'Federal',
-  // FELICIANO
-  'san jose de feliciano':'Feliciano','feliciano':'Feliciano','san victor':'Feliciano',
-  // SAN SALVADOR
-  'san salvador':'San Salvador',
-  // ISLAS DEL IBICUY
-  'villa paranacito':'Islas del Ibicuy','ibicuy':'Islas del Ibicuy','ceibas':'Islas del Ibicuy','islas del ibicuy':'Islas del Ibicuy',
+const LOCALIDAD_DEPTO = {
+  "parana":"Paraná","oro verde":"Paraná","san benito":"Paraná","viale":"Paraná","crespo":"Paraná","segui":"Paraná","hasenkamp":"Paraná","maria grande":"Paraná","cerrito":"Paraná","tabossi":"Paraná","hernandarias":"Paraná","villa urquiza":"Paraná","colonia avellaneda":"Paraná","sauce montrull":"Paraná","el pingo":"Paraná","las tunas":"Paraná","pueblo brugo":"Paraná","la picada":"Paraná","aldea brasilera":"Paraná","aldea san juan":"Paraná",
+  "concepcion del uruguay":"Uruguay","basavilbaso":"Uruguay","caseros":"Uruguay","pronunciamiento":"Uruguay","herrera":"Uruguay","santa anita":"Uruguay","primero de mayo":"Uruguay","villa san marcial":"Uruguay","las moscas":"Uruguay","rocamora":"Uruguay",
+  "concordia":"Concordia","la criolla":"Concordia","los charruas":"Concordia","pueblo belgrano":"Concordia","puerto yerua":"Concordia","general campos":"Concordia","colonia ayui":"Concordia",
+  "gualeguaychu":"Gualeguaychú","urdinarrain":"Gualeguaychú","larroque":"Gualeguaychú","gilbert":"Gualeguaychú","aldea san antonio":"Gualeguaychú","general almada":"Gualeguaychú","enrique carbo":"Gualeguaychú","irazusta":"Gualeguaychú",
+  "gualeguay":"Gualeguay","general galarza":"Gualeguay","aldea asuncion":"Gualeguay","puerto ruiz":"Gualeguay",
+  "colon":"Colón","san jose":"Colón","villa elisa":"Colón","ubajay":"Colón","arroyo baru":"Colón","liebig":"Colón","pueblo liebig":"Colón","colonia hugues":"Colón","hocker":"Colón",
+  "federacion":"Federación","chajari":"Federación","santa ana":"Federación","villa del rosario":"Federación","san jaime":"Federación","los conquistadores":"Federación","san pedro":"Federación","san ramon":"Federación",
+  "la paz":"La Paz","santa elena":"La Paz","bovril":"La Paz","san gustavo":"La Paz","piedras blancas":"La Paz","alcaraz":"La Paz","colonia avigdor":"La Paz",
+  "villaguay":"Villaguay","villa dominguez":"Villaguay","villa clara":"Villaguay","lucas gonzalez":"Villaguay","jubileo":"Villaguay","ingeniero sajaroff":"Villaguay","villa mantero":"Villaguay",
+  "nogoya":"Nogoyá","aranguren":"Nogoyá","hernandez":"Nogoyá","betbeder":"Nogoyá","don cristobal":"Nogoyá",
+  "victoria":"Victoria","rincon del doll":"Victoria",
+  "diamante":"Diamante","general ramirez":"Diamante","ramirez":"Diamante","valle maria":"Diamante","aldea valle maria":"Diamante","aldea protestante":"Diamante","strobel":"Diamante","las cuevas":"Diamante","general alvear":"Diamante",
+  "rosario del tala":"Tala","tala":"Tala","maciel":"Tala","gobernador mansilla":"Tala","mansilla":"Tala","guardamonte":"Tala",
+  "federal":"Federal","conscripto bernardi":"Federal","nueva vizcaya":"Federal","sauce de luna":"Federal","el cimarron":"Federal",
+  "san jose de feliciano":"Feliciano","feliciano":"Feliciano","san victor":"Feliciano",
+  "san salvador":"San Salvador",
+  "villa paranacito":"Islas del Ibicuy","ibicuy":"Islas del Ibicuy","ceibas":"Islas del Ibicuy","islas del ibicuy":"Islas del Ibicuy"
 };
 
 function normTexto(s){
