@@ -776,7 +776,7 @@ function renderProgramas() {
   document.getElementById('prog-tabs').innerHTML=progs.map(p=>`<button class="tab ${p===programaActivo?'active':''}" onclick="switchPrograma('${p}')">${p}</button>`).join('');
   renderPrograma(programaActivo);
 }
-function switchPrograma(p){programaActivo=p;renderProgramas();}
+function switchPrograma(p) { programaActivo = p; renderProgramas(); }
 
 function renderPrograma(prog) {
   const exps=getExptesDeProg(prog);
