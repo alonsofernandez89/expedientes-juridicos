@@ -789,7 +789,10 @@ async function renderMapa(){
     leafletMap.fitBounds(geojsonLayer.getBounds(),{padding:[10,10]});
     setTimeout(()=>leafletMap.invalidateSize(),150);
     const sorted=Object.entries(datos).sort((a,b)=>b[1].total-a[1].total);
-    document.getElementById('mapa-tabla-depto').innerHTML=sorted.length?sorted.map(([dep,info])=>`<div onclick="mostrarDetalleDepto('${dep}','${dep.charAt(0)+dep.slice(1).toLowerCase()}')" style="display:flex;justify-content:space-between;padding:5px 8px;background:#f5f5f3;border-radius:6px;font-size:12px;cursor:pointer" onmouseover="this.style.background='#e6f2d5'" onmouseout="this.style.background='#f5f5f3'"><span>${dep.charAt(0)+dep.slice(1).toLowerCase()}</span><span style="font-weight:600;color:#5a9216">${info.total}</span></div>`).join(''):'<div style="color:#aaa;font-size:12px">Sin datos. Cargá expedientes con localidad/departamento en el Tema.</div>';
+    document.getElementById('mapa-tabla-depto').innerHTML=sorted.length?sorted.map(([dep,info])=>{
+      const nombreCap=dep.charAt(0)+dep.slice(1).toLowerCase();
+      return `<div onclick="mostrarDetalleDepto('${dep}','${nombreCap}')" style="display:flex;justify-content:space-between;padding:5px 8px;background:#f5f5f3;border-radius:6px;font-size:12px;cursor:pointer" onmouseover="this.style.background='#e6f2d5'" onmouseout="this.style.background='#f5f5f3'"><span>${nombreCap}</span><span style="font-weight:600;color:#5a9216">${info.total}</span></div>`;
+    }).join(''):'<div style="color:#aaa;font-size:12px">Sin datos. Cargá expedientes con localidad/departamento en el Tema.</div>';
   }catch(err){document.getElementById('mapa-tabla-depto').innerHTML=`<div style="color:#A32D2D;font-size:12px">Error: ${err.message}</div>`;}
   const sel=document.getElementById('mapa-filtro-prog');const cur=sel.value;
   sel.innerHTML='<option value="">Todos los programas</option>'+getProgramas().map(p=>`<option value="${p}" ${p===cur?'selected':''}>${p}</option>`).join('');
