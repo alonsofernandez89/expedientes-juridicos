@@ -404,15 +404,15 @@ async function cargar(){
     agentes=await api({method:'GET',hoja:'agentes'});
     programasData=await api({method:'GET',hoja:'programas'});
     agentes=agentes.map(a=>a.nombre).filter(Boolean);
-    try{licenciasData=await api({method:'GET',hoja:'licencias'});licenciasData=Array.isArray(licenciasData)?licenciasData.filter(l=>l.agente):[];}catch{licenciasData=[];}
+    try { licenciasData = await api({method:'GET',hoja:'licencias'}); licenciasData = Array.isArray(licenciasData) ? licenciasData.filter(function(l){return l.agente;}) : []; } catch(licErr) { licenciasData = []; }
     renderAll();
   }catch(e){
     document.getElementById('loading').innerHTML='❌ Error al conectar. Recargá con Ctrl+F5.';
   }
 }
 
-function fmt(d){if(!d)return'—';try{const dt=new Date(d);if(isNaN(dt))return d;return String(dt.getUTCDate()).padStart(2,'0')+'/'+String(dt.getUTCMonth()+1).padStart(2,'0')+'/'+dt.getUTCFullYear();}catch{return d;}}
-function toInput(d){if(!d)return'';try{const dt=new Date(d);if(isNaN(dt))return'';return dt.getUTCFullYear()+'-'+String(dt.getUTCMonth()+1).padStart(2,'0')+'-'+String(dt.getUTCDate()).padStart(2,'0');}catch{return'';}}
+function fmt(d){if(!d)return'—';try{const dt=new Date(d);if(isNaN(dt))return d;return String(dt.getUTCDate()).padStart(2,'0')+'/'+String(dt.getUTCMonth()+1).padStart(2,'0')+'/'+dt.getUTCFullYear();}catch(err){return d;}}
+function toInput(d){if(!d)return'';try{const dt=new Date(d);if(isNaN(dt))return'';return dt.getUTCFullYear()+'-'+String(dt.getUTCMonth()+1).padStart(2,'0')+'-'+String(dt.getUTCDate()).padStart(2,'0');}catch(err){return'';}}
 function getExpte(e){return e['expte.']||e['expte']||e['Expte.']||e['Expte']||'';}
 function estaEgresado(e){const s=e['salio']||e['salió']||e['Salio']||e['Salió']||'';return !!s&&s!==''&&s!=='—';}
 function getRespAsig(e){return e['resp. asig']||e['resp.asig']||e['resp asig']||e['Resp. Asig']||e['Resp. Asig.']||'';}
