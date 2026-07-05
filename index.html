@@ -3,20 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Registro de Expedientes – Asuntos Jurídicos</title>
+<title>Registro de Expedientes – DGAJ</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,sans-serif;background:#f5f5f3;color:#1a1a1a;min-height:100vh}
 .topbar{background:#fff;border-bottom:3px solid #8bc53f;padding:14px 24px;display:flex;align-items:center;gap:18px}
-.logo-er{display:flex;align-items:center;gap:10px}
 .logo-box{background:#8bc53f;border-radius:6px;padding:6px 9px;display:flex;align-items:center;justify-content:center}
 .logo-box span{color:#fff;font-weight:800;font-size:20px;letter-spacing:-1px;line-height:1}
 .logo-text{font-size:10px;font-weight:700;color:#6b6b6b;line-height:1.15;text-transform:uppercase}
 .topbar-divider{width:2px;height:42px;background:#8bc53f}
-.topbar-titles{line-height:1.25}
-.topbar-titles .t1{font-size:12px;font-weight:600;color:#6b6b6b;text-transform:uppercase;letter-spacing:.3px}
-.topbar-titles .t2{font-size:13px;font-weight:600;color:#3a3a3a}
+.topbar-titles .t2{font-size:14px;font-weight:600;color:#3a3a3a}
 .footer{text-align:center;padding:24px 16px;color:#999;font-size:13px;border-top:1px solid #e0e0d8;margin-top:32px}
 .footer a{color:#8bc53f;text-decoration:none}
 .container{max-width:1200px;margin:0 auto;padding:24px 16px}
@@ -74,19 +71,17 @@ tr:last-child td{border-bottom:none}
 .agente-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f0ee}
 .agente-item:last-child{border-bottom:none}
 #mapa-leaflet{width:100%;height:480px;border-radius:10px;overflow:hidden}
+.drop-zone{padding:16px;border:2px dashed #8bc53f;border-radius:8px;text-align:center;font-size:13px;color:#5a9216;background:#f7fbf0;transition:background .15s}
+.drop-zone.over{background:#e6f2d5}
 </style>
 </head>
 <body>
 
 <div class="topbar">
-  <div class="logo-er">
-    <div class="logo-box"><span>ER</span></div>
-    <div class="logo-text">Ministerio<br>de Desarrollo<br>Humano</div>
-  </div>
+  <div class="logo-box"><span>ER</span></div>
+  <div class="logo-text">Ministerio<br>de Desarrollo<br>Humano</div>
   <div class="topbar-divider"></div>
-  <div class="topbar-titles">
-    <div class="t2">Dirección General de Asuntos Jurídicos</div>
-  </div>
+  <div class="topbar-titles"><div class="t2">Dirección General de Asuntos Jurídicos</div></div>
 </div>
 
 <div class="container">
@@ -137,24 +132,15 @@ tr:last-child td{border-bottom:none}
 
   <!-- POR AGENTE -->
   <div class="section" id="tab-agentes">
-    <div class="card">
-      <div class="section-title">Carga de trabajo por agente</div>
-      <div id="agentes-lista"></div>
-    </div>
+    <div class="card"><div class="section-title">Carga de trabajo por agente</div><div id="agentes-lista"></div></div>
   </div>
 
   <!-- ANÁLISIS -->
   <div class="section" id="tab-analisis">
     <div class="metric-grid" id="metrics-analisis"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
-      <div class="card">
-        <div class="section-title">Expedientes por agente</div>
-        <div class="chart-wrap"><canvas id="chart-agentes"></canvas></div>
-      </div>
-      <div class="card">
-        <div class="section-title">Ingresos por mes</div>
-        <div class="chart-wrap"><canvas id="chart-meses"></canvas></div>
-      </div>
+      <div class="card"><div class="section-title">Expedientes por agente</div><div class="chart-wrap"><canvas id="chart-agentes"></canvas></div></div>
+      <div class="card"><div class="section-title">Ingresos por mes</div><div class="chart-wrap"><canvas id="chart-meses"></canvas></div></div>
     </div>
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
@@ -168,14 +154,8 @@ tr:last-child td{border-bottom:none}
       </div>
       <div class="chart-wrap" style="height:260px"><canvas id="chart-diario"></canvas></div>
       <div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px">
-        <div>
-          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#185FA5">📥 Ingresos por día</div>
-          <table><thead><tr><th>Fecha</th><th>Cantidad</th></tr></thead><tbody id="tbody-ingresos"></tbody></table>
-        </div>
-        <div>
-          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#F0A045">📤 Egresos por día</div>
-          <table><thead><tr><th>Fecha</th><th>Cantidad</th></tr></thead><tbody id="tbody-egresos"></tbody></table>
-        </div>
+        <div><div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#5a9216">📥 Ingresos por día</div><table><thead><tr><th>Fecha</th><th>Cantidad</th></tr></thead><tbody id="tbody-ingresos"></tbody></table></div>
+        <div><div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#854F0B">📤 Egresos por día</div><table><thead><tr><th>Fecha</th><th>Cantidad</th></tr></thead><tbody id="tbody-egresos"></tbody></table></div>
       </div>
     </div>
   </div>
@@ -198,17 +178,17 @@ tr:last-child td{border-bottom:none}
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
           <div class="section-title" style="margin:0">Distribución geográfica – Entre Ríos</div>
-          <select id="mapa-filtro-prog" onchange="renderMapa()" style="padding:7px 10px;font-size:13px;border:1px solid #d0d0c8;border-radius:8px;background:#fff">
-            <option value="">Todos los programas</option>
-          </select>
+          <select id="mapa-filtro-prog" onchange="renderMapa()" style="padding:7px 10px;font-size:13px;border:1px solid #d0d0c8;border-radius:8px;background:#fff"><option value="">Todos los programas</option></select>
         </div>
         <div id="mapa-leaflet"></div>
         <div style="margin-top:16px">
           <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#555">Expedientes por departamento</div>
           <div id="mapa-tabla-depto" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:4px"></div>
         </div>
-        <div style="margin-top:12px;padding:10px;background:#fafaf8;border-radius:8px;font-size:12px;color:#888;border:1px solid #e0e0d8">
-          💡 Formato en "Tema": <strong style="color:#555">Programa - Localidad - Departamento</strong> &nbsp;·&nbsp; Ej: <em>Juventud Emprende - Crespo - Paraná</em>
+        <div style="margin-top:16px;display:flex;align-items:center;gap:10px">
+          <div style="font-size:11px;color:#888">Sin datos</div>
+          <div style="width:120px;height:10px;border-radius:4px;background:linear-gradient(to right,#eef7e3,#3a731a)"></div>
+          <div style="font-size:11px;color:#888">Máximo</div>
         </div>
       </div>
     </div>
@@ -225,54 +205,8 @@ tr:last-child td{border-bottom:none}
         <button class="btn primary" onclick="abrirModalLicencia()">+ Nueva licencia</button>
       </div>
     </div>
-    <!-- Calendario -->
-    <div class="card" style="overflow-x:auto">
-      <div id="calendario-licencias"></div>
-    </div>
-    <!-- Resumen del mes -->
-    <div class="card" style="margin-top:0">
-      <div class="section-title">Resumen del mes</div>
-      <div id="resumen-licencias"></div>
-    </div>
-  </div>
-
-  <!-- MODAL LICENCIA -->
-  <div class="overlay" id="overlay-licencia">
-    <div class="modal">
-      <h3 id="lic-modal-title">Nueva licencia</h3>
-      <div class="form-grid">
-        <div class="fg full">
-          <label>Agente *</label>
-          <select id="lic-agente"><option value="">Seleccionar...</option></select>
-        </div>
-        <div class="fg">
-          <label>Tipo de licencia *</label>
-          <select id="lic-tipo">
-            <option value="Vacaciones">Vacaciones</option>
-            <option value="Estudio">Estudio</option>
-            <option value="Enfermedad">Enfermedad</option>
-            <option value="Maternidad/Paternidad">Maternidad/Paternidad</option>
-            <option value="Otro">Otro</option>
-          </select>
-        </div>
-        <div class="fg">
-          <label>Observación</label>
-          <input type="text" id="lic-obs" placeholder="Opcional">
-        </div>
-        <div class="fg">
-          <label>Fecha inicio *</label>
-          <input type="date" id="lic-desde">
-        </div>
-        <div class="fg">
-          <label>Fecha fin *</label>
-          <input type="date" id="lic-hasta">
-        </div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn" onclick="cerrarModalLicencia()">Cancelar</button>
-        <button class="btn primary" id="btn-guardar-lic" onclick="guardarLicencia()">Guardar</button>
-      </div>
-    </div>
+    <div class="card" style="overflow-x:auto"><div id="calendario-licencias"></div></div>
+    <div class="card"><div class="section-title">Resumen del mes</div><div id="resumen-licencias"></div></div>
   </div>
 
   <!-- CONFIG AGENTES -->
@@ -287,6 +221,8 @@ tr:last-child td{border-bottom:none}
     </div>
   </div>
 </div>
+
+<div class="footer">Dirección | Teléfono<br><a href="https://portal.entrerios.gov.ar/desarrollohumano" target="_blank">portal.entrerios.gov.ar/desarrollohumano</a></div>
 
 <!-- MODAL EXPEDIENTE -->
 <div class="overlay" id="overlay">
@@ -325,10 +261,7 @@ tr:last-child td{border-bottom:none}
 <div class="overlay" id="overlay-programa">
   <div class="modal">
     <h3>Nuevo programa</h3>
-    <div class="fg" style="margin-bottom:12px">
-      <label>Nombre del programa</label>
-      <input type="text" id="np-nombre" placeholder="Ej: Juventud Emprende">
-    </div>
+    <div class="fg" style="margin-bottom:12px"><label>Nombre del programa</label><input type="text" id="np-nombre" placeholder="Ej: Juventud Emprende"></div>
     <div class="modal-actions">
       <button class="btn" onclick="document.getElementById('overlay-programa').classList.remove('show')">Cancelar</button>
       <button class="btn primary" onclick="guardarPrograma()">Guardar</button>
@@ -336,9 +269,28 @@ tr:last-child td{border-bottom:none}
   </div>
 </div>
 
-<div class="footer">
-  Dirección | Teléfono<br>
-  <a href="https://portal.entrerios.gov.ar/desarrollohumano" target="_blank">portal.entrerios.gov.ar/desarrollohumano</a>
+<!-- MODAL LICENCIA -->
+<div class="overlay" id="overlay-licencia">
+  <div class="modal">
+    <h3 id="lic-modal-title">Nueva licencia</h3>
+    <div class="form-grid">
+      <div class="fg full"><label>Agente *</label><select id="lic-agente"><option value="">Seleccionar...</option></select></div>
+      <div class="fg"><label>Tipo *</label><select id="lic-tipo">
+        <option value="Vacaciones">Vacaciones</option>
+        <option value="Estudio">Estudio</option>
+        <option value="Enfermedad">Enfermedad</option>
+        <option value="Maternidad/Paternidad">Maternidad/Paternidad</option>
+        <option value="Otro">Otro</option>
+      </select></div>
+      <div class="fg"><label>Observación</label><input type="text" id="lic-obs" placeholder="Opcional"></div>
+      <div class="fg"><label>Fecha inicio *</label><input type="date" id="lic-desde"></div>
+      <div class="fg"><label>Fecha fin *</label><input type="date" id="lic-hasta"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="cerrarModalLicencia()">Cancelar</button>
+      <button class="btn primary" id="btn-guardar-lic" onclick="guardarLicencia()">Guardar</button>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -348,175 +300,159 @@ tr:last-child td{border-bottom:none}
 <script>
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwgUEdBMzhaINpHJgjqld989t3Mwi_TRNDbP1im5vkJrMZ4Ahm7eZIPa5nVRSCHiupp/exec';
 
-let expedientes = [];
-let agentes = [];
-let programasData = [];
-let programaActivo = null;
-let editIdx = null;
-let chartA = null, chartM = null, chartD = null;
-let sortCol = null, sortDir = 1;
-let leafletMap = null, geojsonLayer = null, geoCache = null;
-let licenciasData = [];
+let expedientes=[], agentes=[], programasData=[], licenciasData=[];
+let programaActivo=null, editIdx=null;
+let chartA=null, chartM=null, chartD=null;
+let sortCol=null, sortDir=1;
+let leafletMap=null, geojsonLayer=null, geoCache=null;
+let mesActual=new Date().getMonth(), anioActual=new Date().getFullYear();
+let progAsignar=null, asignarLista=[], asignarSeleccionado=null, dragExpteId=null;
 
-const PROGRAMAS_DEFAULT = ['Juventud Emprende','Juventud en el Centro','Juventud en la Comunidad'];
-const KEYWORDS = {
-  'Juventud Emprende': ['juventud emprende','emprende'],
-  'Juventud en el Centro': ['juventud en el centro','en el centro'],
-  'Juventud en la Comunidad': ['juventud en la comunidad','en la comunidad']
+const PROGRAMAS_DEFAULT=['Juventud Emprende','Juventud en el Centro','Juventud en la Comunidad'];
+const TIPOS_LIC={
+  'Vacaciones':{color:'#d1fae5',texto:'#065f46',icono:'🏖️'},
+  'Estudio':{color:'#dbeafe',texto:'#1e40af',icono:'📚'},
+  'Enfermedad':{color:'#fee2e2',texto:'#991b1b',icono:'🏥'},
+  'Maternidad/Paternidad':{color:'#fce7f3',texto:'#9d174d',icono:'👶'},
+  'Otro':{color:'#f3f4f6',texto:'#374151',icono:'📋'},
 };
 
-async function api(params, reintentos = 3) {
-  for (let intento = 0; intento < reintentos; intento++) {
-    try {
+// Localidad -> Departamento (principales de Entre Ríos)
+const LOCALIDAD_DEPTO={
+  'parana':'Paraná','oro verde':'Paraná','san benito':'Paraná','viale':'Paraná','crespo':'Paraná','segui':'Paraná','seguí':'Paraná','hasenkamp':'Paraná','maria grande':'Paraná','maría grande':'Paraná','cerrito':'Paraná','tabossi':'Paraná','hernandarias':'Paraná','villa urquiza':'Paraná','colonia avellaneda':'Paraná',
+  'concepcion del uruguay':'Uruguay','concepción del uruguay':'Uruguay','basavilbaso':'Uruguay','caseros':'Uruguay','pronunciamiento':'Uruguay','herrera':'Uruguay','santa anita':'Uruguay','1 de mayo':'Uruguay',
+  'concordia':'Concordia','la criolla':'Concordia','los charruas':'Concordia','los charrúas':'Concordia','pueblo belgrano':'Concordia','puerto yerua':'Concordia','general campos':'Concordia',
+  'gualeguaychu':'Gualeguaychú','gualeguaychú':'Gualeguaychú','urdinarrain':'Gualeguaychú','larroque':'Gualeguaychú','gilbert':'Gualeguaychú','aldea san antonio':'Gualeguaychú',
+  'gualeguay':'Gualeguay','general galarza':'Gualeguay','aldea asuncion':'Gualeguay','aldea asunción':'Gualeguay',
+  'colon':'Colón','colón':'Colón','san jose':'Colón','san josé':'Colón','villa elisa':'Colón','ubajay':'Colón','arroyo baru':'Colón','liebig':'Colón',
+  'federacion':'Federación','federación':'Federación','chajari':'Federación','chajarí':'Federación','santa ana':'Federación','villa del rosario':'Federación','san jaime':'Federación','los conquistadores':'Federación','san pedro':'Federación',
+  'la paz':'La Paz','santa elena':'La Paz','bovril':'La Paz','san gustavo':'La Paz','piedras blancas':'La Paz','alcaraz':'La Paz',
+  'villaguay':'Villaguay','villa dominguez':'Villaguay','villa domínguez':'Villaguay','villa clara':'Villaguay','lucas gonzalez':'Villaguay','lucas gonzález':'Villaguay',
+  'nogoya':'Nogoyá','nogoyá':'Nogoyá','aranguren':'Nogoyá','hernandez':'Nogoyá','hernández':'Nogoyá',
+  'victoria':'Victoria',
+  'diamante':'Diamante','general ramirez':'Diamante','general ramírez':'Diamante','ramirez':'Diamante','ramírez':'Diamante','valle maria':'Diamante','valle maría':'Diamante','aldea valle maria':'Diamante',
+  'rosario del tala':'Tala','tala':'Tala','maciel':'Tala','gobernador mansilla':'Tala','mansilla':'Tala',
+  'federal':'Federal','conscripto bernardi':'Federal','nueva vizcaya':'Federal','sauce de luna':'Federal',
+  'san jose de feliciano':'Feliciano','san josé de feliciano':'Feliciano','feliciano':'Feliciano','san victor':'Feliciano','san víctor':'Feliciano',
+  'san salvador':'San Salvador',
+  'villa paranacito':'Islas del Ibicuy','ibicuy':'Islas del Ibicuy','ceibas':'Islas del Ibicuy','islas del ibicuy':'Islas del Ibicuy',
+};
+
+function detectarProgramaYDepto(tema){
+  const t=(tema||'').toLowerCase();
+  let programa=null;
+  if(t.includes('emprende')) programa='Juventud Emprende';
+  else if(t.includes('en el centro')) programa='Juventud en el Centro';
+  else if((t.includes('comunidad')&&t.includes('juventud'))||t.includes('en comunidad')) programa='Juventud en la Comunidad';
+  let departamento=null;
+  for(const [loc,dep] of Object.entries(LOCALIDAD_DEPTO)){
+    const re=new RegExp('(^|[\\s\\-])'+loc.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'($|[\\s\\-])','i');
+    if(re.test(t)){departamento=dep;break;}
+  }
+  return {programa,departamento};
+}
+
+async function api(params, reintentos=3){
+  for(let i=0;i<reintentos;i++){
+    try{
       let r;
-      if (params.method === 'GET') {
-        r = await fetch(SCRIPT_URL + '?hoja=' + encodeURIComponent(params.hoja) + '&t=' + Date.now());
-      } else {
-        r = await fetch(SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(params)
-        });
-      }
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const text = await r.text();
-      try {
-        return JSON.parse(text);
-      } catch {
-        return params.method === 'GET' ? [] : {};
-      }
-    } catch (e) {
-      // Si falla, esperar un momento y reintentar
-      if (intento < reintentos - 1) {
-        await new Promise(res => setTimeout(res, 400 * (intento + 1)));
-      } else {
-        throw e;
-      }
+      if(params.method==='GET') r=await fetch(SCRIPT_URL+'?hoja='+encodeURIComponent(params.hoja)+'&t='+Date.now());
+      else r=await fetch(SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(params)});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const text=await r.text();
+      try{return JSON.parse(text);}catch{return params.method==='GET'?[]:{};}
+    }catch(e){
+      if(i<reintentos-1) await new Promise(res=>setTimeout(res,400*(i+1)));
+      else throw e;
     }
   }
 }
 
-async function cargar() {
-  document.getElementById('loading').style.display = 'block';
-  document.getElementById('tabla').style.display = 'none';
-  try {
-    // Llamadas secuenciales (no simultáneas) para evitar que Google rechace alguna
-    expedientes = await api({method:'GET', hoja:'expedientes'});
-    agentes = await api({method:'GET', hoja:'agentes'});
-    programasData = await api({method:'GET', hoja:'programas'});
-    agentes = agentes.map(a => a.nombre).filter(Boolean);
-    try { licenciasData = await api({method:'GET', hoja:'licencias'}); licenciasData = Array.isArray(licenciasData) ? licenciasData.filter(l => l.agente) : []; }
-    catch { licenciasData = []; }
+async function cargar(){
+  document.getElementById('loading').style.display='block';
+  document.getElementById('tabla').style.display='none';
+  try{
+    expedientes=await api({method:'GET',hoja:'expedientes'});
+    agentes=await api({method:'GET',hoja:'agentes'});
+    programasData=await api({method:'GET',hoja:'programas'});
+    agentes=agentes.map(a=>a.nombre).filter(Boolean);
+    try{licenciasData=await api({method:'GET',hoja:'licencias'});licenciasData=Array.isArray(licenciasData)?licenciasData.filter(l=>l.agente):[];}catch{licenciasData=[];}
     renderAll();
-  } catch(e) {
-    document.getElementById('loading').innerHTML = '❌ Error al conectar. Recargá la página (Ctrl+F5).';
+  }catch(e){
+    document.getElementById('loading').innerHTML='❌ Error al conectar. Recargá con Ctrl+F5.';
   }
 }
 
-function fmt(d) {
-  if (!d) return '—';
-  try {
-    const date = new Date(d);
-    if (isNaN(date)) return d;
-    const dd = String(date.getUTCDate()).padStart(2,'0');
-    const mm = String(date.getUTCMonth()+1).padStart(2,'0');
-    const yy = date.getUTCFullYear();
-    return `${dd}/${mm}/${yy}`;
-  } catch { return d; }
-}
-function toInput(d) {
-  if (!d) return '';
-  try {
-    const date = new Date(d);
-    if (isNaN(date)) return '';
-    const dd = String(date.getUTCDate()).padStart(2,'0');
-    const mm = String(date.getUTCMonth()+1).padStart(2,'0');
-    const yy = date.getUTCFullYear();
-    return `${yy}-${mm}-${dd}`;
-  } catch { return ''; }
-}
+function fmt(d){if(!d)return'—';try{const dt=new Date(d);if(isNaN(dt))return d;return String(dt.getUTCDate()).padStart(2,'0')+'/'+String(dt.getUTCMonth()+1).padStart(2,'0')+'/'+dt.getUTCFullYear();}catch{return d;}}
+function toInput(d){if(!d)return'';try{const dt=new Date(d);if(isNaN(dt))return'';return dt.getUTCFullYear()+'-'+String(dt.getUTCMonth()+1).padStart(2,'0')+'-'+String(dt.getUTCDate()).padStart(2,'0');}catch{return'';}}
 function getExpte(e){return e['expte.']||e['expte']||e['Expte.']||e['Expte']||'';}
-function estaEgresado(e){const s=e['salio']||e['salió']||e['Salio']||e['Salió']||'';return !!s&&s!=='';}
+function estaEgresado(e){const s=e['salio']||e['salió']||e['Salio']||e['Salió']||'';return !!s&&s!==''&&s!=='—';}
 function getRespAsig(e){return e['resp. asig']||e['resp.asig']||e['resp asig']||e['Resp. Asig']||e['Resp. Asig.']||'';}
 function getTema(e){return e['tema']||e['Tema']||'';}
 function getIniciador(e){return e['iniciador']||e['Iniciador']||'';}
 function getReparto(e){return e['reparto']||e['Reparto']||'';}
-function getSalio(e){return e['salio']||e['salió']||e['Salio']||e['Salió']||'';}
-function normalizar(s){return (s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
+function getSalio(e){const s=e['salio']||e['salió']||e['Salio']||e['Salió']||'';return s==='—'?'':s;}
+function normalizar(s){return(s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
 function dias(a,b){if(!a||!b)return null;const da=new Date(toInput(a)),db=new Date(toInput(b));return Math.round((db-da)/86400000);}
-function initials(s){return (s||'?').slice(0,2).toUpperCase();}
-function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+function initials(s){return(s||'?').slice(0,2).toUpperCase();}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
 
-function switchTab(t) {
-  document.querySelectorAll('.container > .tabs > .tab').forEach((el,i) => {
-    el.classList.toggle('active', ['registro','agentes','analisis','programas','licencias','config'][i] === t);
-  });
-  document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+function switchTab(t){
+  document.querySelectorAll('.container > .tabs > .tab').forEach((el,i)=>{el.classList.toggle('active',['registro','agentes','analisis','programas','licencias','config'][i]===t);});
+  document.querySelectorAll('.section').forEach(el=>el.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
-  if (t === 'analisis') { setTimeout(renderCharts, 50); setTimeout(renderDiario, 80); }
-  if (t === 'agentes') renderPorAgente();
-  if (t === 'config') renderConfigAgentes();
-  if (t === 'licencias') renderLicencias();
-  if (t === 'programas') renderProgramas();
+  if(t==='analisis'){setTimeout(renderCharts,50);setTimeout(renderDiario,80);}
+  if(t==='agentes')renderPorAgente();
+  if(t==='config')renderConfigAgentes();
+  if(t==='programas')renderProgramas();
+  if(t==='licencias')renderLicencias();
+}
+function switchSubTab(t){
+  document.querySelectorAll('#prog-subtabs .tab').forEach((el,i)=>{el.classList.toggle('active',['lista','mapa'][i]===t);});
+  document.getElementById('subprog-lista').style.display=t==='lista'?'block':'none';
+  document.getElementById('subprog-mapa').style.display=t==='mapa'?'block':'none';
+  if(t==='mapa')setTimeout(renderMapa,100);
 }
 
-function switchSubTab(t) {
-  document.querySelectorAll('#prog-subtabs .tab').forEach((el,i) => {
-    el.classList.toggle('active', ['lista','mapa'][i] === t);
-  });
-  document.getElementById('subprog-lista').style.display = t==='lista' ? 'block' : 'none';
-  document.getElementById('subprog-mapa').style.display  = t==='mapa'  ? 'block' : 'none';
-  if (t==='mapa') setTimeout(renderMapa, 100);
-}
-
-function renderMetrics(target) {
-  const total = expedientes.length;
-  const egresados = expedientes.filter(e => estaEgresado(e)).length;
-  const enDir = total - egresados;
-  document.getElementById(target).innerHTML = `
+function renderMetrics(target){
+  const total=expedientes.length;
+  const egresados=expedientes.filter(e=>estaEgresado(e)).length;
+  const enDir=total-egresados;
+  document.getElementById(target).innerHTML=`
     <div class="metric"><div class="lbl">Total ingresados</div><div class="val">${total}</div></div>
     <div class="metric"><div class="lbl">En la Dirección</div><div class="val blue">${enDir}</div></div>
     <div class="metric"><div class="lbl">Egresados</div><div class="val green">${egresados}</div></div>
     <div class="metric"><div class="lbl">Agentes activos</div><div class="val amber">${agentes.length}</div></div>`;
 }
 
-function getValorOrden(e, col) {
-  switch(col) {
-    case 'expte': return getExpte(e).toLowerCase();
-    case 'iniciador': return getIniciador(e).toLowerCase();
-    case 'ingreso': return toInput(e.ingreso||e.Ingreso)||'';
-    case 'reparto': return toInput(getReparto(e))||'';
-    case 'agente': return getRespAsig(e).toLowerCase();
-    case 'tema': return getTema(e).toLowerCase();
-    case 'estado': return estaEgresado(e)?'z':'a';
-    case 'salio': return toInput(getSalio(e))||'';
-    default: return '';
+function getValorOrden(e,col){
+  switch(col){
+    case 'expte':return String(getExpte(e)).toLowerCase();
+    case 'iniciador':return getIniciador(e).toLowerCase();
+    case 'ingreso':return toInput(e.ingreso||e.Ingreso)||'';
+    case 'reparto':return toInput(getReparto(e))||'';
+    case 'agente':return getRespAsig(e).toLowerCase();
+    case 'tema':return getTema(e).toLowerCase();
+    case 'estado':return estaEgresado(e)?'z':'a';
+    case 'salio':return toInput(getSalio(e))||'';
+    default:return '';
   }
 }
-function ordenarPor(col) {
-  if (sortCol===col) sortDir*=-1; else { sortCol=col; sortDir=1; }
-  renderTabla();
-}
+function ordenarPor(col){if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=1;}renderTabla();}
 
-function renderTabla() {
-  const buscar = document.getElementById('f-buscar').value.toLowerCase();
-  const agente = document.getElementById('f-agente').value;
-  const estado = document.getElementById('f-estado').value;
-  let filtrado = expedientes.filter(e => {
-    const egr = estaEgresado(e);
-    const matchEstado = !estado || (estado==='egresado'&&egr) || (estado==='en_direccion'&&!egr);
-    const matchAgente = !agente || getRespAsig(e)===agente;
-    const todoTexto = Object.values(e).join(' ').toLowerCase();
-    const matchBuscar = !buscar || todoTexto.includes(buscar);
-    return matchEstado && matchAgente && matchBuscar;
+function renderTabla(){
+  const buscar=document.getElementById('f-buscar').value.toLowerCase();
+  const agente=document.getElementById('f-agente').value;
+  const estado=document.getElementById('f-estado').value;
+  let filtrado=expedientes.filter(e=>{
+    const egr=estaEgresado(e);
+    const mE=!estado||(estado==='egresado'&&egr)||(estado==='en_direccion'&&!egr);
+    const mA=!agente||getRespAsig(e)===agente;
+    const mB=!buscar||Object.values(e).join(' ').toLowerCase().includes(buscar);
+    return mE&&mA&&mB;
   });
-  if (sortCol) {
-    filtrado.sort((a,b)=>{const va=getValorOrden(a,sortCol),vb=getValorOrden(b,sortCol);return va<vb?-sortDir:va>vb?sortDir:0;});
-  }
-  ['expte','iniciador','ingreso','reparto','agente','tema','estado','salio'].forEach(c=>{
-    const el=document.getElementById('sort-'+c);
-    if(el) el.textContent=sortCol===c?(sortDir===1?'▲':'▼'):'';
-  });
+  if(sortCol)filtrado.sort((a,b)=>{const va=getValorOrden(a,sortCol),vb=getValorOrden(b,sortCol);return va<vb?-sortDir:va>vb?sortDir:0;});
+  ['expte','iniciador','ingreso','reparto','agente','tema','estado','salio'].forEach(c=>{const el=document.getElementById('sort-'+c);if(el)el.textContent=sortCol===c?(sortDir===1?'▲':'▼'):'';});
   document.getElementById('loading').style.display='none';
   document.getElementById('no-results').style.display=filtrado.length?'none':'block';
   document.getElementById('tabla').style.display=filtrado.length?'table':'none';
@@ -534,277 +470,155 @@ function renderTabla() {
       <td style="white-space:nowrap">
         <button class="btn sm" onclick="abrirModal(${expedientes.indexOf(e)})">✏️</button>
         <button class="btn sm danger" onclick="eliminar(${expedientes.indexOf(e)})">🗑️</button>
-        <button class="btn sm" style="color:#185FA5;border-color:#185FA5" onclick="consultarExpte('${getExpte(e)}')" title="Consultar en sistema provincial">🔍</button>
+        <button class="btn sm" style="color:#5a9216;border-color:#5a9216" onclick="consultarExpte('${getExpte(e)}')" title="Consultar en sistema provincial">🔍</button>
       </td>
     </tr>`;
   }).join('');
 }
 
-function consultarExpte(nro) {
-  if (!nro) { alert('Este expediente no tiene número cargado.'); return; }
-  const soloNumeros = String(nro).replace(/\D/g,'');
-  if (!soloNumeros) { alert('No se pudo extraer el número.'); return; }
-  window.open('https://apps2.entrerios.gov.ar/consulta/expedientes/#/ver?nro='+soloNumeros, '_blank');
+function consultarExpte(nro){
+  if(!nro){alert('Sin número cargado.');return;}
+  const s=String(nro).replace(/\D/g,'');
+  if(!s){alert('No se pudo extraer el número.');return;}
+  window.open('https://apps2.entrerios.gov.ar/consulta/expedientes/#/ver?nro='+s,'_blank');
 }
 
-function renderPorAgente() {
-  const max = Math.max(...agentes.map(a=>expedientes.filter(e=>getRespAsig(e)===a).length),1);
-  document.getElementById('agentes-lista').innerHTML = agentes.map(a=>{
+function renderPorAgente(){
+  const max=Math.max(...agentes.map(a=>expedientes.filter(e=>getRespAsig(e)===a).length),1);
+  document.getElementById('agentes-lista').innerHTML=agentes.map(a=>{
     const total=expedientes.filter(e=>getRespAsig(e)===a).length;
     const enDir=expedientes.filter(e=>getRespAsig(e)===a&&!estaEgresado(e)).length;
     const egr=total-enDir;
     const pct=Math.round(total/max*100);
-    return `<div class="agent-row">
-      <div class="avatar">${initials(a)}</div>
-      <div class="bar-wrap">
-        <div class="bar-label">
-          <span style="font-size:13px;color:#1a1a1a;font-weight:500">${a}</span>
-          <span>${total} total &nbsp;·&nbsp; <span style="color:#185FA5">${enDir} en dirección</span> &nbsp;·&nbsp; <span style="color:#888">${egr} egresados</span></span>
-        </div>
-        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
-      </div>
-    </div>`;
-  }).join('') || '<div class="alert">No hay agentes configurados.</div>';
+    return `<div class="agent-row"><div class="avatar">${initials(a)}</div><div class="bar-wrap">
+      <div class="bar-label"><span style="font-size:13px;color:#1a1a1a;font-weight:500">${a}</span><span>${total} total · <span style="color:#5a9216">${enDir} en dir.</span> · <span style="color:#888">${egr} egres.</span></span></div>
+      <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div></div></div>`;
+  }).join('')||'<div class="alert">No hay agentes configurados.</div>';
 }
 
-function renderCharts() {
+function renderCharts(){
   const counts=agentes.map(a=>expedientes.filter(e=>getRespAsig(e)===a).length);
   const enDir=agentes.map(a=>expedientes.filter(e=>getRespAsig(e)===a&&!estaEgresado(e)).length);
   const meses={};
   expedientes.forEach(e=>{const raw=toInput(e.ingreso||e.Ingreso);if(raw){const m=raw.slice(0,7);meses[m]=(meses[m]||0)+1;}});
-  const mKeys=Object.keys(meses).sort();
-  const mLabels=mKeys.map(k=>{const[y,m]=k.split('-');return['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][+m-1]+' '+y.slice(2);});
-  if(chartA)chartA.destroy();
-  if(chartM)chartM.destroy();
-  chartA=new Chart(document.getElementById('chart-agentes'),{
-    type:'bar',
-    data:{labels:agentes.map(a=>a.split(',')[0]),datasets:[
-      {label:'En Dirección',data:enDir,backgroundColor:'#378ADD'},
-      {label:'Egresados',data:counts.map((t,i)=>t-enDir[i]),backgroundColor:'#B4B2A9'}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{font:{size:11}}},y:{stacked:true,beginAtZero:true,ticks:{stepSize:1}}}}
-  });
-  chartM=new Chart(document.getElementById('chart-meses'),{
-    type:'line',
-    data:{labels:mLabels,datasets:[{label:'Ingresos',data:mKeys.map(k=>meses[k]),borderColor:'#185FA5',backgroundColor:'rgba(55,138,221,0.1)',fill:true,tension:.3,pointRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:11},maxRotation:45,autoSkip:false}},y:{beginAtZero:true,ticks:{stepSize:1}}}}
-  });
+  const mK=Object.keys(meses).sort();
+  const mL=mK.map(k=>{const[y,m]=k.split('-');return['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][+m-1]+' '+y.slice(2);});
+  if(chartA)chartA.destroy();if(chartM)chartM.destroy();
+  chartA=new Chart(document.getElementById('chart-agentes'),{type:'bar',data:{labels:agentes.map(a=>a.split(',')[0]),datasets:[{label:'En Dir.',data:enDir,backgroundColor:'#8bc53f'},{label:'Egres.',data:counts.map((t,i)=>t-enDir[i]),backgroundColor:'#B4B2A9'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{font:{size:11}}},y:{stacked:true,beginAtZero:true,ticks:{stepSize:1}}}}});
+  chartM=new Chart(document.getElementById('chart-meses'),{type:'line',data:{labels:mL,datasets:[{label:'Ingresos',data:mK.map(k=>meses[k]),borderColor:'#5a9216',backgroundColor:'rgba(139,197,63,0.15)',fill:true,tension:.3,pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:11},maxRotation:45,autoSkip:false}},y:{beginAtZero:true,ticks:{stepSize:1}}}}});
 }
 
-function renderDiario() {
+function renderDiario(){
   const desde=document.getElementById('f-desde').value;
   const hasta=document.getElementById('f-hasta').value;
-  const ing_dias={}, egr_dias={};
+  const ing={},egr={};
   expedientes.forEach(e=>{
-    const ing=toInput(e.ingreso||e.Ingreso);
-    const sal=toInput(getSalio(e));
-    if(ing&&(!desde||ing>=desde)&&(!hasta||ing<=hasta)) ing_dias[ing]=(ing_dias[ing]||0)+1;
-    if(sal&&sal.length===10&&(!desde||sal>=desde)&&(!hasta||sal<=hasta)) egr_dias[sal]=(egr_dias[sal]||0)+1;
+    const i=toInput(e.ingreso||e.Ingreso),s=toInput(getSalio(e));
+    if(i&&(!desde||i>=desde)&&(!hasta||i<=hasta))ing[i]=(ing[i]||0)+1;
+    if(s&&s.length===10&&(!desde||s>=desde)&&(!hasta||s<=hasta))egr[s]=(egr[s]||0)+1;
   });
-  const todas=[...new Set([...Object.keys(ing_dias),...Object.keys(egr_dias)])].sort();
+  const todas=[...new Set([...Object.keys(ing),...Object.keys(egr)])].sort();
   if(!todas.length){
     document.getElementById('tbody-ingresos').innerHTML='<tr><td colspan="2" style="text-align:center;color:#888">Sin datos.</td></tr>';
     document.getElementById('tbody-egresos').innerHTML='<tr><td colspan="2" style="text-align:center;color:#888">Sin datos.</td></tr>';
-    if(chartD){chartD.destroy();chartD=null;}
-    return;
+    if(chartD){chartD.destroy();chartD=null;}return;
   }
-  const labels=todas.map(f=>fmt(f));
   if(chartD)chartD.destroy();
-  chartD=new Chart(document.getElementById('chart-diario'),{
-    type:'bar',
-    data:{labels,datasets:[
-      {label:'Ingresos',data:todas.map(f=>ing_dias[f]||0),backgroundColor:'#378ADD'},
-      {label:'Egresos',data:todas.map(f=>egr_dias[f]||0),backgroundColor:'#F0A045'}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top'}},scales:{x:{ticks:{font:{size:11},maxRotation:45,autoSkip:true}},y:{beginAtZero:true,ticks:{stepSize:1}}}}
-  });
-  const ingF=Object.keys(ing_dias).sort(), egrF=Object.keys(egr_dias).sort();
-  document.getElementById('tbody-ingresos').innerHTML=ingF.length?ingF.map(f=>`<tr><td style="white-space:nowrap">${fmt(f)}</td><td style="color:#185FA5;font-weight:600">${ing_dias[f]}</td></tr>`).join(''):'<tr><td colspan="2" style="text-align:center;color:#888">Sin ingresos.</td></tr>';
-  document.getElementById('tbody-egresos').innerHTML=egrF.length?egrF.map(f=>`<tr><td style="white-space:nowrap">${fmt(f)}</td><td style="color:#F0A045;font-weight:600">${egr_dias[f]}</td></tr>`).join(''):'<tr><td colspan="2" style="text-align:center;color:#888">Sin egresos.</td></tr>';
+  chartD=new Chart(document.getElementById('chart-diario'),{type:'bar',data:{labels:todas.map(f=>fmt(f)),datasets:[{label:'Ingresos',data:todas.map(f=>ing[f]||0),backgroundColor:'#8bc53f'},{label:'Egresos',data:todas.map(f=>egr[f]||0),backgroundColor:'#F0A045'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top'}},scales:{x:{ticks:{font:{size:11},maxRotation:45,autoSkip:true}},y:{beginAtZero:true,ticks:{stepSize:1}}}}});
+  const iF=Object.keys(ing).sort(),eF=Object.keys(egr).sort();
+  document.getElementById('tbody-ingresos').innerHTML=iF.length?iF.map(f=>`<tr><td style="white-space:nowrap">${fmt(f)}</td><td style="color:#5a9216;font-weight:600">${ing[f]}</td></tr>`).join(''):'<tr><td colspan="2" style="text-align:center;color:#888">Sin ingresos.</td></tr>';
+  document.getElementById('tbody-egresos').innerHTML=eF.length?eF.map(f=>`<tr><td style="white-space:nowrap">${fmt(f)}</td><td style="color:#854F0B;font-weight:600">${egr[f]}</td></tr>`).join(''):'<tr><td colspan="2" style="text-align:center;color:#888">Sin egresos.</td></tr>';
 }
 
-// ── LICENCIAS ────────────────────────────────────────────
-let mesActual = new Date().getMonth();
-let anioActual = new Date().getFullYear();
-let editLicId = null;
-
-const TIPOS_LIC = {
-  'Vacaciones':           {color:'#d1fae5', texto:'#065f46', icono:'🏖️'},
-  'Estudio':              {color:'#dbeafe', texto:'#1e40af', icono:'📚'},
-  'Enfermedad':           {color:'#fee2e2', texto:'#991b1b', icono:'🏥'},
-  'Maternidad/Paternidad':{color:'#fce7f3', texto:'#9d174d', icono:'👶'},
-  'Otro':                 {color:'#f3f4f6', texto:'#374151', icono:'📋'},
-};
-
-function cambiarMes(dir) {
-  mesActual += dir;
-  if (mesActual > 11) { mesActual = 0; anioActual++; }
-  if (mesActual < 0)  { mesActual = 11; anioActual--; }
-  renderLicencias();
+// ── PROGRAMAS ──
+function getProgramas(){
+  const n=[...new Set(programasData.map(p=>p.programa).filter(Boolean))];
+  PROGRAMAS_DEFAULT.forEach(p=>{if(!n.includes(p))n.push(p);});
+  return n;
 }
-
-function renderLicencias() {
-  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const diasSem = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-  document.getElementById('mes-label').textContent = `${meses[mesActual]} ${anioActual}`;
-  const ultimoDia = new Date(anioActual, mesActual + 1, 0);
-  const totalDias = ultimoDia.getDate();
-
-  const licMes = licenciasData.filter(l => {
-    if (!l.desde || !l.hasta) return false;
-    const d = new Date(toInput(l.desde)), h = new Date(toInput(l.hasta));
-    const ini = new Date(anioActual, mesActual, 1), fin = new Date(anioActual, mesActual + 1, 0);
-    return d <= fin && h >= ini;
-  });
-
-  function getLic(agente, dia) {
-    const fecha = new Date(anioActual, mesActual, dia);
-    return licMes.find(l => {
-      if (l.agente !== agente) return false;
-      const d = new Date(toInput(l.desde)), h = new Date(toInput(l.hasta));
-      return fecha >= d && fecha <= h;
-    });
-  }
-
-  const numDias = Array.from({length:totalDias}, (_,i) => i+1);
-  const hoy = new Date();
-
-  let html = `<div style="overflow-x:auto"><table style="min-width:${100+totalDias*34}px;font-size:12px">
-    <thead><tr>
-      <th style="min-width:110px;position:sticky;left:0;background:#fafaf8;z-index:2">Agente</th>
-      ${numDias.map(d=>{
-        const f=new Date(anioActual,mesActual,d);
-        const finde=f.getDay()===0||f.getDay()===6;
-        const esHoy=f.toDateString()===hoy.toDateString();
-        return `<th style="width:34px;text-align:center;padding:4px 2px;${finde?'background:#f0f0ee;':''}${esHoy?'background:#d9edb8;':''}"><div style="font-size:9px;color:#aaa">${diasSem[f.getDay()]}</div><div>${d}</div></th>`;
-      }).join('')}
-    </tr></thead>
-    <tbody>
-      ${agentes.map(ag=>`<tr>
-        <td style="font-weight:500;position:sticky;left:0;background:#fff;z-index:1;border-right:1px solid #e0e0d8">${ag}</td>
-        ${numDias.map(d=>{
-          const f=new Date(anioActual,mesActual,d);
-          const finde=f.getDay()===0||f.getDay()===6;
-          const lic=getLic(ag,d);
-          const tipo=lic?(TIPOS_LIC[lic.tipo]||TIPOS_LIC['Otro']):null;
-          return `<td style="text-align:center;padding:2px;${finde?'background:#f9f9f7;':''}${tipo?`background:${tipo.color};`:''}cursor:${tipo?'pointer':'default'}" title="${tipo?`${lic.tipo}${lic.obs?' - '+lic.obs:''}`:''}" ${tipo?`onclick="eliminarLicencia(${lic._fila},'${ag.replace(/'/g,"")}')"`:''}>${tipo?tipo.icono:''}</td>`;
-        }).join('')}
-      </tr>`).join('')}
-    </tbody></table></div>`;
-
-  html += `<div style="margin-top:12px">${Object.entries(TIPOS_LIC).map(([t,v])=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:12px;background:${v.color};color:${v.texto};margin:3px">${v.icono} ${t}</span>`).join('')}</div>`;
-
-  document.getElementById('calendario-licencias').innerHTML = agentes.length ? html : '<div class="alert">No hay agentes configurados.</div>';
-
-  // Resumen
-  const resumen = agentes.map(ag=>{
-    const lics=licMes.filter(l=>l.agente===ag);
-    const enLicHoy=hoy.getMonth()===mesActual&&hoy.getFullYear()===anioActual&&getLic(ag,hoy.getDate());
-    return {ag,lics,enLicHoy};
-  });
-  document.getElementById('resumen-licencias').innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
-    ${resumen.map(({ag,lics,enLicHoy})=>`<div style="padding:12px;border-radius:8px;border:1px solid ${enLicHoy?'#8bc53f':'#e0e0d8'};background:${enLicHoy?'#f0f7e6':'#fff'}">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <div class="avatar" style="width:28px;height:28px;font-size:11px">${initials(ag)}</div>
-        <span style="font-size:13px;font-weight:500">${ag}</span>
-        ${enLicHoy?'<span style="font-size:10px;background:#8bc53f;color:#fff;padding:1px 6px;border-radius:999px">HOY</span>':''}
-      </div>
-      ${lics.length?lics.map(l=>`<div style="font-size:11px;color:#555;margin-top:4px">${TIPOS_LIC[l.tipo]?.icono||'📋'} ${l.tipo}: ${fmt(l.desde)} → ${fmt(l.hasta)}</div>`).join(''):'<div style="font-size:11px;color:#aaa">Sin licencias este mes</div>'}
-    </div>`).join('')}
-  </div>`;
-}
-
-function abrirModalLicencia(id=null) {
-  editLicId = id;
-  document.getElementById('lic-modal-title').textContent = id ? 'Editar licencia' : 'Nueva licencia';
-  document.getElementById('lic-agente').innerHTML = '<option value="">Seleccionar...</option>' + agentes.map(a=>`<option value="${a}">${a}</option>`).join('');
-  document.getElementById('lic-agente').value = '';
-  document.getElementById('lic-tipo').value = 'Vacaciones';
-  document.getElementById('lic-obs').value = '';
-  document.getElementById('lic-desde').value = '';
-  document.getElementById('lic-hasta').value = '';
-  document.getElementById('overlay-licencia').classList.add('show');
-}
-function cerrarModalLicencia() { document.getElementById('overlay-licencia').classList.remove('show'); }
-
-async function guardarLicencia() {
-  const agente = document.getElementById('lic-agente').value;
-  const tipo = document.getElementById('lic-tipo').value;
-  const desde = document.getElementById('lic-desde').value;
-  const hasta = document.getElementById('lic-hasta').value;
-  if (!agente || !desde || !hasta) { alert('Completá agente, fecha inicio y fecha fin.'); return; }
-  if (desde > hasta) { alert('La fecha de inicio no puede ser posterior a la fecha fin.'); return; }
-  const datos = { agente, tipo, desde:fmt(desde), hasta:fmt(hasta), obs:document.getElementById('lic-obs').value };
-  const btn = document.getElementById('btn-guardar-lic');
-  btn.disabled = true; btn.textContent = 'Guardando...';
-  try {
-    await api({accion:'agregar', hoja:'licencias', datos});
-    licenciasData = await api({method:'GET', hoja:'licencias'});
-    licenciasData = Array.isArray(licenciasData) ? licenciasData.filter(l => l.agente) : [];
-    cerrarModalLicencia();
-    renderLicencias();
-    toast('Licencia guardada ✓');
-  } catch(e) { alert('Error: ' + e.message); }
-  btn.disabled = false; btn.textContent = 'Guardar';
-}
-
-async function eliminarLicencia(fila, agente) {
-  if (!confirm(`¿Eliminás esta licencia de ${agente}?`)) return;
-  try {
-    await api({accion:'eliminar', hoja:'licencias', datos:{_fila:fila}});
-    licenciasData = licenciasData.filter(l => l._fila !== fila);
-    renderLicencias();
-    toast('Licencia eliminada ✓');
-  } catch(e) { alert('Error: ' + e.message); }
-}
-// ── FIN LICENCIAS ─────────────────────────────────────────
-
-function getProgramas() {
-  const nombres=[...new Set(programasData.map(p=>p.programa).filter(Boolean))];
-  PROGRAMAS_DEFAULT.forEach(p=>{if(!nombres.includes(p))nombres.push(p);});
-  return nombres;
-}
-function getExptesDeProg(prog) {
-  const manuales=programasData.filter(p=>p.programa===prog&&p.expte).map(p=>String(p.expte).trim());
-  const todos=[...new Set(manuales)];
+function getExptesDeProg(prog){
+  const man=programasData.filter(p=>p.programa===prog&&p.expte).map(p=>String(p.expte).trim());
+  const todos=[...new Set(man)];
   return expedientes.filter(e=>todos.includes(String(getExpte(e)).trim()));
 }
-
-function renderProgramas() {
-  const progs=getProgramas();
-  if(!programaActivo||!progs.includes(programaActivo)) programaActivo=progs[0];
-  document.getElementById('prog-tabs').innerHTML=progs.map(p=>`<button class="tab ${p===programaActivo?'active':''}" onclick="switchPrograma('${p}')">${p}</button>`).join('');
-  renderPrograma(programaActivo);
+function getSinAsignar(){
+  const asignados=new Set();
+  programasData.forEach(p=>{if(p.expte)asignados.add(String(p.expte).trim());});
+  return expedientes.filter(e=>{
+    const t=getTema(e).toLowerCase();
+    const menciona=t.includes('programa')||t.includes('emprende')||t.includes('juventud');
+    return menciona&&!asignados.has(String(getExpte(e)).trim());
+  });
 }
-function switchPrograma(p) { programaActivo = p; renderProgramas(); }
 
-function renderPrograma(prog) {
+function renderProgramas(){
+  const progs=getProgramas();
+  if(!programaActivo||(!progs.includes(programaActivo)&&programaActivo!=='__sin__'))programaActivo=progs[0];
+  document.getElementById('prog-tabs').innerHTML=
+    progs.map(p=>`<button class="tab ${p===programaActivo?'active':''}" onclick="switchPrograma('${p.replace(/'/g,'')}')">${p}</button>`).join('')+
+    `<button class="tab ${programaActivo==='__sin__'?'active':''}" onclick="switchPrograma('__sin__')" style="color:#854F0B">📥 Sin asignar</button>`;
+  if(programaActivo==='__sin__')renderSinAsignar();else renderPrograma(programaActivo);
+}
+function switchPrograma(p){programaActivo=p;renderProgramas();}
+
+function renderPrograma(prog){
   const exps=getExptesDeProg(prog);
   document.getElementById('prog-contenido').innerHTML=`
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
         <div><span style="font-size:14px;font-weight:600">${prog}</span><span style="font-size:12px;color:#888;margin-left:8px">${exps.length} expediente${exps.length!==1?'s':''}</span></div>
         <div style="display:flex;gap:8px">
-          <button class="btn sm primary" onclick="abrirModalAsignar('${prog}')">+ Asignar expediente</button>
-          <button class="btn sm danger" onclick="eliminarPrograma('${prog}')">🗑️ Eliminar programa</button>
+          <button class="btn sm primary" onclick="abrirModalAsignar('${prog.replace(/'/g,'')}')">+ Asignar expediente</button>
+          <button class="btn sm danger" onclick="eliminarPrograma('${prog.replace(/'/g,'')}')">🗑️ Eliminar programa</button>
         </div>
       </div>
-      ${exps.length?`<div style="overflow-x:auto"><table>
-        <thead><tr><th>Expte.</th><th>Iniciador</th><th>Ingreso</th><th>Resp. Asig.</th><th>Tema</th><th>Estado</th><th></th></tr></thead>
+      ${exps.length?`<div style="overflow-x:auto"><table><thead><tr><th>Expte.</th><th>Iniciador</th><th>Ingreso</th><th>Resp. Asig.</th><th>Tema</th><th>Estado</th><th></th></tr></thead>
         <tbody>${exps.map(e=>`<tr>
           <td style="font-weight:500">${getExpte(e)||'—'}</td>
           <td>${getIniciador(e)||'—'}</td>
           <td style="white-space:nowrap">${fmt(e.ingreso||e.Ingreso)}</td>
           <td>${getRespAsig(e)||'—'}</td>
           <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${getTema(e)}">${getTema(e)||'—'}</td>
-          <td><span class="badge ${estaEgresado(e)?'egresado':'activo'}">${estaEgresado(e)?'Egresado':'En Dirección'}</span></td>
-          <td><button class="btn sm danger" onclick="desasignar('${prog}','${getExpte(e)}')">✕</button></td>
-        </tr>`).join('')}</tbody></table></div>`:'<div class="alert">No hay expedientes asignados a este programa todavía.</div>'}
+          <td><span class="badge ${estaEgresado(e)?'egresado':'activo'}">${estaEgresado(e)?'Egresado':'En Dir.'}</span></td>
+          <td><button class="btn sm danger" onclick="desasignar('${prog.replace(/'/g,'')}','${getExpte(e)}')">✕</button></td>
+        </tr>`).join('')}</tbody></table></div>`:'<div class="alert">No hay expedientes asignados todavía.</div>'}
     </div>`;
 }
 
+function renderSinAsignar(){
+  const exps=getSinAsignar();
+  const progs=getProgramas();
+  document.getElementById('prog-contenido').innerHTML=`
+    <div class="card">
+      <div style="margin-bottom:8px"><span style="font-size:14px;font-weight:600">Bandeja "Sin asignar"</span><span style="font-size:12px;color:#888;margin-left:8px">${exps.length} expediente${exps.length!==1?'s':''} que mencionan un programa</span></div>
+      <div style="font-size:12px;color:#888;margin-bottom:12px">Arrastrá cada expediente a un programa (abajo) o usá el desplegable.</div>
+      ${exps.length?exps.map(e=>`
+        <div draggable="true" ondragstart="dragStart(event,'${getExpte(e)}')" style="display:flex;align-items:center;justify-content:space-between;padding:10px;border:1px solid #e0e0d8;border-radius:8px;margin-bottom:8px;cursor:grab;background:#fafaf8">
+          <div style="flex:1;min-width:0"><div style="font-weight:500;font-size:13px">${getExpte(e)||'(sin nº)'}</div><div style="font-size:12px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${getTema(e)||'—'}</div></div>
+          <select onchange="asignarDesdeLista('${getExpte(e)}',this.value)" style="font-size:12px;padding:4px 8px;border:1px solid #d0d0c8;border-radius:6px;margin-left:8px"><option value="">Asignar a...</option>${progs.map(p=>`<option value="${p}">${p}</option>`).join('')}</select>
+        </div>`).join(''):'<div class="alert">No hay expedientes sin asignar.</div>'}
+    </div>
+    <div class="card">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px">Soltá acá para asignar:</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px">
+        ${progs.map(p=>`<div class="drop-zone" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="dropEn(event,'${p.replace(/'/g,'')}')">${p}</div>`).join('')}
+      </div>
+    </div>`;
+}
+function dragStart(ev,expte){dragExpteId=expte;ev.dataTransfer.effectAllowed='move';}
+async function dropEn(ev,prog){ev.preventDefault();ev.currentTarget.classList.remove('over');if(!dragExpteId)return;await asignarDesdeLista(dragExpteId,prog);dragExpteId=null;}
+async function asignarDesdeLista(expte,prog){
+  if(!prog)return;
+  try{
+    await api({accion:'agregar',hoja:'programas',datos:{programa:prog,expte}});
+    programasData.push({programa:prog,expte});
+    renderSinAsignar();
+    toast(`Asignado a ${prog} ✓`);
+  }catch(e){alert('Error: '+e.message);}
+}
+
 function abrirModalPrograma(){document.getElementById('np-nombre').value='';document.getElementById('overlay-programa').classList.add('show');}
-async function guardarPrograma() {
+async function guardarPrograma(){
   const nombre=document.getElementById('np-nombre').value.trim();
   if(!nombre){alert('Ingresá un nombre.');return;}
   if(getProgramas().includes(nombre)){alert('Ya existe ese programa.');return;}
@@ -813,286 +627,204 @@ async function guardarPrograma() {
   document.getElementById('overlay-programa').classList.remove('show');
   programaActivo=nombre;renderProgramas();toast('Programa creado ✓');
 }
-
-let progAsignar=null;
-let asignarLista=[];
-function abrirModalAsignar(prog) {
+function abrirModalAsignar(prog){
   progAsignar=prog;
   const ya=getExptesDeProg(prog).map(e=>getExpte(e));
   asignarLista=expedientes.filter(e=>!ya.includes(getExpte(e)));
-  document.getElementById('as-buscar').value='';
+  document.getElementById('as-buscar').value='';asignarSeleccionado=null;
   renderListaAsignar('');
   document.getElementById('overlay-asignar').classList.add('show');
   setTimeout(()=>document.getElementById('as-buscar').focus(),100);
 }
-function renderListaAsignar(filtro) {
+function renderListaAsignar(filtro){
   const f=(filtro||'').toLowerCase();
-  const filtrados=asignarLista.filter(e=>!f||Object.values(e).join(' ').toLowerCase().includes(f));
-  const cont=document.getElementById('as-lista');
-  cont.innerHTML=filtrados.length?filtrados.map(e=>`
-    <div onclick="seleccionarAsignar('${getExpte(e)}')" style="padding:8px 10px;border-bottom:1px solid #f0f0ee;cursor:pointer;font-size:13px" onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background='#fff'">
-      <b>${getExpte(e)||'(sin nº)'}</b> — ${getTema(e)||getIniciador(e)||'sin tema'}
-    </div>`).join(''):'<div style="padding:12px;color:#888;font-size:13px;text-align:center">No se encontraron expedientes.</div>';
+  const fil=asignarLista.filter(e=>!f||Object.values(e).join(' ').toLowerCase().includes(f));
+  document.getElementById('as-lista').innerHTML=fil.length?fil.map(e=>`<div onclick="selAsignar('${getExpte(e)}',this)" style="padding:8px 10px;border-bottom:1px solid #f0f0ee;cursor:pointer;font-size:13px"><b>${getExpte(e)||'(sin nº)'}</b> — ${getTema(e)||getIniciador(e)||'sin tema'}</div>`).join(''):'<div style="padding:12px;color:#888;font-size:13px;text-align:center">Sin resultados.</div>';
 }
-function seleccionarAsignar(expte){ asignarSeleccionado=expte; document.querySelectorAll('#as-lista > div').forEach(d=>d.style.background='#fff'); event.currentTarget.style.background='#dbeafe'; }
-let asignarSeleccionado=null;
+function selAsignar(expte,el){asignarSeleccionado=expte;document.querySelectorAll('#as-lista > div').forEach(d=>d.style.background='#fff');el.style.background='#e6f2d5';}
 function cerrarModalAsignar(){document.getElementById('overlay-asignar').classList.remove('show');}
-async function asignarExpediente() {
-  const expte=asignarSeleccionado;
-  if(!expte){alert('Seleccioná un expediente de la lista.');return;}
-  await api({accion:'agregar',hoja:'programas',datos:{programa:progAsignar,expte}});
-  programasData.push({programa:progAsignar,expte});
-  asignarSeleccionado=null;
-  cerrarModalAsignar();renderPrograma(progAsignar);toast('Expediente asignado ✓');
+async function asignarExpediente(){
+  if(!asignarSeleccionado){alert('Seleccioná un expediente de la lista.');return;}
+  await api({accion:'agregar',hoja:'programas',datos:{programa:progAsignar,expte:asignarSeleccionado}});
+  programasData.push({programa:progAsignar,expte:asignarSeleccionado});
+  asignarSeleccionado=null;cerrarModalAsignar();renderPrograma(progAsignar);toast('Expediente asignado ✓');
 }
-async function desasignar(prog,expte) {
+async function desasignar(prog,expte){
   if(!confirm(`¿Quitás este expediente del programa "${prog}"?`))return;
-  const idx=programasData.findIndex(p=>p.programa===prog&&String(p.expte).trim()===String(expte).trim());
-  if(idx===-1){toast('Detectado por tema automáticamente, no se puede quitar desde acá.');return;}
-  await api({accion:'eliminar',hoja:'programas',datos:{_fila:idx+2}});
-  programasData.splice(idx,1);renderPrograma(prog);toast('Expediente quitado ✓');
+  try{
+    await api({accion:'eliminar',hoja:'programas',datos:{programa:prog,expte:String(expte).trim()}});
+    const idx=programasData.findIndex(p=>normalizar(p.programa)===normalizar(prog)&&String(p.expte).trim()===String(expte).trim());
+    if(idx!==-1)programasData.splice(idx,1);
+    renderPrograma(prog);toast('Expediente quitado ✓');
+  }catch(e){alert('Error: '+e.message);}
 }
-async function eliminarPrograma(prog) {
+async function eliminarPrograma(prog){
   if(!confirm(`¿Eliminás el programa "${prog}"? Los expedientes no se borran.`))return;
-  const indices=programasData.map((p,i)=>p.programa===prog?i:-1).filter(i=>i>=0);
-  for(const i of indices.reverse()){await api({accion:'eliminar',hoja:'programas',datos:{_fila:i+2}});programasData.splice(i,1);}
+  const idxs=programasData.map((p,i)=>p.programa===prog?i:-1).filter(i=>i>=0);
+  for(const i of idxs.reverse()){await api({accion:'eliminar',hoja:'programas',datos:{_fila:i+2}});programasData.splice(i,1);}
   programaActivo=getProgramas()[0]||null;renderProgramas();toast('Programa eliminado ✓');
 }
 
-function getDatosMapaProg(filtroProg) {
-  const progs=getProgramas();
-  const conteo={};
+// ── MAPA ──
+function getDatosMapaProg(filtroProg){
+  const progs=getProgramas();const conteo={};
   progs.forEach(prog=>{
     if(filtroProg&&prog!==filtroProg)return;
     getExptesDeProg(prog).forEach(e=>{
-      const partes=(getTema(e)||'').split('-').map(s=>s.trim());
-      const departamento=partes[2]||'';
+      const tema=getTema(e);
+      const partes=tema.split('-').map(s=>s.trim());
+      let departamento=partes.length>=3?partes[2]:'';
+      if(!departamento){const det=detectarProgramaYDepto(tema);if(det.departamento)departamento=det.departamento;}
       if(!departamento)return;
       const dep=normalizar(departamento);
       if(!conteo[dep])conteo[dep]={total:0,porProg:{}};
-      conteo[dep].total++;
-      conteo[dep].porProg[prog]=(conteo[dep].porProg[prog]||0)+1;
+      conteo[dep].total++;conteo[dep].porProg[prog]=(conteo[dep].porProg[prog]||0)+1;
     });
   });
   return conteo;
 }
-// Tabla de localidades de Entre Ríos → departamento
-const LOCALIDAD_DEPTO = {
-  // Paraná
-  'parana':'Paraná','oro verde':'Paraná','san benito':'Paraná','colonia avellaneda':'Paraná','viale':'Paraná','crespo':'Paraná','seguí':'Paraná','segui':'Paraná','hasenkamp':'Paraná','maria grande':'Paraná','maría grande':'Paraná','cerrito':'Paraná','tabossi':'Paraná','hernandarias':'Paraná','la picada':'Paraná','sauce montrull':'Paraná','colonia crespo':'Paraná','aldea brasilera':'Paraná','aldea san juan':'Paraná','villa urquiza':'Paraná','pueblo brugo':'Paraná','el palenque':'Paraná','las tunas':'Paraná',
-  // Uruguay (Concepción del Uruguay)
-  'concepcion del uruguay':'Uruguay','concepción del uruguay':'Uruguay','c. del uruguay':'Uruguay','basavilbaso':'Uruguay','villa san marcial':'Uruguay','caseros':'Uruguay','pronunciamiento':'Uruguay','herrera':'Uruguay','1 de mayo':'Uruguay','primero de mayo':'Uruguay','santa anita':'Uruguay','rocamora':'Uruguay','las moscas':'Uruguay',
-  // Concordia
-  'concordia':'Concordia','colonia ayui':'Concordia','colonia ayuí':'Concordia','estacion yuqueri':'Concordia','la criolla':'Concordia','los charruas':'Concordia','los charrúas':'Concordia','pueblo belgrano':'Concordia','puerto yerua':'Concordia','general campos':'Concordia',
-  // Gualeguaychú
-  'gualeguaychu':'Gualeguaychú','gualeguaychú':'Gualeguaychú','urdinarrain':'Gualeguaychú','larroque':'Gualeguaychú','gilbert':'Gualeguaychú','aldea san antonio':'Gualeguaychú','general almada':'Gualeguaychú','enrique carbo':'Gualeguaychú','irazusta':'Gualeguaychú','faustino parera':'Gualeguaychú',
-  // Gualeguay
-  'gualeguay':'Gualeguay','general galarza':'Gualeguay','aldea asuncion':'Gualeguay','aldea asunción':'Gualeguay','puerto ruiz':'Gualeguay',
-  // Colón
-  'colon':'Colón','colón':'Colón','san jose':'Colón','san josé':'Colón','villa elisa':'Colón','ubajay':'Colón','colonia hugues':'Colón','arroyo baru':'Colón','arroyo barú':'Colón','pueblo liebig':'Colón','liebig':'Colón','hocker':'Colón',
-  // Concepción/Federación
-  'federacion':'Federación','federación':'Federación','chajari':'Federación','chajarí':'Federación','santa ana':'Federación','villa del rosario':'Federación','san jaime de la frontera':'Federación','san jaime':'Federación','los conquistadores':'Federación','colonia alemana':'Federación','san pedro':'Federación','san ramirez':'Federación',
-  // La Paz
-  'la paz':'La Paz','santa elena':'La Paz','bovril':'La Paz','san gustavo':'La Paz','piedras blancas':'La Paz','alcaraz':'La Paz','colonia avigdor':'La Paz','el solar':'La Paz',
-  // Villaguay
-  'villaguay':'Villaguay','villa dominguez':'Villaguay','villa domínguez':'Villaguay','villa clara':'Villaguay','jubileo':'Villaguay','ingeniero sajaroff':'Villaguay','lucas gonzalez':'Villaguay','lucas gonzález':'Villaguay','mojones norte':'Villaguay',
-  // Nogoyá
-  'nogoya':'Nogoyá','nogoyá':'Nogoyá','aranguren':'Nogoyá','lucas sur':'Nogoyá','don cristobal':'Nogoyá','hernandez':'Nogoyá','hernández':'Nogoyá','xx de septiembre':'Nogoyá','betbeder':'Nogoyá',
-  // Victoria
-  'victoria':'Victoria','rincon del doll':'Victoria','rincón del doll':'Victoria','molino doll':'Victoria',
-  // Diamante
-  'diamante':'Diamante','general ramirez':'Diamante','general ramírez':'Diamante','ramirez':'Diamante','ramírez':'Diamante','aldea protestante':'Diamante','aldea valle maria':'Diamante','aldea valle maría':'Diamante','valle maria':'Diamante','strobel':'Diamante','las cuevas':'Diamante','la juanita':'Diamante',
-  // Tala (Rosario del Tala)
-  'rosario del tala':'Tala','tala':'Tala','maciel':'Tala','altamirano sur':'Tala','gobernador mansilla':'Tala','mansilla':'Tala','guardamonte':'Tala',
-  // Federal
-  'federal':'Federal','conscripto bernardi':'Federal','nueva vizcaya':'Federal','el cimarron':'Federal','el cimarrón':'Federal','sauce de luna':'Federal','colonia federal':'Federal',
-  // Feliciano
-  'san jose de feliciano':'Feliciano','san josé de feliciano':'Feliciano','feliciano':'Feliciano','san victor':'Feliciano','san víctor':'Feliciano',
-  // San Salvador
-  'san salvador':'San Salvador','general campos sansalvador':'San Salvador',
-  // Islas del Ibicuy
-  'villa paranacito':'Islas del Ibicuy','ibicuy':'Islas del Ibicuy','ceibas':'Islas del Ibicuy','islas del ibicuy':'Islas del Ibicuy',
-};
-
-// Detecta programa y departamento desde el campo Tema
-function detectarProgramaYDepto(tema) {
-  const t = (tema||'').toLowerCase();
-  // Detectar programa por palabras clave
-  let programa = null;
-  if (t.includes('emprende')) programa = 'Juventud Emprende';
-  else if (t.includes('en el centro') || t.includes('juventud en el centro')) programa = 'Juventud en el Centro';
-  else if (t.includes('comunidad') && t.includes('juventud')) programa = 'Juventud en la Comunidad';
-  else if (t.includes('en comunidad')) programa = 'Juventud en la Comunidad';
-
-  // Detectar departamento por localidad mencionada
-  let departamento = null;
-  for (const [loc, dep] of Object.entries(LOCALIDAD_DEPTO)) {
-    // Buscar la localidad como palabra (con separadores - o espacios)
-    const regex = new RegExp('(^|[\\s\\-])' + loc.replace(/[.*+?^${}()|[\]\\]/g,'\\function interpolarColorLeaflet(t) {') + '($|[\\s\\-])', 'i');
-    if (regex.test(t)) { departamento = dep; break; }
-  }
-  return {programa, departamento};
-}
-
-function interpolarColorLeaflet(t) {
-  const r=Math.round(219-(219-30)*t);
-  const g=Math.round(234-(234-64)*t);
-  const b=Math.round(254-(254-175)*t);
+function interpolarColorLeaflet(t){
+  const r=Math.round(230-(230-58)*t);
+  const g=Math.round(245-(245-115)*t);
+  const b=Math.round(220-(220-22)*t);
   return `rgb(${r},${g},${b})`;
 }
-
-async function renderMapa() {
+async function renderMapa(){
   const filtroProg=document.getElementById('mapa-filtro-prog').value;
   const datos=getDatosMapaProg(filtroProg);
   const maxVal=Math.max(...Object.values(datos).map(d=>d.total),1);
-
   if(!leafletMap){
     leafletMap=L.map('mapa-leaflet',{zoomControl:true,scrollWheelZoom:false}).setView([-31.7,-58.8],7);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO',maxZoom:12}).addTo(leafletMap);
   }
   if(geojsonLayer){leafletMap.removeLayer(geojsonLayer);geojsonLayer=null;}
-
-  try {
+  try{
     document.getElementById('mapa-tabla-depto').innerHTML='<div style="color:#888;font-size:12px">Cargando mapa...</div>';
-    if(!geoCache){
-      const resp=await fetch('https://raw.githubusercontent.com/mgaitan/departamentos_argentina/master/departamentos-entre_rios.json');
-      geoCache=await resp.json();
-    }
+    if(!geoCache){const r=await fetch('https://raw.githubusercontent.com/mgaitan/departamentos_argentina/master/departamentos-entre_rios.json');geoCache=await r.json();}
     geojsonLayer=L.geoJSON(geoCache,{
-      style:feat=>{
-        const nombre=feat.properties.departamento||feat.properties.nombre||'';
-        const info=datos[normalizar(nombre)]||{total:0};
-        const t=info.total/maxVal;
-        return {fillColor:info.total>0?interpolarColorLeaflet(t):'#e8f4fd',fillOpacity:0.75,color:'#1e40af',weight:1.2,opacity:0.7};
-      },
+      style:feat=>{const nom=feat.properties.departamento||feat.properties.nombre||'';const info=datos[normalizar(nom)]||{total:0};const t=info.total/maxVal;return{fillColor:info.total>0?interpolarColorLeaflet(t):'#eef7e3',fillOpacity:0.8,color:'#5a9216',weight:1.2,opacity:0.8};},
       onEachFeature:(feat,layer)=>{
-        const nombre=feat.properties.departamento||feat.properties.nombre||'';
-        const info=datos[normalizar(nombre)]||{total:0,porProg:{}};
+        const nom=feat.properties.departamento||feat.properties.nombre||'';
+        const info=datos[normalizar(nom)]||{total:0,porProg:{}};
         const lines=Object.entries(info.porProg).map(([p,n])=>`<b>${p}:</b> ${n}`).join('<br>');
-        layer.bindTooltip(`<div style="font-size:13px"><b>${nombre}</b><br>Total: <b>${info.total}</b>${lines?'<br>'+lines:''}</div>`,{sticky:true,opacity:0.95});
-        layer.on('mouseover',function(){this.setStyle({fillOpacity:0.95,weight:2.5});});
+        layer.bindTooltip(`<div style="font-size:13px"><b>${nom}</b><br>Total: <b>${info.total}</b>${lines?'<br>'+lines:''}</div>`,{sticky:true,opacity:0.95});
+        layer.on('mouseover',function(){this.setStyle({fillOpacity:0.95,weight:2.5,color:'#3B6D11'});});
         layer.on('mouseout',function(){geojsonLayer.resetStyle(this);});
       }
     }).addTo(leafletMap);
     leafletMap.fitBounds(geojsonLayer.getBounds(),{padding:[10,10]});
     setTimeout(()=>leafletMap.invalidateSize(),150);
-
     const sorted=Object.entries(datos).sort((a,b)=>b[1].total-a[1].total);
-    document.getElementById('mapa-tabla-depto').innerHTML=sorted.length?sorted.map(([dep,info])=>`<div style="display:flex;justify-content:space-between;padding:5px 8px;background:#f5f5f3;border-radius:6px;font-size:12px"><span>${dep.charAt(0)+dep.slice(1).toLowerCase()}</span><span style="font-weight:600;color:#185FA5">${info.total}</span></div>`).join(''):'<div style="color:#aaa;font-size:12px">Sin datos aún. Cargá expedientes con el formato Programa - Localidad - Departamento.</div>';
-  } catch(err) {
-    document.getElementById('mapa-tabla-depto').innerHTML=`<div style="color:#A32D2D;font-size:12px">Error al cargar el mapa: ${err.message}</div>`;
-  }
-
-  const sel=document.getElementById('mapa-filtro-prog');
-  const cur=sel.value;
+    document.getElementById('mapa-tabla-depto').innerHTML=sorted.length?sorted.map(([dep,info])=>`<div style="display:flex;justify-content:space-between;padding:5px 8px;background:#f5f5f3;border-radius:6px;font-size:12px"><span>${dep.charAt(0)+dep.slice(1).toLowerCase()}</span><span style="font-weight:600;color:#5a9216">${info.total}</span></div>`).join(''):'<div style="color:#aaa;font-size:12px">Sin datos. Cargá expedientes con localidad/departamento en el Tema.</div>';
+  }catch(err){document.getElementById('mapa-tabla-depto').innerHTML=`<div style="color:#A32D2D;font-size:12px">Error: ${err.message}</div>`;}
+  const sel=document.getElementById('mapa-filtro-prog');const cur=sel.value;
   sel.innerHTML='<option value="">Todos los programas</option>'+getProgramas().map(p=>`<option value="${p}" ${p===cur?'selected':''}>${p}</option>`).join('');
 }
 
-function renderConfigAgentes() {
-  document.getElementById('agentes-config-lista').innerHTML=agentes.length?agentes.map((a,i)=>`<div class="agente-item"><div style="display:flex;align-items:center;gap:10px"><div class="avatar">${initials(a)}</div><span style="font-size:14px">${a}</span></div><button class="btn sm danger" onclick="eliminarAgente(${i})">🗑️ Eliminar</button></div>`).join(''):'<div class="alert">No hay agentes cargados todavía.</div>';
+// ── LICENCIAS ──
+function cambiarMes(dir){mesActual+=dir;if(mesActual>11){mesActual=0;anioActual++;}if(mesActual<0){mesActual=11;anioActual--;}renderLicencias();}
+function renderLicencias(){
+  const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const diasSem=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  document.getElementById('mes-label').textContent=`${meses[mesActual]} ${anioActual}`;
+  const totalDias=new Date(anioActual,mesActual+1,0).getDate();
+  const licMes=licenciasData.filter(l=>{if(!l.desde||!l.hasta)return false;const d=new Date(toInput(l.desde)),h=new Date(toInput(l.hasta));return d<=new Date(anioActual,mesActual+1,0)&&h>=new Date(anioActual,mesActual,1);});
+  function getLic(ag,dia){const f=new Date(anioActual,mesActual,dia);return licMes.find(l=>{if(l.agente!==ag)return false;const d=new Date(toInput(l.desde)),h=new Date(toInput(l.hasta));return f>=d&&f<=h;});}
+  const numDias=Array.from({length:totalDias},(_,i)=>i+1);
+  const hoy=new Date();
+  let html=`<div style="overflow-x:auto"><table style="min-width:${100+totalDias*34}px;font-size:12px"><thead><tr><th style="min-width:110px;position:sticky;left:0;background:#fafaf8;z-index:2">Agente</th>${numDias.map(d=>{const f=new Date(anioActual,mesActual,d);const finde=f.getDay()===0||f.getDay()===6;const esHoy=f.toDateString()===hoy.toDateString();return `<th style="width:34px;text-align:center;padding:4px 2px;${finde?'background:#f0f0ee;':''}${esHoy?'background:#d9edb8;':''}"><div style="font-size:9px;color:#aaa">${diasSem[f.getDay()]}</div><div>${d}</div></th>`;}).join('')}</tr></thead><tbody>${agentes.map(ag=>`<tr><td style="font-weight:500;position:sticky;left:0;background:#fff;z-index:1;border-right:1px solid #e0e0d8">${ag}</td>${numDias.map(d=>{const f=new Date(anioActual,mesActual,d);const finde=f.getDay()===0||f.getDay()===6;const lic=getLic(ag,d);const tipo=lic?(TIPOS_LIC[lic.tipo]||TIPOS_LIC['Otro']):null;return `<td style="text-align:center;padding:2px;${finde?'background:#f9f9f7;':''}${tipo?`background:${tipo.color};`:''}cursor:${tipo?'pointer':'default'}" title="${tipo?`${lic.tipo}${lic.obs?' - '+lic.obs:''}`:''}" ${tipo?`onclick="eliminarLicencia(${lic._fila},'${ag.replace(/'/g,'')}')"`:''}>${tipo?tipo.icono:''}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div>`;
+  html+=`<div style="margin-top:12px">${Object.entries(TIPOS_LIC).map(([t,v])=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:12px;background:${v.color};color:${v.texto};margin:3px">${v.icono} ${t}</span>`).join('')}</div>`;
+  document.getElementById('calendario-licencias').innerHTML=agentes.length?html:'<div class="alert">No hay agentes configurados.</div>';
+  const resumen=agentes.map(ag=>{const lics=licMes.filter(l=>l.agente===ag);const enHoy=hoy.getMonth()===mesActual&&hoy.getFullYear()===anioActual&&getLic(ag,hoy.getDate());return{ag,lics,enHoy};});
+  document.getElementById('resumen-licencias').innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">${resumen.map(({ag,lics,enHoy})=>`<div style="padding:12px;border-radius:8px;border:1px solid ${enHoy?'#8bc53f':'#e0e0d8'};background:${enHoy?'#f0f7e6':'#fff'}"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div class="avatar" style="width:28px;height:28px;font-size:11px">${initials(ag)}</div><span style="font-size:13px;font-weight:500">${ag}</span>${enHoy?'<span style="font-size:10px;background:#8bc53f;color:#fff;padding:1px 6px;border-radius:999px">HOY</span>':''}</div>${lics.length?lics.map(l=>`<div style="font-size:11px;color:#555;margin-top:4px">${TIPOS_LIC[l.tipo]?.icono||'📋'} ${l.tipo}: ${fmt(l.desde)} → ${fmt(l.hasta)}</div>`).join(''):'<div style="font-size:11px;color:#aaa">Sin licencias este mes</div>'}</div>`).join('')}</div>`;
 }
-function fillSelects() {
-  const fSel=document.getElementById('f-agente'), mSel=document.getElementById('m-agente');
-  const curF=fSel.value, curM=mSel.value;
-  fSel.innerHTML='<option value="">Todos los agentes</option>'+agentes.map(a=>`<option value="${a}">${a}</option>`).join('');
-  mSel.innerHTML='<option value="">Seleccionar...</option>'+agentes.map(a=>`<option value="${a}">${a}</option>`).join('');
-  fSel.value=curF; mSel.value=curM;
+function abrirModalLicencia(){
+  document.getElementById('lic-modal-title').textContent='Nueva licencia';
+  document.getElementById('lic-agente').innerHTML='<option value="">Seleccionar...</option>'+agentes.map(a=>`<option value="${a}">${a}</option>`).join('');
+  document.getElementById('lic-agente').value='';document.getElementById('lic-tipo').value='Vacaciones';document.getElementById('lic-obs').value='';document.getElementById('lic-desde').value='';document.getElementById('lic-hasta').value='';
+  document.getElementById('overlay-licencia').classList.add('show');
+}
+function cerrarModalLicencia(){document.getElementById('overlay-licencia').classList.remove('show');}
+async function guardarLicencia(){
+  const agente=document.getElementById('lic-agente').value,tipo=document.getElementById('lic-tipo').value,desde=document.getElementById('lic-desde').value,hasta=document.getElementById('lic-hasta').value;
+  if(!agente||!desde||!hasta){alert('Completá agente, fecha inicio y fecha fin.');return;}
+  if(desde>hasta){alert('La fecha de inicio no puede ser posterior a la fin.');return;}
+  const datos={agente,tipo,desde:fmt(desde),hasta:fmt(hasta),obs:document.getElementById('lic-obs').value};
+  const btn=document.getElementById('btn-guardar-lic');btn.disabled=true;btn.textContent='Guardando...';
+  try{
+    await api({accion:'agregar',hoja:'licencias',datos});
+    licenciasData=await api({method:'GET',hoja:'licencias'});licenciasData=Array.isArray(licenciasData)?licenciasData.filter(l=>l.agente):[];
+    cerrarModalLicencia();renderLicencias();toast('Licencia guardada ✓');
+  }catch(e){alert('Error: '+e.message);}
+  btn.disabled=false;btn.textContent='Guardar';
+}
+async function eliminarLicencia(fila,agente){
+  if(!confirm(`¿Eliminás esta licencia de ${agente}?`))return;
+  try{await api({accion:'eliminar',hoja:'licencias',datos:{_fila:fila}});licenciasData=licenciasData.filter(l=>l._fila!==fila);renderLicencias();toast('Licencia eliminada ✓');}catch(e){alert('Error: '+e.message);}
 }
 
-function abrirModal(idx=null) {
+// ── CONFIG AGENTES ──
+function renderConfigAgentes(){
+  document.getElementById('agentes-config-lista').innerHTML=agentes.length?agentes.map((a,i)=>`<div class="agente-item"><div style="display:flex;align-items:center;gap:10px"><div class="avatar">${initials(a)}</div><span style="font-size:14px">${a}</span></div><button class="btn sm danger" onclick="eliminarAgente(${i})">🗑️ Eliminar</button></div>`).join(''):'<div class="alert">No hay agentes cargados.</div>';
+}
+async function agregarAgente(){
+  const inp=document.getElementById('nuevo-agente');const nombre=inp.value.trim();if(!nombre)return;
+  try{await api({accion:'agregar',hoja:'agentes',datos:{nombre}});inp.value='';agentes.push(nombre);fillSelects();renderConfigAgentes();toast('Agente agregado ✓');}catch(e){alert('Error: '+e.message);}
+}
+async function eliminarAgente(i){
+  if(!confirm(`¿Eliminás a "${agentes[i]}"?`))return;
+  try{await api({accion:'eliminar',hoja:'agentes',datos:{_fila:i+2}});agentes.splice(i,1);fillSelects();renderConfigAgentes();toast('Agente eliminado ✓');}catch(e){alert('Error: '+e.message);}
+}
+
+function fillSelects(){
+  const fSel=document.getElementById('f-agente'),mSel=document.getElementById('m-agente');
+  const cF=fSel.value,cM=mSel.value;
+  fSel.innerHTML='<option value="">Todos los agentes</option>'+agentes.map(a=>`<option value="${a}">${a}</option>`).join('');
+  mSel.innerHTML='<option value="">Seleccionar...</option>'+agentes.map(a=>`<option value="${a}">${a}</option>`).join('');
+  fSel.value=cF;mSel.value=cM;
+}
+function abrirModal(idx=null){
   editIdx=idx;
   document.getElementById('modal-title').textContent=idx!==null?'Editar expediente':'Nuevo expediente';
   const today=new Date().toISOString().slice(0,10);
   if(idx!==null){
     const e=expedientes[idx];
-    document.getElementById('m-expte').value=getExpte(e);
-    document.getElementById('m-iniciador').value=getIniciador(e);
-    document.getElementById('m-ingreso').value=toInput(e.ingreso||e.Ingreso);
-    document.getElementById('m-reparto').value=toInput(getReparto(e));
-    document.getElementById('m-agente').value=getRespAsig(e);
-    document.getElementById('m-tema').value=getTema(e);
-    document.getElementById('m-salio').value=toInput(getSalio(e));
-  } else {
+    document.getElementById('m-expte').value=getExpte(e);document.getElementById('m-iniciador').value=getIniciador(e);
+    document.getElementById('m-ingreso').value=toInput(e.ingreso||e.Ingreso);document.getElementById('m-reparto').value=toInput(getReparto(e));
+    document.getElementById('m-agente').value=getRespAsig(e);document.getElementById('m-tema').value=getTema(e);document.getElementById('m-salio').value=toInput(getSalio(e));
+  }else{
     ['m-expte','m-iniciador','m-reparto','m-tema','m-salio'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('m-ingreso').value=today;
-    document.getElementById('m-agente').value='';
+    document.getElementById('m-ingreso').value=today;document.getElementById('m-agente').value='';
   }
   document.getElementById('overlay').classList.add('show');
 }
 function cerrarModal(){document.getElementById('overlay').classList.remove('show');}
-
-async function guardar() {
-  const expte=document.getElementById('m-expte').value.trim();
-  const ingreso=document.getElementById('m-ingreso').value;
-  const agente=document.getElementById('m-agente').value;
-  if(!expte||!ingreso||!agente){alert('Completá los campos obligatorios (Expte., Ingreso y Resp. Asignado).');return;}
-  const datos={
-    'expte.':expte,
-    'iniciador':document.getElementById('m-iniciador').value,
-    'ingreso':fmt(ingreso),
-    'reparto':fmt(document.getElementById('m-reparto').value),
-    'resp. asig':agente,
-    'tema':document.getElementById('m-tema').value,
-    'salio':fmt(document.getElementById('m-salio').value)
-  };
-  const btn=document.getElementById('btn-guardar');
-  btn.disabled=true;btn.textContent='Guardando...';
-  try {
-    if(editIdx!==null){
-      datos._fila=expedientes[editIdx]._fila;
-      await api({accion:'editar',hoja:'expedientes',datos});
-      toast('Expediente actualizado ✓');
-    } else {
+async function guardar(){
+  const expte=document.getElementById('m-expte').value.trim(),ingreso=document.getElementById('m-ingreso').value,agente=document.getElementById('m-agente').value;
+  if(!expte||!ingreso||!agente){alert('Completá Expte., Ingreso y Resp. Asignado.');return;}
+  const datos={'expte.':expte,'iniciador':document.getElementById('m-iniciador').value,'ingreso':fmt(ingreso),'reparto':fmt(document.getElementById('m-reparto').value),'resp. asig':agente,'tema':document.getElementById('m-tema').value,'salio':fmt(document.getElementById('m-salio').value)};
+  const btn=document.getElementById('btn-guardar');btn.disabled=true;btn.textContent='Guardando...';
+  try{
+    if(editIdx!==null){datos._fila=expedientes[editIdx]._fila;await api({accion:'editar',hoja:'expedientes',datos});toast('Expediente actualizado ✓');}
+    else{
       await api({accion:'agregar',hoja:'expedientes',datos});
-      toast('Expediente guardado ✓');
+      const {programa}=detectarProgramaYDepto(datos.tema);
+      if(programa){try{await api({accion:'agregar',hoja:'programas',datos:{programa,expte:datos['expte.']}});programasData.push({programa,expte:datos['expte.']});toast(`Guardado y asignado a ${programa} ✓`);}catch{toast('Expediente guardado ✓');}}
+      else toast('Expediente guardado ✓');
     }
     cerrarModal();await cargar();
-  } catch(e){alert('Error al guardar: '+e.message);}
+  }catch(e){alert('Error al guardar: '+e.message);}
   btn.disabled=false;btn.textContent='Guardar';
 }
-
-async function eliminar(idx) {
+async function eliminar(idx){
   if(!confirm('¿Eliminás este expediente? Esta acción no se puede deshacer.'))return;
-  try {
-    await api({accion:'eliminar',hoja:'expedientes',datos:{_fila:expedientes[idx]._fila}});
-    toast('Expediente eliminado');await cargar();
-  } catch(e){alert('Error: '+e.message);}
+  try{await api({accion:'eliminar',hoja:'expedientes',datos:{_fila:expedientes[idx]._fila}});toast('Expediente eliminado');await cargar();}catch(e){alert('Error: '+e.message);}
 }
-
-async function agregarAgente() {
-  const inp=document.getElementById('nuevo-agente');
-  const nombre=inp.value.trim();
-  if(!nombre)return;
-  try {
-    await api({accion:'agregar',hoja:'agentes',datos:{nombre}});
-    inp.value='';agentes.push(nombre);fillSelects();renderConfigAgentes();toast('Agente agregado ✓');
-  } catch(e){alert('Error: '+e.message);}
+function initFechas(){
+  const hoy=new Date().toISOString().slice(0,10);const h30=new Date(Date.now()-30*86400000).toISOString().slice(0,10);
+  document.getElementById('f-desde').value=h30;document.getElementById('f-hasta').value=hoy;
 }
-async function eliminarAgente(i) {
-  if(!confirm(`¿Eliminás a "${agentes[i]}"?`))return;
-  try {
-    await api({accion:'eliminar',hoja:'agentes',datos:{_fila:i+2}});
-    agentes.splice(i,1);fillSelects();renderConfigAgentes();toast('Agente eliminado ✓');
-  } catch(e){alert('Error: '+e.message);}
-}
-
-function initFechas() {
-  const hoy=new Date().toISOString().slice(0,10);
-  const hace30=new Date(Date.now()-30*86400000).toISOString().slice(0,10);
-  document.getElementById('f-desde').value=hace30;
-  document.getElementById('f-hasta').value=hoy;
-}
-
-function renderAll() {
-  renderMetrics('metrics-top');
-  renderMetrics('metrics-analisis');
-  fillSelects();
-  renderTabla();
-  initFechas();
-  const sel=document.getElementById('mapa-filtro-prog');
-  if(sel) sel.innerHTML='<option value="">Todos los programas</option>'+getProgramas().map(p=>`<option value="${p}">${p}</option>`).join('');
-}
-
+function renderAll(){renderMetrics('metrics-top');renderMetrics('metrics-analisis');fillSelects();renderTabla();initFechas();}
 cargar();
 </script>
 </body>
