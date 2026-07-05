@@ -376,18 +376,22 @@ function detectarProgramaYDepto(tema){
   return {programa,departamento};
 }
 
-async function api(params, reintentos=3){
-  for(let i=0;i<reintentos;i++){
-    try{
+async function api(params, reintentos) {
+  if (reintentos === undefined) reintentos = 3;
+  for (let i = 0; i < reintentos; i++) {
+    try {
       let r;
-      if(params.method==='GET') r=await fetch(SCRIPT_URL+'?hoja='+encodeURIComponent(params.hoja)+'&t='+Date.now());
-      else r=await fetch(SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(params)});
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      const text=await r.text();
-      try{return JSON.parse(text);}catch{return params.method==='GET'?[]:{};}
-    }catch(e){
-      if(i<reintentos-1) await new Promise(res=>setTimeout(res,400*(i+1)));
-      else throw e;
+      if (params.method === 'GET') {
+        r = await fetch(SCRIPT_URL + '?hoja=' + encodeURIComponent(params.hoja) + '&t=' + Date.now());
+      } else {
+        r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(params) });
+      }
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const text = await r.text();
+      try { return JSON.parse(text); } catch (parseErr) { return params.method === 'GET' ? [] : {}; }
+    } catch (e) {
+      if (i < reintentos - 1) { await new Promise(function(res){ setTimeout(res, 400 * (i + 1)); }); }
+      else { throw e; }
     }
   }
 }
