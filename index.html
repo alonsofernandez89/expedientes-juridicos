@@ -882,7 +882,7 @@ function abrirModal(idx) {
 function cerrarModal(){ document.getElementById('overlay').classList.remove('show'); }
 async function guardar() {
   var expte = document.getElementById('m-expte').value.trim(), ingreso = document.getElementById('m-ingreso').value, agente = document.getElementById('m-agente').value;
-  if (!expte || !ingreso || !agente) { alert('Completa Expte., Ingreso y Resp. Asignado.'); return; }
+  if (!expte || !ingreso) { alert('Completa al menos Expte. e Ingreso.'); return; }
   var datos = { 'expte.':expte, 'iniciador':document.getElementById('m-iniciador').value, 'ingreso':fmt(ingreso), 'reparto':fmt(document.getElementById('m-reparto').value), 'resp. asig':agente, 'tema':document.getElementById('m-tema').value, 'salio':fmt(document.getElementById('m-salio').value) };
   var btn = document.getElementById('btn-guardar'); btn.disabled = true; btn.textContent = 'Guardando...';
   try {
