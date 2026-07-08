@@ -284,12 +284,22 @@ tr:last-child td{border-bottom:none}
   </div>
 </div>
 
+<div class="overlay" id="overlay-dictamen">
+  <div class="modal">
+    <h3 id="dict-title">Dictamenes</h3>
+    <div id="dict-contenido" style="min-height:60px"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="document.getElementById('overlay-dictamen').classList.remove('show')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
-var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwgUEdBMzhaINpHJgjqld989t3Mwi_TRNDbP1im5vkJrMZ4Ahm7eZIPa5nVRSCHiupp/exec';
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxJKPSNZDKarRy2k78IYEt9VHqN3UkWtCyQ4COkiHuJe5pvoaf78Jgy2XtvZot_6wLM/exec';
 
 var expedientes = [], agentes = [], programasData = [], licenciasData = [];
 var programaActivo = null, editIdx = null;
@@ -503,7 +513,8 @@ function renderTabla() {
       '<td style="white-space:nowrap">' +
         '<button class="btn sm" onclick="abrirModal(' + idx + ')">Editar</button> ' +
         '<button class="btn sm danger" onclick="eliminar(' + idx + ')">Borrar</button> ' +
-        '<button class="btn sm" style="color:#5a9216;border-color:#5a9216" onclick="consultarExpte(\'' + getExpte(e) + '\')">Ver</button>' +
+        '<button class="btn sm" style="color:#5a9216;border-color:#5a9216" onclick="consultarExpte(\'' + getExpte(e) + '\')">Ver</button> ' +
+        '<button class="btn sm" style="color:#854F0B;border-color:#854F0B" onclick="verDictamenes(\'' + getExpte(e) + '\')">Dictamen</button>' +
       '</td></tr>';
   });
   document.getElementById('tabla-body').innerHTML = html;
@@ -514,6 +525,31 @@ function consultarExpte(nro) {
   var s = String(nro).replace(/\D/g, '');
   if (!s) { alert('No se pudo extraer el numero.'); return; }
   window.open('https://apps2.entrerios.gov.ar/consulta/expedientes/#/ver?nro=' + s, '_blank');
+}
+
+async function verDictamenes(nro) {
+  if (!nro) { alert('Este expediente no tiene numero.'); return; }
+  document.getElementById('dict-title').textContent = 'Dictamenes - Expte. ' + nro;
+  document.getElementById('dict-contenido').innerHTML = '<div style="text-align:center;color:#888;padding:16px"><span class="spinner"></span>Buscando dictamenes en Drive...</div>';
+  document.getElementById('overlay-dictamen').classList.add('show');
+  try {
+    var s = String(nro).replace(/\D/g, '');
+    var r = await fetch(SCRIPT_URL + '?hoja=dictamenes&nro=' + encodeURIComponent(s) + '&t=' + Date.now());
+    var lista = await r.json();
+    if (!Array.isArray(lista) || !lista.length) {
+      document.getElementById('dict-contenido').innerHTML = '<div class="alert">No se encontraron dictamenes para este expediente en la carpeta de Drive.</div>';
+      return;
+    }
+    var html = lista.map(function(d){
+      return '<a href="' + d.link + '" target="_blank" style="display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #e0e0d8;border-radius:8px;margin-bottom:8px;text-decoration:none;color:#1a1a1a" onmouseover="this.style.background=\'#f7fbf0\'" onmouseout="this.style.background=\'#fff\'">' +
+        '<span style="font-size:20px">📄</span>' +
+        '<div style="flex:1;min-width:0"><div style="font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + d.nombre + '</div><div style="font-size:11px;color:#5a9216">Abrir en Drive</div></div>' +
+      '</a>';
+    }).join('');
+    document.getElementById('dict-contenido').innerHTML = '<div style="font-size:12px;color:#888;margin-bottom:10px">' + lista.length + ' dictamen(es) encontrado(s):</div>' + html;
+  } catch (e) {
+    document.getElementById('dict-contenido').innerHTML = '<div class="alert">Error al buscar: ' + e.message + '</div>';
+  }
 }
 
 function renderPorAgente() {
