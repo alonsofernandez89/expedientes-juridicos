@@ -79,6 +79,27 @@ tr:last-child td{border-bottom:none}
   .grid-2{grid-template-columns:1fr}
   .form-grid{grid-template-columns:1fr}
 }
+.topbar{position:sticky;top:0;z-index:60}
+.card,.metric{box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.metric .val{font-variant-numeric:tabular-nums}
+tbody tr:hover td{background:#f7fbf0}
+.tabla-scroll{overflow:auto;max-height:72vh;border-radius:10px}
+.tabla-scroll th{position:sticky;top:0;z-index:3}
+.badge{display:inline-flex;align-items:center;gap:6px}
+.badge::before{content:'';width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.badge.activo::before{background:#5a9216}
+.badge.egresado::before{background:#8a8a86}
+.btn.icon{padding:4px 7px;font-size:14px;line-height:1}
+.btn:disabled{opacity:.45;cursor:default}
+#paginacion{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:14px;flex-wrap:wrap}
+.toast.error{background:#A32D2D}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes modalIn{from{opacity:0;transform:scale(.96) translateY(10px)}to{opacity:1;transform:none}}
+.section.active{animation:fadeIn .18s ease}
+.overlay.show{animation:fadeIn .15s ease}
+.overlay.show .modal{animation:modalIn .18s ease}
+.sk-row{height:13px;border-radius:6px;background:linear-gradient(90deg,#ececea 25%,#f8f8f6 50%,#ececea 75%);background-size:200% 100%;animation:shimmer 1.2s linear infinite;margin:14px 0}
+@keyframes shimmer{to{background-position:-200% 0}}
 </style>
 </head>
 <body>
@@ -108,15 +129,22 @@ tr:last-child td{border-bottom:none}
     <div class="metric-grid" id="metrics-top"></div>
     <div class="filters">
       <input type="text" id="f-buscar" placeholder="Buscar expediente o tema..." oninput="buscarDebounced()" style="flex:1;min-width:140px">
-      <select id="f-agente" onchange="renderTabla()"><option value="">Todos los agentes</option></select>
-      <select id="f-estado" onchange="renderTabla()">
+      <select id="f-agente" onchange="filtrosCambiaron()"><option value="">Todos los agentes</option></select>
+      <select id="f-estado" onchange="filtrosCambiaron()">
         <option value="">Todos</option>
         <option value="en_direccion">En la Direccion</option>
         <option value="egresado">Egresados</option>
       </select>
     </div>
-    <div id="loading" class="alert"><span class="spinner"></span>Cargando expedientes...</div>
-    <div style="overflow-x:auto">
+    <div id="loading" class="card">
+      <div class="sk-row" style="width:35%"></div>
+      <div class="sk-row" style="width:92%"></div>
+      <div class="sk-row" style="width:78%"></div>
+      <div class="sk-row" style="width:86%"></div>
+      <div class="sk-row" style="width:64%"></div>
+      <div class="sk-row" style="width:81%"></div>
+    </div>
+    <div class="tabla-scroll">
       <table id="tabla" style="display:none">
         <thead><tr>
           <th onclick="ordenarPor('expte')" style="cursor:pointer">Expte. <span id="sort-expte"></span></th>
@@ -132,7 +160,8 @@ tr:last-child td{border-bottom:none}
         <tbody id="tabla-body"></tbody>
       </table>
     </div>
-    <div class="alert" id="no-results" style="display:none">No se encontraron expedientes.</div>
+    <div id="paginacion"></div>
+    <div class="alert" id="no-results" style="display:none">🔍 No se encontraron expedientes con los filtros actuales.<br><button class="btn sm" style="margin-top:10px" onclick="limpiarFiltros()">Limpiar filtros</button></div>
   </div>
 
   <div class="section" id="tab-agentes">
@@ -300,6 +329,17 @@ tr:last-child td{border-bottom:none}
   </div>
 </div>
 
+<div class="overlay" id="overlay-confirm" onclick="if(event.target===this)resolverConfirm(false)">
+  <div class="modal" style="width:400px">
+    <h3>Confirmar accion</h3>
+    <div id="conf-msg" style="font-size:14px;color:#555;line-height:1.5;margin-bottom:4px"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="resolverConfirm(false)">Cancelar</button>
+      <button class="btn danger" id="conf-si" onclick="resolverConfirm(true)">Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG" crossorigin="anonymous"></script>
@@ -315,6 +355,7 @@ var leafletMap = null, geojsonLayer = null, geoCache = null;
 var mesActual = new Date().getMonth(), anioActual = new Date().getFullYear();
 var progAsignar = null, asignarLista = [], asignarSeleccionado = null, dragExpteId = null;
 var datosMapaActual = {};
+var paginaActual = 1, POR_PAGINA = 50;
 
 var PROGRAMAS_DEFAULT = ['Juventud Emprende','Juventud en el Centro','Juventud en la Comunidad'];
 var TIPOS_LIC = {
@@ -363,7 +404,32 @@ function jsArg(s) {
 }
 
 var buscarTimer = null;
-function buscarDebounced() { clearTimeout(buscarTimer); buscarTimer = setTimeout(renderTabla, 250); }
+function buscarDebounced() { clearTimeout(buscarTimer); buscarTimer = setTimeout(function(){ paginaActual = 1; renderTabla(); }, 250); }
+function filtrosCambiaron() { paginaActual = 1; renderTabla(); }
+function cambiarPagina(dir) { paginaActual += dir; renderTabla(); var w = document.querySelector('.tabla-scroll'); if (w) w.scrollTop = 0; }
+function limpiarFiltros() {
+  document.getElementById('f-buscar').value = '';
+  document.getElementById('f-agente').value = '';
+  document.getElementById('f-estado').value = '';
+  paginaActual = 1; renderTabla();
+}
+
+var confirmResolve = null;
+function confirmar(msg, textoBoton) {
+  document.getElementById('conf-msg').textContent = msg;
+  document.getElementById('conf-si').textContent = textoBoton || 'Confirmar';
+  document.getElementById('overlay-confirm').classList.add('show');
+  return new Promise(function(res){ confirmResolve = res; });
+}
+function resolverConfirm(v) {
+  document.getElementById('overlay-confirm').classList.remove('show');
+  if (confirmResolve) { confirmResolve(v); confirmResolve = null; }
+}
+document.addEventListener('keydown', function(ev){
+  if (ev.key === 'Escape' && document.getElementById('overlay-confirm').classList.contains('show')) resolverConfirm(false);
+});
+
+var SKELETON_HTML = '<div class="sk-row" style="width:35%"></div><div class="sk-row" style="width:92%"></div><div class="sk-row" style="width:78%"></div><div class="sk-row" style="width:86%"></div><div class="sk-row" style="width:64%"></div><div class="sk-row" style="width:81%"></div>';
 
 var LOCALIDADES_RE = (function() {
   var claves = Object.keys(LOCALIDAD_DEPTO);
@@ -411,8 +477,11 @@ function api(params, reintentos) {
 }
 
 async function cargar() {
-  document.getElementById('loading').style.display = 'block';
+  var loading = document.getElementById('loading');
+  loading.innerHTML = SKELETON_HTML;
+  loading.style.display = 'block';
   document.getElementById('tabla').style.display = 'none';
+  document.getElementById('paginacion').innerHTML = '';
   try {
     expedientes = await api({ method: 'GET', hoja: 'expedientes' });
     expedientes = (Array.isArray(expedientes) ? expedientes : []).map(normalizarExpediente);
@@ -425,7 +494,7 @@ async function cargar() {
     } catch (le) { licenciasData = []; }
     renderAll();
   } catch (e) {
-    document.getElementById('loading').innerHTML = 'Error al conectar. Recarga con Ctrl+F5.';
+    document.getElementById('loading').innerHTML = '<div class="alert" style="margin:0;border:none">⚠️ Error al conectar. Recarga con Ctrl+F5.</div>';
   }
 }
 
@@ -469,7 +538,7 @@ function getReparto(e){ return e.reparto; }
 function getSalio(e){ return e.salio; }
 function normalizar(s){ return (s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }
 function initials(s){ return (s||'?').slice(0,2).toUpperCase(); }
-function toast(msg){ var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(function(){ t.classList.remove('show'); }, 2600); }
+function toast(msg, tipo){ var t = document.getElementById('toast'); t.textContent = msg; t.classList.toggle('error', tipo === 'error'); t.classList.add('show'); setTimeout(function(){ t.classList.remove('show'); }, 2600); }
 
 function switchTab(t) {
   var tabsEls = document.querySelectorAll('.container > .tabs > .tab');
@@ -516,7 +585,7 @@ function getValorOrden(e, col) {
     default: return '';
   }
 }
-function ordenarPor(col){ if (sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = 1; } renderTabla(); }
+function ordenarPor(col){ if (sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = 1; } paginaActual = 1; renderTabla(); }
 
 function renderTabla() {
   var buscar = document.getElementById('f-buscar').value.toLowerCase();
@@ -534,8 +603,22 @@ function renderTabla() {
   document.getElementById('loading').style.display = 'none';
   document.getElementById('no-results').style.display = filtrado.length ? 'none' : 'block';
   document.getElementById('tabla').style.display = filtrado.length ? 'table' : 'none';
+  var totalFiltrado = filtrado.length;
+  var totalPaginas = Math.max(1, Math.ceil(totalFiltrado / POR_PAGINA));
+  if (paginaActual > totalPaginas) paginaActual = totalPaginas;
+  if (paginaActual < 1) paginaActual = 1;
+  var pagina = filtrado.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA);
+  var pagHtml = '';
+  if (totalFiltrado > POR_PAGINA) {
+    pagHtml = '<button class="btn sm" onclick="cambiarPagina(-1)"' + (paginaActual <= 1 ? ' disabled' : '') + '>&#9664; Anterior</button>' +
+      '<span style="font-size:13px;color:#555">Pagina ' + paginaActual + ' de ' + totalPaginas + ' &middot; ' + totalFiltrado + ' expedientes</span>' +
+      '<button class="btn sm" onclick="cambiarPagina(1)"' + (paginaActual >= totalPaginas ? ' disabled' : '') + '>Siguiente &#9654;</button>';
+  } else if (totalFiltrado) {
+    pagHtml = '<span style="font-size:13px;color:#888">' + totalFiltrado + ' expediente(s)</span>';
+  }
+  document.getElementById('paginacion').innerHTML = pagHtml;
   var html = '';
-  filtrado.forEach(function(e){
+  pagina.forEach(function(e){
     var egr = estaEgresado(e);
     html += '<tr>' +
       '<td style="font-weight:500;white-space:nowrap">' + esc(getExpte(e) || '-') + '</td>' +
@@ -547,24 +630,24 @@ function renderTabla() {
       '<td><span class="badge ' + (egr ? 'egresado' : 'activo') + '">' + (egr ? 'Egresado' : 'En Direccion') + '</span></td>' +
       '<td style="white-space:nowrap">' + fmt(getSalio(e)) + '</td>' +
       '<td style="white-space:nowrap">' +
-        '<button class="btn sm" onclick="abrirModal(' + e._idx + ')">Editar</button> ' +
-        '<button class="btn sm danger" onclick="eliminar(' + e._idx + ')">Borrar</button> ' +
-        '<button class="btn sm" style="color:#5a9216;border-color:#5a9216" onclick="consultarExpte(\'' + jsArg(getExpte(e)) + '\')">Ver</button> ' +
-        '<button class="btn sm" style="color:#854F0B;border-color:#854F0B" onclick="verDictamenes(\'' + jsArg(getExpte(e)) + '\')">Dictamen</button>' +
+        '<button class="btn sm icon" title="Editar" onclick="abrirModal(' + e._idx + ')">✏️</button> ' +
+        '<button class="btn sm icon danger" title="Borrar" onclick="eliminar(' + e._idx + ')">🗑️</button> ' +
+        '<button class="btn sm icon" title="Consultar en el portal" onclick="consultarExpte(\'' + jsArg(getExpte(e)) + '\')">🔗</button> ' +
+        '<button class="btn sm icon" title="Ver dictamenes" onclick="verDictamenes(\'' + jsArg(getExpte(e)) + '\')">📄</button>' +
       '</td></tr>';
   });
   document.getElementById('tabla-body').innerHTML = html;
 }
 
 function consultarExpte(nro) {
-  if (!nro) { alert('Sin numero cargado.'); return; }
+  if (!nro) { toast('Sin numero cargado.', 'error'); return; }
   var s = String(nro).replace(/\D/g, '');
-  if (!s) { alert('No se pudo extraer el numero.'); return; }
+  if (!s) { toast('No se pudo extraer el numero.', 'error'); return; }
   window.open('https://apps2.entrerios.gov.ar/consulta/expedientes/#/ver?nro=' + s, '_blank');
 }
 
 async function verDictamenes(nro) {
-  if (!nro) { alert('Este expediente no tiene numero.'); return; }
+  if (!nro) { toast('Este expediente no tiene numero.', 'error'); return; }
   document.getElementById('dict-title').textContent = 'Dictamenes - Expte. ' + nro;
   document.getElementById('dict-contenido').innerHTML = '<div style="text-align:center;color:#888;padding:16px"><span class="spinner"></span>Buscando dictamenes en Drive...</div>';
   document.getElementById('overlay-dictamen').classList.add('show');
@@ -573,7 +656,7 @@ async function verDictamenes(nro) {
     var r = await fetch(SCRIPT_URL + '?hoja=dictamenes&nro=' + encodeURIComponent(s) + '&t=' + Date.now());
     var lista = await r.json();
     if (!Array.isArray(lista) || !lista.length) {
-      document.getElementById('dict-contenido').innerHTML = '<div class="alert">No se encontraron dictamenes para este expediente en la carpeta de Drive.</div>';
+      document.getElementById('dict-contenido').innerHTML = '<div class="alert">📄 No se encontraron dictamenes para este expediente en la carpeta de Drive.</div>';
       return;
     }
     var html = lista.filter(function(d){ return /^https?:\/\//i.test(d.link || ''); }).map(function(d){
@@ -600,7 +683,7 @@ function renderPorAgente() {
       '<div class="bar-label"><span style="font-size:13px;color:#1a1a1a;font-weight:500">' + esc(a) + '</span><span>' + total + ' total - <span style="color:#5a9216">' + enDir + ' en dir.</span> - <span style="color:#888">' + egr + ' egres.</span></span></div>' +
       '<div class="bar-bg"><div class="bar-fill" style="width:' + pct + '%"></div></div></div></div>';
   }).join('');
-  document.getElementById('agentes-lista').innerHTML = html || '<div class="alert">No hay agentes configurados.</div>';
+  document.getElementById('agentes-lista').innerHTML = html || '<div class="alert">👥 No hay agentes configurados.</div>';
 }
 
 function renderCharts() {
@@ -684,7 +767,7 @@ function renderPrograma(prog) {
       '<td><button class="btn sm danger" onclick="desasignar(\'' + jsArg(prog) + '\',\'' + jsArg(getExpte(e)) + '\')">X</button></td>' +
       '</tr>';
   }).join('');
-  var tabla = exps.length ? '<div style="overflow-x:auto"><table><thead><tr><th>Expte.</th><th>Iniciador</th><th>Ingreso</th><th>Resp. Asig.</th><th>Tema</th><th>Estado</th><th></th></tr></thead><tbody>' + filas + '</tbody></table></div>' : '<div class="alert">No hay expedientes asignados todavia.</div>';
+  var tabla = exps.length ? '<div style="overflow-x:auto"><table><thead><tr><th>Expte.</th><th>Iniciador</th><th>Ingreso</th><th>Resp. Asig.</th><th>Tema</th><th>Estado</th><th></th></tr></thead><tbody>' + filas + '</tbody></table></div>' : '<div class="alert">📂 No hay expedientes asignados todavia.</div>';
   document.getElementById('prog-contenido').innerHTML =
     '<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">' +
     '<div><span style="font-size:14px;font-weight:600">' + esc(prog) + '</span><span style="font-size:12px;color:#888;margin-left:8px">' + exps.length + ' expediente(s)</span></div>' +
@@ -700,7 +783,7 @@ function renderSinAsignar() {
     return '<div draggable="true" ondragstart="dragStart(event,\'' + jsArg(getExpte(e)) + '\')" style="display:flex;align-items:center;justify-content:space-between;padding:10px;border:1px solid #e0e0d8;border-radius:8px;margin-bottom:8px;cursor:grab;background:#fafaf8">' +
       '<div style="flex:1;min-width:0"><div style="font-weight:500;font-size:13px">' + esc(getExpte(e)||'(sin nro)') + '</div><div style="font-size:12px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(getTema(e)||'-') + '</div></div>' +
       '<select onchange="asignarDesdeLista(\'' + jsArg(getExpte(e)) + '\',this.value)" style="font-size:12px;padding:4px 8px;border:1px solid #d0d0c8;border-radius:6px;margin-left:8px"><option value="">Asignar a...</option>' + opts + '</select></div>';
-  }).join('') : '<div class="alert">No hay expedientes sin asignar.</div>';
+  }).join('') : '<div class="alert">✅ No hay expedientes sin asignar.</div>';
   var zonas = progs.map(function(p){ return '<div class="drop-zone" ondragover="event.preventDefault();this.classList.add(\'over\')" ondragleave="this.classList.remove(\'over\')" ondrop="dropEn(event,\'' + jsArg(p) + '\')">' + esc(p) + '</div>'; }).join('');
   document.getElementById('prog-contenido').innerHTML =
     '<div class="card"><div style="margin-bottom:8px"><span style="font-size:14px;font-weight:600">Bandeja Sin asignar</span><span style="font-size:12px;color:#888;margin-left:8px">' + exps.length + ' expediente(s) que mencionan un programa</span></div>' +
@@ -716,14 +799,14 @@ async function asignarDesdeLista(expte, prog){
     programasData.push({ programa:prog, expte:expte });
     renderSinAsignar();
     toast('Asignado a ' + prog);
-  } catch (e) { alert('Error: ' + e.message); }
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 
 function abrirModalPrograma(){ document.getElementById('np-nombre').value = ''; document.getElementById('overlay-programa').classList.add('show'); }
 async function guardarPrograma() {
   var nombre = document.getElementById('np-nombre').value.trim();
-  if (!nombre) { alert('Ingresa un nombre.'); return; }
-  if (getProgramas().indexOf(nombre) >= 0) { alert('Ya existe ese programa.'); return; }
+  if (!nombre) { toast('Ingresa un nombre.', 'error'); return; }
+  if (getProgramas().indexOf(nombre) >= 0) { toast('Ya existe ese programa.', 'error'); return; }
   await api({ accion:'agregar', hoja:'programas', datos:{ programa:nombre, expte:'' } });
   programasData.push({ programa:nombre, expte:'' });
   document.getElementById('overlay-programa').classList.remove('show');
@@ -748,23 +831,23 @@ function renderListaAsignar(filtro) {
 function selAsignar(expte, el){ asignarSeleccionado = expte; document.querySelectorAll('#as-lista > div').forEach(function(d){ d.style.background = '#fff'; }); el.style.background = '#e6f2d5'; }
 function cerrarModalAsignar(){ document.getElementById('overlay-asignar').classList.remove('show'); }
 async function asignarExpediente() {
-  if (!asignarSeleccionado) { alert('Selecciona un expediente de la lista.'); return; }
+  if (!asignarSeleccionado) { toast('Selecciona un expediente de la lista.', 'error'); return; }
   await api({ accion:'agregar', hoja:'programas', datos:{ programa:progAsignar, expte:asignarSeleccionado } });
   programasData.push({ programa:progAsignar, expte:asignarSeleccionado });
   asignarSeleccionado = null; cerrarModalAsignar(); renderPrograma(progAsignar); toast('Expediente asignado');
 }
 async function desasignar(prog, expte) {
-  if (!confirm('Quitas este expediente del programa "' + prog + '"?')) return;
+  if (!await confirmar('¿Quitas este expediente del programa "' + prog + '"?', 'Quitar')) return;
   try {
     await api({ accion:'eliminar', hoja:'programas', datos:{ programa:prog, expte:String(expte).trim() } });
     var idx = -1;
     for (var i = 0; i < programasData.length; i++) { if (normalizar(programasData[i].programa) === normalizar(prog) && String(programasData[i].expte).trim() === String(expte).trim()) { idx = i; break; } }
     if (idx >= 0) programasData.splice(idx, 1);
     renderPrograma(prog); toast('Expediente quitado');
-  } catch (e) { alert('Error: ' + e.message); }
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 async function eliminarPrograma(prog) {
-  if (!confirm('Eliminas el programa "' + prog + '"? Los expedientes no se borran.')) return;
+  if (!await confirmar('¿Eliminas el programa "' + prog + '"? Los expedientes no se borran.', 'Eliminar')) return;
   var idxs = [];
   programasData.forEach(function(p, i){ if (p.programa === prog) idxs.push(i); });
   idxs.reverse();
@@ -887,7 +970,7 @@ function renderLicencias() {
     filas += '<tr><td style="font-weight:500;position:sticky;left:0;background:#fff;z-index:1;border-right:1px solid #e0e0d8">' + esc(ag) + '</td>' + celdas + '</tr>';
   });
   var leyenda = Object.keys(TIPOS_LIC).map(function(t){ var v = TIPOS_LIC[t]; return '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:12px;background:' + v.color + ';color:' + v.texto + ';margin:3px"><b>' + v.icono + '</b> ' + t + '</span>'; }).join('');
-  var cal = agentes.length ? '<div style="overflow-x:auto"><table style="min-width:' + (100 + totalDias*34) + 'px;font-size:12px"><thead><tr><th style="min-width:110px;position:sticky;left:0;background:#fafaf8;z-index:2">Agente</th>' + thDias + '</tr></thead><tbody>' + filas + '</tbody></table></div><div style="margin-top:12px">' + leyenda + '</div>' : '<div class="alert">No hay agentes configurados.</div>';
+  var cal = agentes.length ? '<div style="overflow-x:auto"><table style="min-width:' + (100 + totalDias*34) + 'px;font-size:12px"><thead><tr><th style="min-width:110px;position:sticky;left:0;background:#fafaf8;z-index:2">Agente</th>' + thDias + '</tr></thead><tbody>' + filas + '</tbody></table></div><div style="margin-top:12px">' + leyenda + '</div>' : '<div class="alert">👥 No hay agentes configurados.</div>';
   document.getElementById('calendario-licencias').innerHTML = cal;
   var resumen = agentes.map(function(ag){
     var lics = licMes.filter(function(l){ return l.agente === ag; });
@@ -906,8 +989,8 @@ function abrirModalLicencia() {
 function cerrarModalLicencia(){ document.getElementById('overlay-licencia').classList.remove('show'); }
 async function guardarLicencia() {
   var agente = document.getElementById('lic-agente').value, tipo = document.getElementById('lic-tipo').value, desde = document.getElementById('lic-desde').value, hasta = document.getElementById('lic-hasta').value;
-  if (!agente || !desde || !hasta) { alert('Completa agente, fecha inicio y fecha fin.'); return; }
-  if (desde > hasta) { alert('La fecha de inicio no puede ser posterior a la fin.'); return; }
+  if (!agente || !desde || !hasta) { toast('Completa agente, fecha inicio y fecha fin.', 'error'); return; }
+  if (desde > hasta) { toast('La fecha de inicio no puede ser posterior a la fin.', 'error'); return; }
   var datos = { agente:agente, tipo:tipo, desde:fmt(desde), hasta:fmt(hasta), obs:document.getElementById('lic-obs').value };
   var btn = document.getElementById('btn-guardar-lic'); btn.disabled = true; btn.textContent = 'Guardando...';
   try {
@@ -915,24 +998,24 @@ async function guardarLicencia() {
     licenciasData = await api({ method:'GET', hoja:'licencias' });
     licenciasData = Array.isArray(licenciasData) ? licenciasData.filter(function(l){ return l.agente; }) : [];
     cerrarModalLicencia(); renderLicencias(); toast('Licencia guardada');
-  } catch (e) { alert('Error: ' + e.message); }
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
   btn.disabled = false; btn.textContent = 'Guardar';
 }
 async function eliminarLicencia(fila, agente) {
-  if (!confirm('Eliminas esta licencia de ' + agente + '?')) return;
-  try { await api({ accion:'eliminar', hoja:'licencias', datos:{ _fila:fila } }); licenciasData = licenciasData.filter(function(l){ return l._fila !== fila; }); renderLicencias(); toast('Licencia eliminada'); } catch (e) { alert('Error: ' + e.message); }
+  if (!await confirmar('¿Eliminas esta licencia de ' + agente + '?', 'Eliminar')) return;
+  try { await api({ accion:'eliminar', hoja:'licencias', datos:{ _fila:fila } }); licenciasData = licenciasData.filter(function(l){ return l._fila !== fila; }); renderLicencias(); toast('Licencia eliminada'); } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 
 function renderConfigAgentes() {
-  document.getElementById('agentes-config-lista').innerHTML = agentes.length ? agentes.map(function(a, i){ return '<div class="agente-item"><div style="display:flex;align-items:center;gap:10px"><div class="avatar">' + esc(initials(a)) + '</div><span style="font-size:14px">' + esc(a) + '</span></div><button class="btn sm danger" onclick="eliminarAgente(' + i + ')">Eliminar</button></div>'; }).join('') : '<div class="alert">No hay agentes cargados.</div>';
+  document.getElementById('agentes-config-lista').innerHTML = agentes.length ? agentes.map(function(a, i){ return '<div class="agente-item"><div style="display:flex;align-items:center;gap:10px"><div class="avatar">' + esc(initials(a)) + '</div><span style="font-size:14px">' + esc(a) + '</span></div><button class="btn sm danger" onclick="eliminarAgente(' + i + ')">Eliminar</button></div>'; }).join('') : '<div class="alert">👥 No hay agentes cargados.</div>';
 }
 async function agregarAgente() {
   var inp = document.getElementById('nuevo-agente'); var nombre = inp.value.trim(); if (!nombre) return;
-  try { await api({ accion:'agregar', hoja:'agentes', datos:{ nombre:nombre } }); inp.value = ''; agentes.push(nombre); fillSelects(); renderConfigAgentes(); toast('Agente agregado'); } catch (e) { alert('Error: ' + e.message); }
+  try { await api({ accion:'agregar', hoja:'agentes', datos:{ nombre:nombre } }); inp.value = ''; agentes.push(nombre); fillSelects(); renderConfigAgentes(); toast('Agente agregado'); } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 async function eliminarAgente(i) {
-  if (!confirm('Eliminas a "' + agentes[i] + '"?')) return;
-  try { await api({ accion:'eliminar', hoja:'agentes', datos:{ _fila:i+2 } }); agentes.splice(i, 1); fillSelects(); renderConfigAgentes(); toast('Agente eliminado'); } catch (e) { alert('Error: ' + e.message); }
+  if (!await confirmar('¿Eliminas a "' + agentes[i] + '"?', 'Eliminar')) return;
+  try { await api({ accion:'eliminar', hoja:'agentes', datos:{ _fila:i+2 } }); agentes.splice(i, 1); fillSelects(); renderConfigAgentes(); toast('Agente eliminado'); } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 
 function fillSelects() {
@@ -961,7 +1044,7 @@ function abrirModal(idx) {
 function cerrarModal(){ document.getElementById('overlay').classList.remove('show'); }
 async function guardar() {
   var expte = document.getElementById('m-expte').value.trim(), ingreso = document.getElementById('m-ingreso').value, agente = document.getElementById('m-agente').value;
-  if (!expte || !ingreso) { alert('Completa al menos Expte. e Ingreso.'); return; }
+  if (!expte || !ingreso) { toast('Completa al menos Expte. e Ingreso.', 'error'); return; }
   var datos = { 'expte.':expte, 'iniciador':document.getElementById('m-iniciador').value, 'ingreso':fmt(ingreso), 'reparto':fmt(document.getElementById('m-reparto').value), 'resp. asig':agente, 'tema':document.getElementById('m-tema').value, 'salio':fmt(document.getElementById('m-salio').value) };
   var btn = document.getElementById('btn-guardar'); btn.disabled = true; btn.textContent = 'Guardando...';
   try {
@@ -975,12 +1058,12 @@ async function guardar() {
       } else { toast('Expediente guardado'); }
     }
     cerrarModal(); await cargar();
-  } catch (e) { alert('Error al guardar: ' + e.message); }
+  } catch (e) { toast('Error al guardar: ' + e.message, 'error'); }
   btn.disabled = false; btn.textContent = 'Guardar';
 }
 async function eliminar(idx) {
-  if (!confirm('Eliminas este expediente? Esta accion no se puede deshacer.')) return;
-  try { await api({ accion:'eliminar', hoja:'expedientes', datos:{ _fila:expedientes[idx]._fila } }); toast('Expediente eliminado'); await cargar(); } catch (e) { alert('Error: ' + e.message); }
+  if (!await confirmar('¿Eliminas este expediente? Esta accion no se puede deshacer.', 'Eliminar')) return;
+  try { await api({ accion:'eliminar', hoja:'expedientes', datos:{ _fila:expedientes[idx]._fila } }); toast('Expediente eliminado'); await cargar(); } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 function initFechas() {
   var hoy = new Date().toISOString().slice(0,10);
