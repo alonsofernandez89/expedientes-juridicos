@@ -124,7 +124,6 @@ tbody tr:hover td{background:#f7fbf0}
     <button class="tab" onclick="switchTab('programas')">Programas</button>
     <button class="tab" onclick="switchTab('licencias')">Licencias</button>
     <button class="tab" onclick="switchTab('config')">Agentes</button>
-    <button class="tab" onclick="switchTab('dictamen')">Dictamen IA</button>
   </div>
 
   <div class="section active" id="tab-registro">
@@ -250,53 +249,6 @@ tbody tr:hover td{background:#f7fbf0}
         <button class="btn primary" onclick="agregarAgente()">+ Agregar</button>
       </div>
       <div id="agentes-config-lista"></div>
-    </div>
-  </div>
-
-  <div class="section" id="tab-dictamen">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-      <div style="font-size:15px;font-weight:600">Dictamen con IA</div>
-      <button class="btn sm" id="ia-btn-config" onclick="toggleConfigIA()">Configurar clave API</button>
-    </div>
-
-    <div class="card" id="ia-config" style="display:none">
-      <div class="section-title">Clave API de Anthropic</div>
-      <div style="font-size:12px;color:#888;margin-bottom:10px">Necesitas una clave API de Anthropic (se obtiene en <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> &rarr; API Keys). La clave se guarda unicamente en este navegador y se usa para enviar el PDF directamente a Claude. Cada dictamen generado consume creditos de tu cuenta de Anthropic.</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <input type="password" id="ia-key" placeholder="sk-ant-..." style="flex:1;min-width:220px;padding:8px 10px;font-size:14px;border:1px solid #d0d0c8;border-radius:8px">
-        <button class="btn primary" onclick="guardarClaveIA()">Guardar clave</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="section-title">Modelos de dictamen</div>
-      <div style="font-size:12px;color:#888;margin-bottom:12px">Pega aca el texto completo de tus modelos de dictamen (los que usas como plantilla). La IA los tomara como referencia de estructura, estilo y formulas juridicas al redactar. Se guardan en este navegador. Nota: los modelos que tengas cargados en claude.ai no son accesibles desde la aplicacion, por eso hay que pegarlos una vez aca.</div>
-      <div id="ia-modelos-lista" style="margin-bottom:12px"></div>
-      <div class="fg" style="margin-bottom:8px"><label>Nombre del modelo</label><input type="text" id="ia-modelo-nombre" placeholder="Ej: Dictamen de subsidio"></div>
-      <div class="fg" style="margin-bottom:8px"><label>Texto del modelo</label><textarea id="ia-modelo-texto" placeholder="Pega aca el texto completo del modelo de dictamen..." style="min-height:120px"></textarea></div>
-      <button class="btn primary" onclick="agregarModeloIA()">+ Guardar modelo</button>
-    </div>
-
-    <div class="card">
-      <div class="section-title">Generar dictamen</div>
-      <div class="fg" style="margin-bottom:10px"><label>Expediente escaneado (PDF, hasta 20 MB / ~100 paginas)</label><input type="file" id="ia-pdf" accept="application/pdf,.pdf" style="padding:8px 0;font-size:13px"></div>
-      <div class="fg" style="margin-bottom:10px"><label>Indicaciones adicionales (opcional)</label><textarea id="ia-instrucciones" placeholder="Ej: es una solicitud de subsidio, dictaminar favorablemente si cumple los requisitos..." style="min-height:60px"></textarea></div>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <button class="btn primary" id="ia-btn-generar" onclick="generarDictamen()">Generar dictamen</button>
-        <span id="ia-status" style="font-size:13px;color:#888"></span>
-      </div>
-    </div>
-
-    <div class="card" id="ia-resultado-card" style="display:none">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-        <div class="section-title" style="margin:0">Dictamen generado</div>
-        <div style="display:flex;gap:8px">
-          <button class="btn sm" onclick="copiarDictamen()">Copiar</button>
-          <button class="btn sm" onclick="descargarDictamen()">Descargar (Word)</button>
-        </div>
-      </div>
-      <div style="font-size:12px;color:#854F0B;margin-bottom:10px">⚠ Borrador generado por IA. Revisar y validar juridicamente antes de usar.</div>
-      <div id="ia-resultado" style="white-space:pre-wrap;font-size:14px;line-height:1.6;border:1px solid #e0e0d8;border-radius:8px;padding:14px;background:#fafaf8;max-height:520px;overflow-y:auto"></div>
     </div>
   </div>
 </div>
@@ -592,7 +544,7 @@ function toast(msg, tipo){ var t = document.getElementById('toast'); t.textConte
 
 function switchTab(t) {
   var tabsEls = document.querySelectorAll('.container > .tabs > .tab');
-  var orden = ['registro','agentes','analisis','programas','licencias','config','dictamen'];
+  var orden = ['registro','agentes','analisis','programas','licencias','config'];
   tabsEls.forEach(function(el, i){ el.classList.toggle('active', orden[i] === t); });
   document.querySelectorAll('.section').forEach(function(el){ el.classList.remove('active'); });
   document.getElementById('tab-' + t).classList.add('active');
@@ -601,7 +553,6 @@ function switchTab(t) {
   if (t === 'config') renderConfigAgentes();
   if (t === 'programas') renderProgramas();
   if (t === 'licencias') renderLicencias();
-  if (t === 'dictamen') renderModelosIA();
 }
 function switchSubTab(t) {
   var els = document.querySelectorAll('#prog-subtabs .tab');
@@ -1130,183 +1081,6 @@ async function agregarAgente() {
 async function eliminarAgente(i) {
   if (!await confirmar('¿Eliminas a "' + agentes[i] + '"?', 'Eliminar')) return;
   try { await api({ accion:'eliminar', hoja:'agentes', datos:{ _fila:i+2 } }); agentes.splice(i, 1); fillSelects(); renderConfigAgentes(); toast('Agente eliminado'); } catch (e) { toast('Error: ' + e.message, 'error'); }
-}
-
-// ===== Dictamen con IA =====
-var IA_KEY_LS = 'dictamen-api-key', IA_MODELOS_LS = 'dictamen-modelos', iaGenerando = false;
-
-function getModelosIA(){ try { return JSON.parse(localStorage.getItem(IA_MODELOS_LS) || '[]'); } catch (e) { return []; } }
-function setModelosIA(m){ localStorage.setItem(IA_MODELOS_LS, JSON.stringify(m)); }
-function getClaveIA(){ return localStorage.getItem(IA_KEY_LS) || ''; }
-
-function toggleConfigIA(){
-  var c = document.getElementById('ia-config');
-  var visible = c.style.display !== 'none';
-  c.style.display = visible ? 'none' : 'block';
-  if (!visible) document.getElementById('ia-key').value = getClaveIA();
-}
-function guardarClaveIA(){
-  var k = document.getElementById('ia-key').value.trim();
-  if (!k) { toast('Pega tu clave API.', 'error'); return; }
-  localStorage.setItem(IA_KEY_LS, k);
-  document.getElementById('ia-config').style.display = 'none';
-  renderModelosIA(); toast('Clave guardada en este navegador');
-}
-
-function renderModelosIA(){
-  var btn = document.getElementById('ia-btn-config');
-  btn.textContent = getClaveIA() ? 'Clave API configurada ✓' : 'Configurar clave API';
-  var modelos = getModelosIA();
-  document.getElementById('ia-modelos-lista').innerHTML = modelos.length ? modelos.map(function(m, i){
-    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid #e0e0d8;border-radius:8px;margin-bottom:6px;background:#fafaf8">' +
-      '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;flex:1;min-width:0"><input type="checkbox" id="ia-mod-usar-' + i + '" ' + (m.usar !== false ? 'checked' : '') + ' onchange="toggleUsarModeloIA(' + i + ',this.checked)"><span style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(m.nombre) + '</span><span style="color:#888;font-size:12px;white-space:nowrap">' + Math.round((m.texto||'').length/1000) + ' mil caract.</span></label>' +
-      '<div style="display:flex;gap:6px"><button class="btn sm" onclick="verModeloIA(' + i + ')">Ver</button><button class="btn sm danger" onclick="eliminarModeloIA(' + i + ')">X</button></div></div>' +
-      '<div id="ia-mod-texto-' + i + '" style="display:none;white-space:pre-wrap;font-size:12px;color:#555;border:1px solid #eee;border-radius:8px;padding:10px;margin:-2px 0 8px;max-height:200px;overflow-y:auto">' + esc(m.texto) + '</div>';
-  }).join('') : '<div class="alert">📄 Todavia no hay modelos cargados. Los dictamenes generados sin modelos usaran un formato juridico generico.</div>';
-}
-function toggleUsarModeloIA(i, v){ var m = getModelosIA(); if (m[i]) { m[i].usar = v; setModelosIA(m); } }
-function verModeloIA(i){ var d = document.getElementById('ia-mod-texto-' + i); d.style.display = d.style.display === 'none' ? 'block' : 'none'; }
-function agregarModeloIA(){
-  var nombre = document.getElementById('ia-modelo-nombre').value.trim();
-  var texto = document.getElementById('ia-modelo-texto').value.trim();
-  if (!nombre || !texto) { toast('Completa el nombre y el texto del modelo.', 'error'); return; }
-  var m = getModelosIA(); m.push({ nombre:nombre, texto:texto, usar:true }); setModelosIA(m);
-  document.getElementById('ia-modelo-nombre').value = ''; document.getElementById('ia-modelo-texto').value = '';
-  renderModelosIA(); toast('Modelo guardado');
-}
-async function eliminarModeloIA(i){
-  var m = getModelosIA();
-  if (!await confirmar('¿Eliminas el modelo "' + (m[i] ? m[i].nombre : '') + '"?', 'Eliminar')) return;
-  m.splice(i, 1); setModelosIA(m); renderModelosIA(); toast('Modelo eliminado');
-}
-
-function leerPdfBase64(file){
-  return new Promise(function(resolve, reject){
-    var r = new FileReader();
-    r.onload = function(){ resolve(String(r.result).split(',')[1]); };
-    r.onerror = function(){ reject(new Error('No se pudo leer el archivo.')); };
-    r.readAsDataURL(file);
-  });
-}
-
-async function generarDictamen(){
-  if (iaGenerando) return;
-  var key = getClaveIA();
-  if (!key) { toast('Primero configura tu clave API de Anthropic.', 'error'); toggleConfigIA(); return; }
-  var inp = document.getElementById('ia-pdf');
-  if (!inp.files || !inp.files.length) { toast('Selecciona el PDF del expediente.', 'error'); return; }
-  var file = inp.files[0];
-  if (file.size > 20 * 1024 * 1024) { toast('El PDF supera los 20 MB. Divide el expediente o reduce la resolucion del escaneo.', 'error'); return; }
-
-  var status = document.getElementById('ia-status');
-  var btn = document.getElementById('ia-btn-generar');
-  var out = document.getElementById('ia-resultado');
-  var card = document.getElementById('ia-resultado-card');
-  iaGenerando = true; btn.disabled = true; btn.textContent = 'Generando...';
-  out.textContent = ''; card.style.display = 'block';
-
-  try {
-    status.textContent = 'Leyendo el PDF...';
-    var b64 = await leerPdfBase64(file);
-
-    var modelos = getModelosIA().filter(function(m){ return m.usar !== false; });
-    var sys = 'Sos un abogado de la Direccion General de Asuntos Juridicos del Ministerio de Desarrollo Humano de Entre Rios, Argentina. Tu tarea es leer el expediente administrativo adjunto (escaneado en PDF) y redactar el proyecto de dictamen juridico correspondiente, en espanol, listo para revisar y firmar.\n\n' +
-      'Instrucciones:\n- Lee todo el expediente: identifica caratula, numero de expediente, iniciador, objeto del tramite, documentacion agregada y normativa aplicable.\n- Redacta el dictamen completo siguiendo fielmente la estructura, el estilo y las formulas de los modelos provistos. Si ningun modelo se ajusta al caso, usa el mas parecido y adaptalo.\n- Cita las fojas o documentos del expediente cuando corresponda.\n- Si falta documentacion o hay observaciones, senalalas en el dictamen como se hace habitualmente.\n- Si algun dato no surge del expediente, dejalo indicado entre corchetes, por ejemplo [COMPLETAR: fecha].\n- Respond solo con el texto del dictamen, sin comentarios previos ni posteriores.';
-    if (modelos.length) {
-      sys += '\n\nModelos de dictamen de referencia:\n' + modelos.map(function(m){ return '<modelo nombre="' + m.nombre.replace(/"/g, "'") + '">\n' + m.texto + '\n</modelo>'; }).join('\n\n');
-    }
-
-    var instr = document.getElementById('ia-instrucciones').value.trim();
-    var userText = 'Adjunto el expediente escaneado. Redacta el proyecto de dictamen.' + (instr ? '\n\nIndicaciones adicionales: ' + instr : '');
-
-    status.textContent = 'Enviando a Claude y redactando (puede tardar unos minutos)...';
-    var resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-opus-4-8',
-        max_tokens: 64000,
-        stream: true,
-        thinking: { type: 'adaptive' },
-        system: sys,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } },
-            { type: 'text', text: userText }
-          ]
-        }]
-      })
-    });
-
-    if (!resp.ok) {
-      var errMsg = 'Error HTTP ' + resp.status;
-      try { var ej = await resp.json(); if (ej && ej.error && ej.error.message) errMsg = ej.error.message; } catch (pe) {}
-      if (resp.status === 401) errMsg = 'Clave API invalida. Revisala en "Configurar clave API".';
-      if (resp.status === 429) errMsg = 'Limite de uso alcanzado en tu cuenta de Anthropic. Espera unos minutos y reintenta.';
-      throw new Error(errMsg);
-    }
-
-    var reader = resp.body.getReader();
-    var decoder = new TextDecoder();
-    var buffer = '', texto = '', stopReason = null;
-    while (true) {
-      var chunk = await reader.read();
-      if (chunk.done) break;
-      buffer += decoder.decode(chunk.value, { stream: true });
-      var lineas = buffer.split('\n');
-      buffer = lineas.pop();
-      for (var li = 0; li < lineas.length; li++) {
-        var linea = lineas[li];
-        if (linea.indexOf('data: ') !== 0) continue;
-        var ev;
-        try { ev = JSON.parse(linea.slice(6)); } catch (je) { continue; }
-        if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta') {
-          texto += ev.delta.text;
-          out.textContent = texto;
-        } else if (ev.type === 'message_delta' && ev.delta && ev.delta.stop_reason) {
-          stopReason = ev.delta.stop_reason;
-        } else if (ev.type === 'error') {
-          throw new Error(ev.error && ev.error.message ? ev.error.message : 'Error en la generacion.');
-        }
-      }
-    }
-
-    if (!texto) throw new Error('La IA no devolvio texto. Reintenta o revisa el PDF.');
-    if (stopReason === 'max_tokens') out.textContent = texto + '\n\n[ATENCION: el dictamen quedo incompleto por limite de longitud]';
-    if (stopReason === 'refusal') toast('La IA declino parte del pedido. Revisa el resultado.', 'error');
-    status.textContent = 'Dictamen generado. Revisalo antes de usar.';
-    toast('Dictamen generado');
-  } catch (e) {
-    status.textContent = '';
-    if (!out.textContent) card.style.display = 'none';
-    toast('Error: ' + e.message, 'error');
-  } finally {
-    iaGenerando = false; btn.disabled = false; btn.textContent = 'Generar dictamen';
-  }
-}
-
-function copiarDictamen(){
-  var t = document.getElementById('ia-resultado').textContent;
-  if (!t) return;
-  navigator.clipboard.writeText(t).then(function(){ toast('Dictamen copiado'); }, function(){ toast('No se pudo copiar.', 'error'); });
-}
-function descargarDictamen(){
-  var t = document.getElementById('ia-resultado').textContent;
-  if (!t) return;
-  var html = '<html><head><meta charset="utf-8"></head><body style="font-family:Cambria,Georgia,serif;font-size:12pt;line-height:1.5">' +
-    t.split(/\n/).map(function(p){ return '<p>' + esc(p).replace(/ {2}/g, '&nbsp;&nbsp;') + '</p>'; }).join('') + '</body></html>';
-  var blob = new Blob(['﻿', html], { type: 'application/msword' });
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'dictamen.doc';
-  document.body.appendChild(a); a.click();
-  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 500);
 }
 
 function fillSelects() {
