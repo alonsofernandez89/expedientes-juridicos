@@ -71,6 +71,7 @@ tr:last-child td{border-bottom:none}
 .agente-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f0ee}
 .agente-item:last-child{border-bottom:none}
 #mapa-leaflet{width:100%;height:480px;border-radius:10px;overflow:hidden}
+#mapa-leaflet path.leaflet-interactive:focus{outline:none}
 .drop-zone{padding:16px;border:2px dashed #8bc53f;border-radius:8px;text-align:center;font-size:13px;color:#5a9216;background:#f7fbf0;transition:background .15s}
 .drop-zone.over{background:#e6f2d5}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
@@ -351,13 +352,14 @@ var expedientes = [], agentes = [], programasData = [], licenciasData = [];
 var programaActivo = null, editIdx = null;
 var chartA = null, chartM = null, chartD = null;
 var sortCol = null, sortDir = 1;
-var leafletMap = null, geojsonLayer = null, geoCache = null;
+var leafletMap = null, geojsonLayer = null, geoCache = null, capaSeleccionada = null;
 var mesActual = new Date().getMonth(), anioActual = new Date().getFullYear();
 var progAsignar = null, asignarLista = [], asignarSeleccionado = null, dragExpteId = null;
 var datosMapaActual = {};
 var paginaActual = 1, POR_PAGINA = 50;
 
 var PROGRAMAS_DEFAULT = ['Juventud Emprende','Juventud en el Centro','Juventud en la Comunidad'];
+var PROG_OCULTO = '__oculto__'; // marca interna: expediente quitado de la bandeja Sin asignar (no es un programa real)
 var TIPOS_LIC = {
   'Vacaciones':{color:'#d1fae5',texto:'#065f46',icono:'V'},
   'Estudio':{color:'#dbeafe',texto:'#1e40af',icono:'E'},
@@ -436,7 +438,7 @@ var LOCALIDADES_RE = (function() {
   claves.sort(function(a, b){ return b.length - a.length; });
   return claves.map(function(loc) {
     var escapado = normTexto(loc).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    return { re: new RegExp('(^|[ \\-])' + escapado + '($|[ \\-])'), depto: LOCALIDAD_DEPTO[loc] };
+    return { re: new RegExp('(^|[ \\-])' + escapado + '($|[ \\-])'), depto: LOCALIDAD_DEPTO[loc], loc: loc };
   });
 })();
 
@@ -725,7 +727,7 @@ function renderDiario() {
 
 function getProgramas() {
   var n = [];
-  programasData.forEach(function(p){ if (p.programa && n.indexOf(p.programa) < 0) n.push(p.programa); });
+  programasData.forEach(function(p){ if (p.programa && p.programa !== PROG_OCULTO && n.indexOf(p.programa) < 0) n.push(p.programa); });
   PROGRAMAS_DEFAULT.forEach(function(p){ if (n.indexOf(p) < 0) n.push(p); });
   return n;
 }
@@ -782,7 +784,8 @@ function renderSinAsignar() {
     var opts = progs.map(function(p){ return '<option value="' + esc(p) + '">' + esc(p) + '</option>'; }).join('');
     return '<div draggable="true" ondragstart="dragStart(event,\'' + jsArg(getExpte(e)) + '\')" style="display:flex;align-items:center;justify-content:space-between;padding:10px;border:1px solid #e0e0d8;border-radius:8px;margin-bottom:8px;cursor:grab;background:#fafaf8">' +
       '<div style="flex:1;min-width:0"><div style="font-weight:500;font-size:13px">' + esc(getExpte(e)||'(sin nro)') + '</div><div style="font-size:12px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(getTema(e)||'-') + '</div></div>' +
-      '<select onchange="asignarDesdeLista(\'' + jsArg(getExpte(e)) + '\',this.value)" style="font-size:12px;padding:4px 8px;border:1px solid #d0d0c8;border-radius:6px;margin-left:8px"><option value="">Asignar a...</option>' + opts + '</select></div>';
+      '<select onchange="asignarDesdeLista(\'' + jsArg(getExpte(e)) + '\',this.value)" style="font-size:12px;padding:4px 8px;border:1px solid #d0d0c8;border-radius:6px;margin-left:8px"><option value="">Asignar a...</option>' + opts + '</select>' +
+      '<button class="btn sm danger" title="Quitar de esta lista (el expediente no se borra)" onclick="quitarDeSinAsignar(\'' + jsArg(getExpte(e)) + '\')" style="margin-left:6px">X</button></div>';
   }).join('') : '<div class="alert">✅ No hay expedientes sin asignar.</div>';
   var zonas = progs.map(function(p){ return '<div class="drop-zone" ondragover="event.preventDefault();this.classList.add(\'over\')" ondragleave="this.classList.remove(\'over\')" ondrop="dropEn(event,\'' + jsArg(p) + '\')">' + esc(p) + '</div>'; }).join('');
   document.getElementById('prog-contenido').innerHTML =
@@ -799,6 +802,15 @@ async function asignarDesdeLista(expte, prog){
     programasData.push({ programa:prog, expte:expte });
     renderSinAsignar();
     toast('Asignado a ' + prog);
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+async function quitarDeSinAsignar(expte) {
+  if (!await confirmar('¿Quitas este expediente de la lista Sin asignar? El expediente NO se elimina del registro.', 'Quitar')) return;
+  try {
+    await api({ accion:'agregar', hoja:'programas', datos:{ programa:PROG_OCULTO, expte:String(expte).trim() } });
+    programasData.push({ programa:PROG_OCULTO, expte:String(expte).trim() });
+    renderSinAsignar();
+    toast('Quitado de la lista');
   } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 
@@ -862,6 +874,18 @@ function deptoDeExpte(e) {
   if (!departamento) { var det = detectarProgramaYDepto(tema); if (det.departamento) departamento = det.departamento; }
   return departamento;
 }
+function localidadDeExpte(e) {
+  var tema = getTema(e);
+  var partes = tema.split('-').map(function(s){ return s.trim(); });
+  var loc = (partes.length >= 3 && partes[1]) ? partes[1] : '';
+  if (!loc) {
+    var t = normTexto(tema);
+    for (var i = 0; i < LOCALIDADES_RE.length; i++) {
+      if (LOCALIDADES_RE[i].re.test(t)) { loc = LOCALIDADES_RE[i].loc.replace(/(^|\s)\S/g, function(c){ return c.toUpperCase(); }); break; }
+    }
+  }
+  return loc;
+}
 function getDatosMapaProg(filtroProg) {
   var progs = getProgramas();
   var conteo = {};
@@ -871,24 +895,60 @@ function getDatosMapaProg(filtroProg) {
       var departamento = deptoDeExpte(e);
       if (!departamento) return;
       var dep = normalizar(departamento);
-      if (!conteo[dep]) conteo[dep] = { total:0, porProg:{}, exptes:[] };
+      var loc = localidadDeExpte(e) || 'Sin localidad';
+      if (!conteo[dep]) conteo[dep] = { total:0, porProg:{}, porLoc:{}, exptes:[] };
       conteo[dep].total++;
       conteo[dep].porProg[prog] = (conteo[dep].porProg[prog]||0)+1;
-      conteo[dep].exptes.push({ e:e, prog:prog });
+      conteo[dep].porLoc[loc] = (conteo[dep].porLoc[loc]||0)+1;
+      conteo[dep].exptes.push({ e:e, prog:prog, loc:loc });
     });
   });
   return conteo;
 }
+var COLORES_LOC = ['#5a9216','#1e6fb8','#b8551e','#7c3aed','#0d9488','#b91c1c','#a16207','#be185d','#4d7c0f','#155e75'];
+function resaltarDepto(depKey) {
+  if (!geojsonLayer) return;
+  if (capaSeleccionada) { geojsonLayer.resetStyle(capaSeleccionada); capaSeleccionada = null; }
+  geojsonLayer.eachLayer(function(layer){
+    var nom = layer.feature.properties.departamento || layer.feature.properties.nombre || '';
+    if (normalizar(nom) === depKey) {
+      capaSeleccionada = layer;
+      layer.setStyle({ color:'#000', weight:2.5, opacity:1, fillOpacity:0.95 });
+      if (layer.bringToFront) layer.bringToFront();
+    }
+  });
+}
+function cerrarDetalleDepto() {
+  document.getElementById('mapa-detalle-depto').innerHTML = '';
+  if (capaSeleccionada && geojsonLayer) geojsonLayer.resetStyle(capaSeleccionada);
+  capaSeleccionada = null;
+}
 function mostrarDetalleDepto(depKey, nombreDep) {
   var info = datosMapaActual[depKey];
   var cont = document.getElementById('mapa-detalle-depto');
-  if (!info || !info.exptes || !info.exptes.length) { cont.innerHTML = ''; return; }
+  if (!info || !info.exptes || !info.exptes.length) { cerrarDetalleDepto(); return; }
+  resaltarDepto(depKey);
+  var locs = Object.keys(info.porLoc || {});
+  locs.sort(function(a,b){ return info.porLoc[b] - info.porLoc[a]; });
+  var colorLoc = {};
+  locs.forEach(function(l, i){ colorLoc[l] = COLORES_LOC[i % COLORES_LOC.length]; });
+  var chips = locs.map(function(l){
+    return '<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:12px;font-size:12px;background:' + colorLoc[l] + '18;color:' + colorLoc[l] + ';border:1px solid ' + colorLoc[l] + '55;font-weight:600"><span style="width:8px;height:8px;border-radius:50%;background:' + colorLoc[l] + '"></span>' + esc(l) + ' <span style="font-weight:400">(' + info.porLoc[l] + ')</span></span>';
+  }).join('');
+  var items = info.exptes.slice();
+  items.sort(function(a,b){ return a.loc === b.loc ? 0 : (info.porLoc[b.loc] - info.porLoc[a.loc]) || (a.loc < b.loc ? -1 : 1); });
   var filas = '';
-  info.exptes.forEach(function(item){
-    var e = item.e, prog = item.prog;
-    filas += '<tr><td style="font-weight:500;white-space:nowrap">' + esc(getExpte(e)||'-') + '</td><td style="white-space:nowrap">' + esc(prog) + '</td><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(getTema(e)) + '">' + esc(getTema(e)||'-') + '</td><td>' + esc(getRespAsig(e)||'-') + '</td></tr>';
+  items.forEach(function(item){
+    var e = item.e, prog = item.prog, c = colorLoc[item.loc] || '#888';
+    filas += '<tr><td style="font-weight:500;white-space:nowrap">' + esc(getExpte(e)||'-') + '</td>' +
+      '<td style="white-space:nowrap"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + c + ';margin-right:6px"></span>' + esc(item.loc||'-') + '</td>' +
+      '<td style="white-space:nowrap">' + esc(prog) + '</td>' +
+      '<td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(getTema(e)) + '">' + esc(getTema(e)||'-') + '</td>' +
+      '<td>' + esc(getRespAsig(e)||'-') + '</td></tr>';
   });
-  cont.innerHTML = '<div class="card" style="margin:0"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-size:14px;font-weight:600">' + esc(nombreDep) + ' <span style="font-size:12px;color:#888;font-weight:400">- ' + info.total + ' expediente(s)</span></div><button class="btn sm" onclick="document.getElementById(\'mapa-detalle-depto\').innerHTML=\'\'">Cerrar</button></div><div style="overflow-x:auto"><table><thead><tr><th>Expte.</th><th>Programa</th><th>Tema</th><th>Resp. Asig.</th></tr></thead><tbody>' + filas + '</tbody></table></div></div>';
+  cont.innerHTML = '<div class="card" style="margin:0"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="font-size:14px;font-weight:600">' + esc(nombreDep) + ' <span style="font-size:12px;color:#888;font-weight:400">- ' + info.total + ' expediente(s)</span></div><button class="btn sm" onclick="cerrarDetalleDepto()">Cerrar</button></div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">' + chips + '</div>' +
+    '<div style="overflow-x:auto"><table><thead><tr><th>Expte.</th><th>Localidad</th><th>Programa</th><th>Tema</th><th>Resp. Asig.</th></tr></thead><tbody>' + filas + '</tbody></table></div></div>';
 }
 function interpolarColorLeaflet(t) {
   var r = Math.round(230 - (230-58)*t);
@@ -908,6 +968,7 @@ async function renderMapa() {
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution:'OpenStreetMap CARTO', maxZoom:12 }).addTo(leafletMap);
   }
   if (geojsonLayer) { leafletMap.removeLayer(geojsonLayer); geojsonLayer = null; }
+  capaSeleccionada = null;
   try {
     document.getElementById('mapa-tabla-depto').innerHTML = '<div style="color:#888;font-size:12px">Cargando mapa...</div>';
     if (!geoCache) {
@@ -925,9 +986,13 @@ async function renderMapa() {
         var key = normalizar(nom);
         var info = datos[key] || { total:0, porProg:{} };
         var lines = Object.keys(info.porProg).map(function(p){ return '<b>' + esc(p) + ':</b> ' + info.porProg[p]; }).join('<br>');
-        layer.bindTooltip('<div style="font-size:13px"><b>' + esc(nom) + '</b><br>Total: <b>' + info.total + '</b>' + (lines ? '<br>' + lines : '') + '<br><span style="color:#8bc53f">Click para ver detalle</span></div>', { sticky:true, opacity:0.95 });
-        layer.on('mouseover', function(){ this.setStyle({ fillOpacity:0.95, weight:2.5, color:'#3B6D11' }); });
-        layer.on('mouseout', function(){ geojsonLayer.resetStyle(this); });
+        var locKeys = Object.keys(info.porLoc || {});
+        locKeys.sort(function(a,b){ return info.porLoc[b] - info.porLoc[a]; });
+        var locLines = locKeys.slice(0, 6).map(function(l){ return esc(l) + ': <b>' + info.porLoc[l] + '</b>'; }).join('<br>');
+        if (locKeys.length > 6) locLines += '<br>+' + (locKeys.length - 6) + ' localidad(es) mas';
+        layer.bindTooltip('<div style="font-size:13px"><b>' + esc(nom) + '</b><br>Total: <b>' + info.total + '</b>' + (lines ? '<br>' + lines : '') + (locLines ? '<br><span style="color:#888;font-size:11px">Por localidad:</span><br><span style="font-size:12px">' + locLines + '</span>' : '') + '<br><span style="color:#8bc53f">Click para ver detalle</span></div>', { sticky:true, opacity:0.95 });
+        layer.on('mouseover', function(){ if (this !== capaSeleccionada) this.setStyle({ fillOpacity:0.95, weight:2.5, color:'#3B6D11' }); });
+        layer.on('mouseout', function(){ if (this !== capaSeleccionada) geojsonLayer.resetStyle(this); });
         layer.on('click', function(){ mostrarDetalleDepto(key, nom); });
       }
     }).addTo(leafletMap);
