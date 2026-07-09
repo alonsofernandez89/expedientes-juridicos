@@ -201,6 +201,7 @@ tbody tr:hover td{background:#f7fbf0}
     <div class="tabs" style="margin-bottom:16px" id="prog-subtabs">
       <button class="tab active" onclick="switchSubTab('lista')">Lista</button>
       <button class="tab" onclick="switchSubTab('mapa')">Mapa</button>
+      <button class="tab" onclick="switchSubTab('plantillas')">Plantillas</button>
     </div>
     <div id="subprog-lista">
       <div class="tabs" id="prog-tabs" style="margin-bottom:16px"></div>
@@ -223,6 +224,23 @@ tbody tr:hover td{background:#f7fbf0}
           <div style="width:120px;height:10px;border-radius:4px;background:linear-gradient(to right,#eef7e3,#3a731a)"></div>
           <div style="font-size:11px;color:#888">Maximo</div>
         </div>
+      </div>
+    </div>
+    <div id="subprog-plantillas" style="display:none">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+          <div class="section-title" style="margin:0">Plantillas del programa</div>
+          <select id="plant-filtro-prog" onchange="renderPlantillas()" style="padding:7px 10px;font-size:13px;border:1px solid #d0d0c8;border-radius:8px;background:#fff"></select>
+        </div>
+        <div id="plant-lista"></div>
+      </div>
+      <div class="card">
+        <div class="section-title">+ Agregar plantilla</div>
+        <div style="font-size:12px;color:#888;margin-bottom:12px">Sube el archivo Word de la plantilla, o si todavia no lo tenes armado, peganos el texto y lo convertimos a un .doc descargable. Las plantillas se guardan en este navegador, asociadas al programa seleccionado arriba.</div>
+        <div class="fg" style="margin-bottom:8px"><label>Nombre de la plantilla</label><input type="text" id="plant-nombre" placeholder="Ej: Dictamen de subsidio - Juventud Emprende"></div>
+        <div class="fg" style="margin-bottom:8px"><label>Archivo Word (.doc / .docx)</label><input type="file" id="plant-archivo" accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="padding:8px 0;font-size:13px"></div>
+        <div class="fg" style="margin-bottom:8px"><label>O pega el texto de la plantilla (opcional si ya subiste un archivo)</label><textarea id="plant-texto" placeholder="Pega aca el texto de la plantilla..." style="min-height:120px"></textarea></div>
+        <button class="btn primary" onclick="agregarPlantilla()">+ Guardar plantilla</button>
       </div>
     </div>
   </div>
@@ -556,11 +574,13 @@ function switchTab(t) {
 }
 function switchSubTab(t) {
   var els = document.querySelectorAll('#prog-subtabs .tab');
-  var orden = ['lista','mapa'];
+  var orden = ['lista','mapa','plantillas'];
   els.forEach(function(el, i){ el.classList.toggle('active', orden[i] === t); });
   document.getElementById('subprog-lista').style.display = t === 'lista' ? 'block' : 'none';
   document.getElementById('subprog-mapa').style.display = t === 'mapa' ? 'block' : 'none';
+  document.getElementById('subprog-plantillas').style.display = t === 'plantillas' ? 'block' : 'none';
   if (t === 'mapa') setTimeout(renderMapa, 100);
+  if (t === 'plantillas') renderPlantillas();
 }
 
 function renderMetrics(target) {
@@ -865,6 +885,102 @@ async function eliminarPrograma(prog) {
   idxs.reverse();
   for (var k = 0; k < idxs.length; k++) { await api({ accion:'eliminar', hoja:'programas', datos:{ _fila: idxs[k]+2 } }); programasData.splice(idxs[k], 1); }
   programaActivo = getProgramas()[0] || null; renderProgramas(); toast('Programa eliminado');
+}
+
+// ===== Plantillas de Word por programa =====
+var PLANTILLAS_LS = 'plantillas-programas';
+
+function getPlantillasTodas(){ try { return JSON.parse(localStorage.getItem(PLANTILLAS_LS) || '{}'); } catch (e) { return {}; } }
+function setPlantillasTodas(obj){ localStorage.setItem(PLANTILLAS_LS, JSON.stringify(obj)); }
+
+function leerArchivoBase64(file){
+  return new Promise(function(resolve, reject){
+    var r = new FileReader();
+    r.onload = function(){ resolve(String(r.result).split(',')[1]); };
+    r.onerror = function(){ reject(new Error('No se pudo leer el archivo.')); };
+    r.readAsDataURL(file);
+  });
+}
+
+function renderPlantillas(){
+  var sel = document.getElementById('plant-filtro-prog');
+  var progs = getProgramas();
+  var cur = sel.value;
+  sel.innerHTML = progs.map(function(p){ return '<option value="' + esc(p) + '">' + esc(p) + '</option>'; }).join('');
+  if (progs.indexOf(cur) >= 0) sel.value = cur;
+  else if (progs.indexOf(programaActivo) >= 0) sel.value = programaActivo;
+  var prog = sel.value;
+  var lista = document.getElementById('plant-lista');
+  if (!prog) { lista.innerHTML = '<div class="alert">📁 Crea un programa primero (pestaña Lista) para poder guardarle plantillas.</div>'; return; }
+  var todas = getPlantillasTodas();
+  var items = todas[normalizar(prog)] || [];
+  lista.innerHTML = items.length ? '<div style="display:flex;flex-direction:column;gap:8px">' + items.map(function(item, i){
+    var badge = item.archivoNombre ? '<span class="badge activo">' + esc(item.archivoNombre.split('.').pop().toUpperCase()) + '</span>' : '<span class="badge egresado">TEXTO</span>';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px;border:1px solid #e0e0d8;border-radius:8px;background:#fafaf8">' +
+      '<div style="min-width:0;flex:1"><div style="font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(item.nombre) + '</div><div style="font-size:11px;color:#888;margin-top:2px">' + badge + ' <span style="margin-left:6px">' + fmt(item.fecha ? item.fecha.slice(0,10) : '') + '</span></div></div>' +
+      '<div style="display:flex;gap:6px;flex-shrink:0"><button class="btn sm" onclick="descargarPlantilla(\'' + jsArg(prog) + '\',' + i + ')">Descargar</button><button class="btn sm danger" onclick="eliminarPlantilla(\'' + jsArg(prog) + '\',' + i + ')">X</button></div></div>';
+  }).join('') + '</div>' : '<div class="alert">📄 Todavia no hay plantillas cargadas para este programa.</div>';
+}
+
+async function agregarPlantilla(){
+  var sel = document.getElementById('plant-filtro-prog');
+  var prog = sel.value;
+  if (!prog) { toast('Selecciona un programa.', 'error'); return; }
+  var nombre = document.getElementById('plant-nombre').value.trim();
+  if (!nombre) { toast('Ingresa un nombre para la plantilla.', 'error'); return; }
+  var fileInp = document.getElementById('plant-archivo');
+  var texto = document.getElementById('plant-texto').value.trim();
+  var item = { nombre: nombre, fecha: new Date().toISOString() };
+  if (fileInp.files && fileInp.files.length) {
+    var file = fileInp.files[0];
+    if (file.size > 4 * 1024 * 1024) { toast('El archivo supera los 4 MB. El navegador no tiene espacio suficiente para guardarlo.', 'error'); return; }
+    try { item.archivoNombre = file.name; item.archivoTipo = file.type || 'application/msword'; item.archivoBase64 = await leerArchivoBase64(file); }
+    catch (e) { toast('No se pudo leer el archivo.', 'error'); return; }
+  } else if (texto) {
+    item.texto = texto;
+  } else {
+    toast('Sube un archivo Word o pega el texto de la plantilla.', 'error'); return;
+  }
+  var todas = getPlantillasTodas();
+  var key = normalizar(prog);
+  if (!todas[key]) todas[key] = [];
+  todas[key].push(item);
+  try { setPlantillasTodas(todas); }
+  catch (e) { toast('No se pudo guardar: el almacenamiento del navegador esta lleno.', 'error'); return; }
+  document.getElementById('plant-nombre').value = ''; document.getElementById('plant-texto').value = ''; fileInp.value = '';
+  renderPlantillas(); toast('Plantilla guardada');
+}
+
+function descargarPlantilla(prog, idx){
+  var todas = getPlantillasTodas();
+  var item = (todas[normalizar(prog)] || [])[idx];
+  if (!item) return;
+  var a = document.createElement('a');
+  if (item.archivoBase64) {
+    var bin = atob(item.archivoBase64);
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    a.href = URL.createObjectURL(new Blob([bytes], { type: item.archivoTipo || 'application/msword' }));
+    a.download = item.archivoNombre || (item.nombre + '.docx');
+  } else {
+    var html = '<html><head><meta charset="utf-8"></head><body style="font-family:Cambria,Georgia,serif;font-size:12pt;line-height:1.5">' +
+      item.texto.split(/\n/).map(function(p){ return '<p>' + esc(p).replace(/ {2}/g, '&nbsp;&nbsp;') + '</p>'; }).join('') + '</body></html>';
+    a.href = URL.createObjectURL(new Blob(['﻿', html], { type: 'application/msword' }));
+    a.download = (item.nombre || 'plantilla') + '.doc';
+  }
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+
+async function eliminarPlantilla(prog, idx){
+  var todas = getPlantillasTodas();
+  var key = normalizar(prog);
+  var item = (todas[key] || [])[idx];
+  if (!item) return;
+  if (!await confirmar('¿Eliminas la plantilla "' + item.nombre + '"?', 'Eliminar')) return;
+  todas[key].splice(idx, 1);
+  setPlantillasTodas(todas);
+  renderPlantillas(); toast('Plantilla eliminada');
 }
 
 function deptoDeExpte(e) {
