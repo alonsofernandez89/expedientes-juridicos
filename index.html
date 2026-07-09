@@ -358,6 +358,7 @@ var datosMapaActual = {};
 var paginaActual = 1, POR_PAGINA = 50;
 
 var PROGRAMAS_DEFAULT = ['Juventud Emprende','Juventud en el Centro','Juventud en la Comunidad'];
+var PROG_OCULTO = '__oculto__'; // marca interna: expediente quitado de la bandeja Sin asignar (no es un programa real)
 var TIPOS_LIC = {
   'Vacaciones':{color:'#d1fae5',texto:'#065f46',icono:'V'},
   'Estudio':{color:'#dbeafe',texto:'#1e40af',icono:'E'},
@@ -725,7 +726,7 @@ function renderDiario() {
 
 function getProgramas() {
   var n = [];
-  programasData.forEach(function(p){ if (p.programa && n.indexOf(p.programa) < 0) n.push(p.programa); });
+  programasData.forEach(function(p){ if (p.programa && p.programa !== PROG_OCULTO && n.indexOf(p.programa) < 0) n.push(p.programa); });
   PROGRAMAS_DEFAULT.forEach(function(p){ if (n.indexOf(p) < 0) n.push(p); });
   return n;
 }
@@ -782,7 +783,8 @@ function renderSinAsignar() {
     var opts = progs.map(function(p){ return '<option value="' + esc(p) + '">' + esc(p) + '</option>'; }).join('');
     return '<div draggable="true" ondragstart="dragStart(event,\'' + jsArg(getExpte(e)) + '\')" style="display:flex;align-items:center;justify-content:space-between;padding:10px;border:1px solid #e0e0d8;border-radius:8px;margin-bottom:8px;cursor:grab;background:#fafaf8">' +
       '<div style="flex:1;min-width:0"><div style="font-weight:500;font-size:13px">' + esc(getExpte(e)||'(sin nro)') + '</div><div style="font-size:12px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(getTema(e)||'-') + '</div></div>' +
-      '<select onchange="asignarDesdeLista(\'' + jsArg(getExpte(e)) + '\',this.value)" style="font-size:12px;padding:4px 8px;border:1px solid #d0d0c8;border-radius:6px;margin-left:8px"><option value="">Asignar a...</option>' + opts + '</select></div>';
+      '<select onchange="asignarDesdeLista(\'' + jsArg(getExpte(e)) + '\',this.value)" style="font-size:12px;padding:4px 8px;border:1px solid #d0d0c8;border-radius:6px;margin-left:8px"><option value="">Asignar a...</option>' + opts + '</select>' +
+      '<button class="btn sm danger" title="Quitar de esta lista (el expediente no se borra)" onclick="quitarDeSinAsignar(\'' + jsArg(getExpte(e)) + '\')" style="margin-left:6px">X</button></div>';
   }).join('') : '<div class="alert">✅ No hay expedientes sin asignar.</div>';
   var zonas = progs.map(function(p){ return '<div class="drop-zone" ondragover="event.preventDefault();this.classList.add(\'over\')" ondragleave="this.classList.remove(\'over\')" ondrop="dropEn(event,\'' + jsArg(p) + '\')">' + esc(p) + '</div>'; }).join('');
   document.getElementById('prog-contenido').innerHTML =
@@ -799,6 +801,15 @@ async function asignarDesdeLista(expte, prog){
     programasData.push({ programa:prog, expte:expte });
     renderSinAsignar();
     toast('Asignado a ' + prog);
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+async function quitarDeSinAsignar(expte) {
+  if (!await confirmar('¿Quitas este expediente de la lista Sin asignar? El expediente NO se elimina del registro.', 'Quitar')) return;
+  try {
+    await api({ accion:'agregar', hoja:'programas', datos:{ programa:PROG_OCULTO, expte:String(expte).trim() } });
+    programasData.push({ programa:PROG_OCULTO, expte:String(expte).trim() });
+    renderSinAsignar();
+    toast('Quitado de la lista');
   } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 
