@@ -150,6 +150,7 @@ tbody tr:hover td{background:var(--green-50)}
     <button class="tab" onclick="switchTab('programas')">Programas</button>
     <button class="tab" onclick="switchTab('licencias')">Licencias</button>
     <button class="tab" onclick="switchTab('config')">Agentes</button>
+    <button class="tab" onclick="switchTab('historico')">Histórico</button>
   </div>
 
   <div class="section active" id="tab-registro">
@@ -295,6 +296,36 @@ tbody tr:hover td{background:var(--green-50)}
       <div id="agentes-config-lista"></div>
     </div>
   </div>
+
+  <div class="section" id="tab-historico">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:15px;font-weight:600">Histórico de expedientes</div>
+      <div class="tabs" id="hist-anios" style="margin-bottom:0;border-bottom:none">
+        <button class="tab active" onclick="switchAnioHistorico('2025')">2025</button>
+        <button class="tab" onclick="switchAnioHistorico('2024')">2024</button>
+      </div>
+    </div>
+    <div class="filters">
+      <input type="text" id="hist-buscar" placeholder="Buscar expediente, tema o agente..." oninput="renderHistorico()" style="flex:1;min-width:140px">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-soft);padding:7px 4px"><input type="checkbox" id="hist-solo-pendientes" checked onchange="renderHistorico()"> Solo pendientes (aún en la Dirección)</label>
+    </div>
+    <div id="hist-loading" class="card" style="display:none">
+      <div class="sk-row" style="width:35%"></div>
+      <div class="sk-row" style="width:92%"></div>
+      <div class="sk-row" style="width:78%"></div>
+      <div class="sk-row" style="width:86%"></div>
+    </div>
+    <div id="hist-error" class="alert" style="display:none;color:#A32D2D"></div>
+    <div class="tabla-scroll">
+      <table id="hist-tabla" style="display:none">
+        <thead><tr>
+          <th>Expte.</th><th>Iniciador</th><th>Ingreso</th><th>Agente (histórico)</th><th>Tema</th><th>Estado</th><th>Origen</th>
+        </tr></thead>
+        <tbody id="hist-tabla-body"></tbody>
+      </table>
+    </div>
+    <div class="alert" id="hist-sin-resultados" style="display:none">🔍 No se encontraron expedientes con ese criterio.</div>
+  </div>
 </div>
 
 <div class="footer">Direccion | Telefono<br><a href="https://portal.entrerios.gov.ar/desarrollohumano" target="_blank">portal.entrerios.gov.ar/desarrollohumano</a></div>
@@ -391,6 +422,9 @@ tbody tr:hover td{background:var(--green-50)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO" crossorigin="anonymous"></script>
 <script>
 var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxqh_UKIESenujigna2_nh9v8tHlkWjHMDn7qAuSHgp6tra1sDy68AlXADnzAo8-sVo/exec';
+// Web App del Apps Script independiente que lee las planillas 2024/2025 (ver apps-script-historico.gs).
+// Completar con la URL que da Google al desplegar ese script ("Implementar > Nueva implementacion > Aplicacion web").
+var SCRIPT_URL_HISTORICO = '';
 
 var expedientes = [], agentes = [], programasData = [], licenciasData = [];
 var programaActivo = null, editIdx = null;
@@ -401,6 +435,7 @@ var mesActual = new Date().getMonth(), anioActual = new Date().getFullYear();
 var progAsignar = null, asignarLista = [], asignarSeleccionado = null, dragExpteId = null;
 var datosMapaActual = {};
 var paginaActual = 1, POR_PAGINA = 50;
+var historicoCache = {}, anioHistoricoActivo = '2025', historicoBuscarTimer = null;
 
 var PROGRAMAS_DEFAULT = ['Juventud Emprende','Juventud en el Centro','Juventud en la Comunidad'];
 var PROG_OCULTO = '__oculto__'; // marca interna: expediente quitado de la bandeja Sin asignar (no es un programa real)
@@ -588,7 +623,7 @@ function toast(msg, tipo){ var t = document.getElementById('toast'); t.textConte
 
 function switchTab(t) {
   var tabsEls = document.querySelectorAll('.container > .tabs > .tab');
-  var orden = ['registro','agentes','analisis','programas','licencias','config'];
+  var orden = ['registro','agentes','analisis','programas','licencias','config','historico'];
   tabsEls.forEach(function(el, i){ el.classList.toggle('active', orden[i] === t); });
   document.querySelectorAll('.section').forEach(function(el){ el.classList.remove('active'); });
   document.getElementById('tab-' + t).classList.add('active');
@@ -597,6 +632,61 @@ function switchTab(t) {
   if (t === 'config') renderConfigAgentes();
   if (t === 'programas') renderProgramas();
   if (t === 'licencias') renderLicencias();
+  if (t === 'historico') cargarHistorico(anioHistoricoActivo);
+}
+function switchAnioHistorico(anio) {
+  anioHistoricoActivo = anio;
+  document.querySelectorAll('#hist-anios .tab').forEach(function(el){ el.classList.toggle('active', el.textContent.trim() === anio); });
+  cargarHistorico(anio);
+}
+async function cargarHistorico(anio) {
+  var loading = document.getElementById('hist-loading'), tabla = document.getElementById('hist-tabla'), err = document.getElementById('hist-error');
+  err.style.display = 'none';
+  if (!SCRIPT_URL_HISTORICO) {
+    tabla.style.display = 'none'; loading.style.display = 'none';
+    err.textContent = '⚠ Falta configurar SCRIPT_URL_HISTORICO en el codigo (ver instrucciones de apps-script-historico.gs).';
+    err.style.display = 'block';
+    return;
+  }
+  if (historicoCache[anio]) { renderHistorico(); return; }
+  loading.style.display = 'block'; tabla.style.display = 'none';
+  document.getElementById('hist-sin-resultados').style.display = 'none';
+  try {
+    var r = await fetch(SCRIPT_URL_HISTORICO + '?anio=' + anio + '&t=' + Date.now());
+    var data = await r.json();
+    if (data && data.error) throw new Error(data.error);
+    historicoCache[anio] = Array.isArray(data) ? data : [];
+    renderHistorico();
+  } catch (e) {
+    loading.style.display = 'none';
+    err.textContent = 'Error al cargar el histórico ' + anio + ': ' + e.message;
+    err.style.display = 'block';
+  }
+}
+function renderHistorico() {
+  var loading = document.getElementById('hist-loading'), tabla = document.getElementById('hist-tabla');
+  var datos = historicoCache[anioHistoricoActivo] || [];
+  var soloPendientes = document.getElementById('hist-solo-pendientes').checked;
+  var q = normalizar(document.getElementById('hist-buscar').value);
+  var filtrados = datos.filter(function(e){
+    if (soloPendientes && estaEgresado(e)) return false;
+    if (!q) return true;
+    return normalizar(getExpte(e)).indexOf(q) >= 0 || normalizar(getTema(e)).indexOf(q) >= 0 || normalizar(getRespAsig(e)).indexOf(q) >= 0 || normalizar(getIniciador(e)).indexOf(q) >= 0;
+  });
+  loading.style.display = 'none';
+  document.getElementById('hist-sin-resultados').style.display = filtrados.length ? 'none' : 'block';
+  tabla.style.display = filtrados.length ? 'table' : 'none';
+  document.getElementById('hist-tabla-body').innerHTML = filtrados.map(function(e){
+    return '<tr>' +
+      '<td style="font-weight:500">' + esc(getExpte(e)||'-') + '</td>' +
+      '<td>' + esc(getIniciador(e)||'-') + '</td>' +
+      '<td style="white-space:nowrap">' + fmt(e.ingreso) + '</td>' +
+      '<td>' + esc(getRespAsig(e)||'-') + '</td>' +
+      '<td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(getTema(e)) + '">' + esc(getTema(e)||'-') + '</td>' +
+      '<td><span class="badge ' + (estaEgresado(e)?'egresado':'activo') + '">' + (estaEgresado(e)?'Egresado':'En Dir.') + '</span></td>' +
+      '<td style="white-space:nowrap;color:#888;font-size:12px">' + esc(e.origen||'-') + '</td>' +
+      '</tr>';
+  }).join('');
 }
 function switchSubTab(t) {
   var els = document.querySelectorAll('#prog-subtabs .tab');
