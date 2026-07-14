@@ -145,7 +145,7 @@ tbody tr:hover td{background:var(--green-50)}
 
   <div class="tabs">
     <button class="tab active" onclick="switchTab('registro')">Registro</button>
-    <button class="tab" onclick="switchTab('agentes')">Por agente</button>
+    <button class="tab" onclick="switchTab('agentes')">🔒 Por agente</button>
     <button class="tab" onclick="switchTab('analisis')">🔒 Analisis</button>
     <button class="tab" onclick="switchTab('programas')">Programas</button>
     <button class="tab" onclick="switchTab('licencias')">Licencias</button>
@@ -635,7 +635,7 @@ function normalizar(s){ return (s||'').toUpperCase().normalize('NFD').replace(/[
 function initials(s){ return (s||'?').slice(0,2).toUpperCase(); }
 function toast(msg, tipo){ var t = document.getElementById('toast'); t.textContent = msg; t.classList.toggle('error', tipo === 'error'); t.classList.add('show'); setTimeout(function(){ t.classList.remove('show'); }, 2600); }
 
-var TABS_PROTEGIDAS = ['analisis', 'config'];
+var TABS_PROTEGIDAS = ['analisis', 'config', 'agentes'];
 var CLAVE_HASH = 'a181eb72cec525f96f8f9e27201eb05d073b80ccd41d36440397e5b1b0b3699a';
 var tabPendienteClave = null;
 
