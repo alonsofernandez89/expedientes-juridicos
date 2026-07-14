@@ -146,10 +146,10 @@ tbody tr:hover td{background:var(--green-50)}
   <div class="tabs">
     <button class="tab active" onclick="switchTab('registro')">Registro</button>
     <button class="tab" onclick="switchTab('agentes')">Por agente</button>
-    <button class="tab" onclick="switchTab('analisis')">Analisis</button>
+    <button class="tab" onclick="switchTab('analisis')">🔒 Analisis</button>
     <button class="tab" onclick="switchTab('programas')">Programas</button>
     <button class="tab" onclick="switchTab('licencias')">Licencias</button>
-    <button class="tab" onclick="switchTab('config')">Agentes</button>
+    <button class="tab" onclick="switchTab('config')">🔒 Agentes</button>
     <button class="tab" onclick="switchTab('historico')">Histórico</button>
   </div>
 
@@ -357,6 +357,20 @@ tbody tr:hover td{background:var(--green-50)}
     <div class="modal-actions">
       <button class="btn" onclick="cerrarModalAsignar()">Cancelar</button>
       <button class="btn primary" onclick="asignarExpediente()">Asignar seleccionado</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-clave">
+  <div class="modal" style="width:360px">
+    <h3>🔒 Acceso restringido</h3>
+    <div class="fg" style="margin-bottom:12px">
+      <label>Contraseña</label>
+      <input type="password" id="clave-input" placeholder="Ingresa la contraseña" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarClave();}">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="cerrarModalClave()">Cancelar</button>
+      <button class="btn primary" onclick="confirmarClave()">Ingresar</button>
     </div>
   </div>
 </div>
@@ -621,7 +635,40 @@ function normalizar(s){ return (s||'').toUpperCase().normalize('NFD').replace(/[
 function initials(s){ return (s||'?').slice(0,2).toUpperCase(); }
 function toast(msg, tipo){ var t = document.getElementById('toast'); t.textContent = msg; t.classList.toggle('error', tipo === 'error'); t.classList.add('show'); setTimeout(function(){ t.classList.remove('show'); }, 2600); }
 
+var TABS_PROTEGIDAS = ['analisis', 'config'];
+var CLAVE_HASH = 'a181eb72cec525f96f8f9e27201eb05d073b80ccd41d36440397e5b1b0b3699a';
+var tabPendienteClave = null;
+
+function zonaDesbloqueada() { return sessionStorage.getItem('zona-protegida-ok') === '1'; }
+async function sha256Hex(texto) {
+  var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto));
+  return Array.prototype.map.call(new Uint8Array(buf), function(b){ return b.toString(16).padStart(2, '0'); }).join('');
+}
+async function verificarClave(intento) {
+  if (!intento) return false;
+  return (await sha256Hex(intento)) === CLAVE_HASH;
+}
+function abrirModalClave(t) {
+  tabPendienteClave = t;
+  document.getElementById('clave-input').value = '';
+  document.getElementById('overlay-clave').classList.add('show');
+  setTimeout(function(){ document.getElementById('clave-input').focus(); }, 100);
+}
+function cerrarModalClave() {
+  document.getElementById('overlay-clave').classList.remove('show');
+  tabPendienteClave = null;
+}
+async function confirmarClave() {
+  var intento = document.getElementById('clave-input').value;
+  if (!(await verificarClave(intento))) { toast('Contraseña incorrecta', 'error'); return; }
+  sessionStorage.setItem('zona-protegida-ok', '1');
+  document.getElementById('overlay-clave').classList.remove('show');
+  var t = tabPendienteClave; tabPendienteClave = null;
+  if (t) switchTab(t);
+}
+
 function switchTab(t) {
+  if (TABS_PROTEGIDAS.indexOf(t) >= 0 && !zonaDesbloqueada()) { abrirModalClave(t); return; }
   var tabsEls = document.querySelectorAll('.container > .tabs > .tab');
   var orden = ['registro','agentes','analisis','programas','licencias','config','historico'];
   tabsEls.forEach(function(el, i){ el.classList.toggle('active', orden[i] === t); });
@@ -1307,10 +1354,12 @@ function renderConfigAgentes() {
   document.getElementById('agentes-config-lista').innerHTML = agentes.length ? agentes.map(function(a, i){ return '<div class="agente-item"><div style="display:flex;align-items:center;gap:10px"><div class="avatar">' + esc(initials(a)) + '</div><span style="font-size:14px">' + esc(a) + '</span></div><button class="btn sm danger" onclick="eliminarAgente(' + i + ')">Eliminar</button></div>'; }).join('') : '<div class="alert">👥 No hay agentes cargados.</div>';
 }
 async function agregarAgente() {
+  if (!zonaDesbloqueada()) { toast('Acceso restringido.', 'error'); return; }
   var inp = document.getElementById('nuevo-agente'); var nombre = inp.value.trim(); if (!nombre) return;
   try { await api({ accion:'agregar', hoja:'agentes', datos:{ nombre:nombre } }); inp.value = ''; agentes.push(nombre); fillSelects(); renderConfigAgentes(); toast('Agente agregado'); } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 async function eliminarAgente(i) {
+  if (!zonaDesbloqueada()) { toast('Acceso restringido.', 'error'); return; }
   if (!await confirmar('¿Eliminas a "' + agentes[i] + '"?', 'Eliminar')) return;
   try { await api({ accion:'eliminar', hoja:'agentes', datos:{ _fila:i+2 } }); agentes.splice(i, 1); fillSelects(); renderConfigAgentes(); toast('Agente eliminado'); } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
