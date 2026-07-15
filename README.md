@@ -11,6 +11,10 @@ App de gestión de expedientes de la Dirección General de Asuntos Jurídicos. E
 | `programas` | pares programa/expediente para la pestaña Programas |
 | `licencias` | licencias por agente (agente, tipo, desde, hasta, obs) |
 | `dictamenes` | búsqueda de PDFs en Drive por número de expediente (solo GET) |
+| `inventario` | bienes de la oficina (columnas: `bien`, `categoria`, `cantidad`, `estado`, `ubicacion`, `obs`) |
+| `pedidos` | pedidos de insumos (columnas: `fecha`, `insumo`, `cantidad`, `solicitante`, `estado`, `obs`) |
+
+> **Para activar la pestaña Inventario**: crear en la planilla dos hojas nuevas llamadas exactamente `inventario` y `pedidos`, con los encabezados de la tabla de arriba en la fila 1 (en minúsculas). El Apps Script debe soportar las acciones `agregar`, `editar` y `eliminar` de forma genérica por nombre de hoja (igual que con las hojas existentes).
 
 ## ⚠️ Seguridad del backend (pendiente — requiere cambios en el Apps Script)
 

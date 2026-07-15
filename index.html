@@ -125,6 +125,7 @@ tbody tr:hover td{background:var(--green-50)}
 .section.active{animation:fadeIn .18s var(--ease)}
 .overlay.show{animation:fadeIn .15s var(--ease)}
 .overlay.show .modal{animation:modalIn .18s var(--ease)}
+.chip{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:500;white-space:nowrap}
 .sk-row{height:13px;border-radius:var(--radius-sm);background:linear-gradient(90deg,#ececea 25%,#f8f8f6 50%,#ececea 75%);background-size:200% 100%;animation:shimmer 1.2s linear infinite;margin:14px 0}
 @keyframes shimmer{to{background-position:-200% 0}}
 </style>
@@ -149,6 +150,7 @@ tbody tr:hover td{background:var(--green-50)}
     <button class="tab" onclick="switchTab('analisis')">🔒 Analisis</button>
     <button class="tab" onclick="switchTab('programas')">Programas</button>
     <button class="tab" onclick="switchTab('licencias')">Licencias</button>
+    <button class="tab" onclick="switchTab('inventario')">Inventario</button>
     <button class="tab" onclick="switchTab('config')">🔒 Agentes</button>
     <button class="tab" onclick="switchTab('historico')">Histórico</button>
   </div>
@@ -286,6 +288,44 @@ tbody tr:hover td{background:var(--green-50)}
     <div class="card"><div class="section-title">Resumen del mes</div><div id="resumen-licencias"></div></div>
   </div>
 
+  <div class="section" id="tab-inventario">
+    <div class="metric-grid" id="metrics-inventario"></div>
+    <div class="tabs" style="margin-bottom:16px" id="inv-subtabs">
+      <button class="tab active" onclick="switchInvTab('bienes')">Bienes</button>
+      <button class="tab" onclick="switchInvTab('pedidos')">Pedidos de insumos</button>
+    </div>
+    <div id="subinv-bienes">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div class="filters" style="margin:0;flex:1">
+          <input type="text" id="inv-buscar" placeholder="Buscar bien..." oninput="renderBienes()" style="flex:1;min-width:140px">
+          <select id="inv-categoria" onchange="renderBienes()">
+            <option value="">Todas las categorias</option>
+            <option>Mobiliario</option><option>Informatica</option><option>Libreria</option><option>Electrodomesticos</option><option>Otro</option>
+          </select>
+          <select id="inv-estado" onchange="renderBienes()">
+            <option value="">Todos los estados</option>
+            <option>Bueno</option><option>Regular</option><option>Malo</option><option>En reparacion</option><option>De baja</option>
+          </select>
+        </div>
+        <button class="btn primary" onclick="abrirModalBien()">+ Nuevo bien</button>
+      </div>
+      <div id="inv-lista"></div>
+    </div>
+    <div id="subinv-pedidos" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div class="filters" style="margin:0;flex:1">
+          <select id="ped-estado" onchange="renderPedidos()">
+            <option value="">Todos</option>
+            <option value="Pendiente">Pendientes</option>
+            <option value="Entregado">Entregados</option>
+          </select>
+        </div>
+        <button class="btn primary" onclick="abrirModalPedido()">+ Nuevo pedido</button>
+      </div>
+      <div id="ped-lista"></div>
+    </div>
+  </div>
+
   <div class="section" id="tab-config">
     <div class="card">
       <div class="section-title">Gestion de agentes</div>
@@ -419,6 +459,57 @@ tbody tr:hover td{background:var(--green-50)}
   </div>
 </div>
 
+<div class="overlay" id="overlay-bien">
+  <div class="modal">
+    <h3 id="bien-title">Nuevo bien</h3>
+    <div class="form-grid">
+      <div class="fg full"><label>Bien *</label><input type="text" id="b-bien" placeholder="Ej: Escritorio de madera, Impresora HP..."></div>
+      <div class="fg"><label>Categoria</label><select id="b-categoria">
+        <option>Mobiliario</option><option>Informatica</option><option>Libreria</option><option>Electrodomesticos</option><option>Otro</option>
+      </select></div>
+      <div class="fg"><label>Cantidad *</label><input type="number" id="b-cantidad" min="1" value="1"></div>
+      <div class="fg"><label>Estado</label><select id="b-estado">
+        <option>Bueno</option><option>Regular</option><option>Malo</option><option>En reparacion</option><option>De baja</option>
+      </select></div>
+      <div class="fg"><label>Ubicacion</label><input type="text" id="b-ubicacion" placeholder="Ej: Oficina principal"></div>
+      <div class="fg full"><label>Observaciones</label><textarea id="b-obs" placeholder="Opcional"></textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="document.getElementById('overlay-bien').classList.remove('show')">Cancelar</button>
+      <button class="btn primary" id="btn-guardar-bien" onclick="guardarBien()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-pedido">
+  <div class="modal">
+    <h3 id="pedido-title">Nuevo pedido de insumos</h3>
+    <div class="form-grid">
+      <div class="fg full"><label>Insumo *</label><input type="text" id="p-insumo" list="lista-insumos" placeholder="Ej: Biromes azules, Hojas A4..."></div>
+      <div class="fg"><label>Cantidad *</label><input type="number" id="p-cantidad" min="1" value="1"></div>
+      <div class="fg"><label>Fecha del pedido *</label><input type="date" id="p-fecha"></div>
+      <div class="fg"><label>Solicitante</label><select id="p-solicitante"><option value="">Seleccionar...</option></select></div>
+      <div class="fg"><label>Estado</label><select id="p-estado">
+        <option>Pendiente</option><option>Entregado</option>
+      </select></div>
+      <div class="fg full"><label>Observaciones</label><input type="text" id="p-obs" placeholder="Opcional"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="document.getElementById('overlay-pedido').classList.remove('show')">Cancelar</button>
+      <button class="btn primary" id="btn-guardar-pedido" onclick="guardarPedido()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<datalist id="lista-insumos">
+  <option value="Biromes azules"><option value="Biromes negras"><option value="Biromes rojas">
+  <option value="Hojas A4"><option value="Hojas oficio"><option value="Folios A4">
+  <option value="Carpetas"><option value="Sobres"><option value="Resaltadores">
+  <option value="Lapices"><option value="Clips"><option value="Broches para abrochadora">
+  <option value="Abrochadora"><option value="Corrector"><option value="Cinta adhesiva">
+  <option value="Notas adhesivas (Post-it)"><option value="Toner / cartucho de impresora">
+</datalist>
+
 <div class="overlay" id="overlay-confirm" onclick="if(event.target===this)resolverConfirm(false)">
   <div class="modal" style="width:400px">
     <h3>Confirmar accion</h3>
@@ -450,6 +541,13 @@ var progAsignar = null, asignarLista = [], asignarSeleccionado = null, dragExpte
 var datosMapaActual = {};
 var paginaActual = 1, POR_PAGINA = 50;
 var historicoCache = {}, anioHistoricoActivo = '2025', historicoBuscarTimer = null;
+var inventarioData = [], pedidosData = [], inventarioCargado = false;
+var invSubTab = 'bienes', editBienIdx = null, editPedidoIdx = null;
+var ESTADO_CHIP = {
+  'Bueno':['#EAF3DE','#3B6D11'],'Regular':['#FEF3C7','#854F0B'],'Malo':['#FEE2E2','#991B1B'],
+  'En reparacion':['#DBEAFE','#1E40AF'],'De baja':['#F1EFE8','#5F5E5A'],
+  'Pendiente':['#FEF3C7','#854F0B'],'Entregado':['#EAF3DE','#3B6D11']
+};
 
 var PROGRAMAS_DEFAULT = ['Juventud Emprende','Juventud en el Centro','Juventud en la Comunidad'];
 var PROG_OCULTO = '__oculto__'; // marca interna: expediente quitado de la bandeja Sin asignar (no es un programa real)
@@ -670,7 +768,7 @@ async function confirmarClave() {
 function switchTab(t) {
   if (TABS_PROTEGIDAS.indexOf(t) >= 0 && !zonaDesbloqueada()) { abrirModalClave(t); return; }
   var tabsEls = document.querySelectorAll('.container > .tabs > .tab');
-  var orden = ['registro','agentes','analisis','programas','licencias','config','historico'];
+  var orden = ['registro','agentes','analisis','programas','licencias','inventario','config','historico'];
   tabsEls.forEach(function(el, i){ el.classList.toggle('active', orden[i] === t); });
   document.querySelectorAll('.section').forEach(function(el){ el.classList.remove('active'); });
   document.getElementById('tab-' + t).classList.add('active');
@@ -680,6 +778,7 @@ function switchTab(t) {
   if (t === 'programas') renderProgramas();
   if (t === 'licencias') renderLicencias();
   if (t === 'historico') cargarHistorico(anioHistoricoActivo);
+  if (t === 'inventario') initInventario();
 }
 function switchAnioHistorico(anio) {
   anioHistoricoActivo = anio;
@@ -1348,6 +1447,231 @@ async function guardarLicencia() {
 async function eliminarLicencia(fila, agente) {
   if (!await confirmar('¿Eliminas esta licencia de ' + agente + '?', 'Eliminar')) return;
   try { await api({ accion:'eliminar', hoja:'licencias', datos:{ _fila:fila } }); licenciasData = licenciasData.filter(function(l){ return l._fila !== fila; }); renderLicencias(); toast('Licencia eliminada'); } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+
+function chipEstado(est) {
+  var c = ESTADO_CHIP[est] || ['#F1EFE8','#5F5E5A'];
+  return '<span class="chip" style="background:' + c[0] + ';color:' + c[1] + '">' + esc(est || '-') + '</span>';
+}
+
+async function initInventario() {
+  if (inventarioCargado) { renderInventario(); return; }
+  document.getElementById('inv-lista').innerHTML = SKELETON_HTML;
+  document.getElementById('ped-lista').innerHTML = SKELETON_HTML;
+  await recargarInventario('inventario');
+  await recargarInventario('pedidos');
+  inventarioCargado = true;
+  renderInventario();
+}
+async function recargarInventario(hoja) {
+  try {
+    var d = await api({ method:'GET', hoja:hoja });
+    d = Array.isArray(d) ? d : [];
+    if (hoja === 'inventario') inventarioData = d.filter(function(b){ return b.bien; }).map(function(b,i){ b._i = i; return b; });
+    else pedidosData = d.filter(function(p){ return p.insumo; }).map(function(p,i){ p._i = i; return p; });
+  } catch (e) {
+    if (hoja === 'inventario') inventarioData = []; else pedidosData = [];
+  }
+}
+function switchInvTab(t) {
+  invSubTab = t;
+  var els = document.querySelectorAll('#inv-subtabs .tab');
+  var orden = ['bienes','pedidos'];
+  els.forEach(function(el, i){ el.classList.toggle('active', orden[i] === t); });
+  document.getElementById('subinv-bienes').style.display = t === 'bienes' ? 'block' : 'none';
+  document.getElementById('subinv-pedidos').style.display = t === 'pedidos' ? 'block' : 'none';
+}
+function renderInventario() {
+  var unidades = inventarioData.reduce(function(s, b){ return s + (parseInt(b.cantidad, 10) || 0); }, 0);
+  var pend = pedidosData.filter(function(p){ return (p.estado || 'Pendiente') !== 'Entregado'; }).length;
+  document.getElementById('metrics-inventario').innerHTML =
+    '<div class="metric"><div class="lbl">Bienes registrados</div><div class="val">' + inventarioData.length + '</div></div>' +
+    '<div class="metric"><div class="lbl">Unidades totales</div><div class="val blue">' + unidades + '</div></div>' +
+    '<div class="metric"><div class="lbl">Pedidos pendientes</div><div class="val amber">' + pend + '</div></div>' +
+    '<div class="metric"><div class="lbl">Pedidos entregados</div><div class="val green">' + (pedidosData.length - pend) + '</div></div>';
+  renderBienes();
+  renderPedidos();
+}
+function renderBienes() {
+  var buscar = document.getElementById('inv-buscar').value.toLowerCase();
+  var cat = document.getElementById('inv-categoria').value;
+  var est = document.getElementById('inv-estado').value;
+  var fil = inventarioData.filter(function(b){
+    var mC = !cat || (b.categoria || '') === cat;
+    var mE = !est || (b.estado || '') === est;
+    var mB = !buscar || Object.values(b).join(' ').toLowerCase().indexOf(buscar) >= 0;
+    return mC && mE && mB;
+  });
+  if (!fil.length) {
+    document.getElementById('inv-lista').innerHTML = '<div class="alert">📦 No hay bienes cargados' + (inventarioData.length ? ' con esos filtros' : '') + '.' +
+      (inventarioData.length ? '' : '<br><span style="font-size:12px">Si la lista no carga, verifica que en la planilla exista una hoja llamada <b>inventario</b> con las columnas: bien, categoria, cantidad, estado, ubicacion, obs.</span>') + '</div>';
+    return;
+  }
+  var filas = fil.map(function(b){
+    return '<tr>' +
+      '<td style="font-weight:500">' + esc(b.bien) + '</td>' +
+      '<td>' + esc(b.categoria || '-') + '</td>' +
+      '<td style="font-variant-numeric:tabular-nums">' + esc(b.cantidad || '-') + '</td>' +
+      '<td>' + chipEstado(b.estado) + '</td>' +
+      '<td>' + esc(b.ubicacion || '-') + '</td>' +
+      '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(b.obs || '') + '">' + esc(b.obs || '-') + '</td>' +
+      '<td style="white-space:nowrap">' +
+        '<button class="btn sm icon" title="Editar" onclick="abrirModalBien(' + b._i + ')">✏️</button> ' +
+        '<button class="btn sm icon danger" title="Eliminar" onclick="eliminarBien(' + b._i + ')">🗑️</button>' +
+      '</td></tr>';
+  }).join('');
+  document.getElementById('inv-lista').innerHTML = '<div style="overflow-x:auto"><table><thead><tr><th>Bien</th><th>Categoria</th><th>Cant.</th><th>Estado</th><th>Ubicacion</th><th>Obs.</th><th></th></tr></thead><tbody>' + filas + '</tbody></table></div>';
+}
+function renderPedidos() {
+  var est = document.getElementById('ped-estado').value;
+  var fil = pedidosData.filter(function(p){
+    var pe = p.estado || 'Pendiente';
+    return !est || (est === 'Entregado' ? pe === 'Entregado' : pe !== 'Entregado');
+  });
+  fil = fil.slice().sort(function(a, b){ return (toInput(b.fecha) || '').localeCompare(toInput(a.fecha) || ''); });
+  if (!fil.length) {
+    document.getElementById('ped-lista').innerHTML = '<div class="alert">🛒 No hay pedidos registrados' + (pedidosData.length ? ' con ese filtro' : '') + '.' +
+      (pedidosData.length ? '' : '<br><span style="font-size:12px">Si la lista no carga, verifica que en la planilla exista una hoja llamada <b>pedidos</b> con las columnas: fecha, insumo, cantidad, solicitante, estado, obs.</span>') + '</div>';
+    return;
+  }
+  var filas = fil.map(function(p){
+    var pendiente = (p.estado || 'Pendiente') !== 'Entregado';
+    return '<tr>' +
+      '<td style="white-space:nowrap">' + fmt(p.fecha) + '</td>' +
+      '<td style="font-weight:500">' + esc(p.insumo) + '</td>' +
+      '<td style="font-variant-numeric:tabular-nums">' + esc(p.cantidad || '-') + '</td>' +
+      '<td>' + esc(p.solicitante || '-') + '</td>' +
+      '<td>' + chipEstado(p.estado || 'Pendiente') + '</td>' +
+      '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(p.obs || '') + '">' + esc(p.obs || '-') + '</td>' +
+      '<td style="white-space:nowrap">' +
+        (pendiente ? '<button class="btn sm icon" title="Marcar como entregado" style="color:#3B6D11;border-color:#8bc53f" onclick="marcarEntregado(' + p._i + ')">✔️</button> ' : '') +
+        '<button class="btn sm icon" title="Editar" onclick="abrirModalPedido(' + p._i + ')">✏️</button> ' +
+        '<button class="btn sm icon danger" title="Eliminar" onclick="eliminarPedido(' + p._i + ')">🗑️</button>' +
+      '</td></tr>';
+  }).join('');
+  document.getElementById('ped-lista').innerHTML = '<div style="overflow-x:auto"><table><thead><tr><th>Fecha</th><th>Insumo</th><th>Cant.</th><th>Solicitante</th><th>Estado</th><th>Obs.</th><th></th></tr></thead><tbody>' + filas + '</tbody></table></div>';
+}
+function abrirModalBien(i) {
+  if (i === undefined) i = null;
+  editBienIdx = i;
+  document.getElementById('bien-title').textContent = i !== null ? 'Editar bien' : 'Nuevo bien';
+  if (i !== null) {
+    var b = inventarioData[i];
+    document.getElementById('b-bien').value = b.bien || '';
+    document.getElementById('b-categoria').value = b.categoria || 'Otro';
+    document.getElementById('b-cantidad').value = parseInt(b.cantidad, 10) || 1;
+    document.getElementById('b-estado').value = b.estado || 'Bueno';
+    document.getElementById('b-ubicacion').value = b.ubicacion || '';
+    document.getElementById('b-obs').value = b.obs || '';
+  } else {
+    document.getElementById('b-bien').value = '';
+    document.getElementById('b-categoria').value = 'Mobiliario';
+    document.getElementById('b-cantidad').value = 1;
+    document.getElementById('b-estado').value = 'Bueno';
+    document.getElementById('b-ubicacion').value = '';
+    document.getElementById('b-obs').value = '';
+  }
+  document.getElementById('overlay-bien').classList.add('show');
+}
+async function guardarBien() {
+  var bien = document.getElementById('b-bien').value.trim();
+  var cant = parseInt(document.getElementById('b-cantidad').value, 10);
+  if (!bien) { toast('Ingresa el nombre del bien.', 'error'); return; }
+  if (!cant || cant < 1) { toast('La cantidad debe ser 1 o mas.', 'error'); return; }
+  var datos = {
+    bien: bien,
+    categoria: document.getElementById('b-categoria').value,
+    cantidad: cant,
+    estado: document.getElementById('b-estado').value,
+    ubicacion: document.getElementById('b-ubicacion').value,
+    obs: document.getElementById('b-obs').value
+  };
+  var btn = document.getElementById('btn-guardar-bien'); btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    if (editBienIdx !== null) { datos._fila = inventarioData[editBienIdx]._fila; await api({ accion:'editar', hoja:'inventario', datos:datos }); }
+    else await api({ accion:'agregar', hoja:'inventario', datos:datos });
+    await recargarInventario('inventario');
+    document.getElementById('overlay-bien').classList.remove('show');
+    renderInventario(); toast('Bien guardado');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Guardar';
+}
+async function eliminarBien(i) {
+  if (!await confirmar('¿Eliminas "' + (inventarioData[i].bien || '') + '" del inventario?', 'Eliminar')) return;
+  try {
+    await api({ accion:'eliminar', hoja:'inventario', datos:{ _fila: inventarioData[i]._fila } });
+    await recargarInventario('inventario');
+    renderInventario(); toast('Bien eliminado');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+function abrirModalPedido(i) {
+  if (i === undefined) i = null;
+  editPedidoIdx = i;
+  document.getElementById('pedido-title').textContent = i !== null ? 'Editar pedido' : 'Nuevo pedido de insumos';
+  document.getElementById('p-solicitante').innerHTML = '<option value="">Seleccionar...</option>' + agentes.map(function(a){ return '<option value="' + esc(a) + '">' + esc(a) + '</option>'; }).join('');
+  if (i !== null) {
+    var p = pedidosData[i];
+    document.getElementById('p-insumo').value = p.insumo || '';
+    document.getElementById('p-cantidad').value = parseInt(p.cantidad, 10) || 1;
+    document.getElementById('p-fecha').value = toInput(p.fecha);
+    document.getElementById('p-solicitante').value = p.solicitante || '';
+    document.getElementById('p-estado').value = (p.estado === 'Entregado') ? 'Entregado' : 'Pendiente';
+    document.getElementById('p-obs').value = p.obs || '';
+  } else {
+    document.getElementById('p-insumo').value = '';
+    document.getElementById('p-cantidad').value = 1;
+    document.getElementById('p-fecha').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('p-solicitante').value = '';
+    document.getElementById('p-estado').value = 'Pendiente';
+    document.getElementById('p-obs').value = '';
+  }
+  document.getElementById('overlay-pedido').classList.add('show');
+}
+async function guardarPedido() {
+  var insumo = document.getElementById('p-insumo').value.trim();
+  var cant = parseInt(document.getElementById('p-cantidad').value, 10);
+  var fecha = document.getElementById('p-fecha').value;
+  if (!insumo) { toast('Ingresa el insumo pedido.', 'error'); return; }
+  if (!cant || cant < 1) { toast('La cantidad debe ser 1 o mas.', 'error'); return; }
+  if (!fecha) { toast('Ingresa la fecha del pedido.', 'error'); return; }
+  var datos = {
+    fecha: fmt(fecha),
+    insumo: insumo,
+    cantidad: cant,
+    solicitante: document.getElementById('p-solicitante').value,
+    estado: document.getElementById('p-estado').value,
+    obs: document.getElementById('p-obs').value
+  };
+  var btn = document.getElementById('btn-guardar-pedido'); btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    if (editPedidoIdx !== null) { datos._fila = pedidosData[editPedidoIdx]._fila; await api({ accion:'editar', hoja:'pedidos', datos:datos }); }
+    else await api({ accion:'agregar', hoja:'pedidos', datos:datos });
+    await recargarInventario('pedidos');
+    document.getElementById('overlay-pedido').classList.remove('show');
+    renderInventario(); toast('Pedido guardado');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Guardar';
+}
+async function marcarEntregado(i) {
+  var p = pedidosData[i];
+  if (!await confirmar('¿Marcas como entregado "' + (p.insumo || '') + '" (' + (p.cantidad || '?') + ' unidades)?', 'Entregado')) return;
+  var datos = {
+    fecha: fmt(p.fecha), insumo: p.insumo, cantidad: p.cantidad,
+    solicitante: p.solicitante || '', estado: 'Entregado', obs: p.obs || '', _fila: p._fila
+  };
+  try {
+    await api({ accion:'editar', hoja:'pedidos', datos:datos });
+    await recargarInventario('pedidos');
+    renderInventario(); toast('Pedido marcado como entregado');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+async function eliminarPedido(i) {
+  if (!await confirmar('¿Eliminas el pedido de "' + (pedidosData[i].insumo || '') + '"?', 'Eliminar')) return;
+  try {
+    await api({ accion:'eliminar', hoja:'pedidos', datos:{ _fila: pedidosData[i]._fila } });
+    await recargarInventario('pedidos');
+    renderInventario(); toast('Pedido eliminado');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 
 function renderConfigAgentes() {
