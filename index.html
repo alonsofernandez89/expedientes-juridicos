@@ -196,6 +196,13 @@ tbody tr:hover td{background:var(--green-50)}
   <div class="section" id="tab-analisis">
     <div class="metric-grid" id="metrics-analisis"></div>
     <div class="card" style="margin-bottom:20px"><div class="section-title">Ingresos por mes</div><div class="chart-wrap"><canvas id="chart-meses"></canvas></div></div>
+    <div class="card" style="margin-bottom:20px">
+      <div class="section-title">Expedientes por organismo iniciador</div>
+      <div class="grid-2" style="align-items:center">
+        <div class="chart-wrap" style="height:280px"><canvas id="chart-organismos"></canvas></div>
+        <div id="organismos-lista" style="font-size:13px"></div>
+      </div>
+    </div>
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
         <div class="section-title" style="margin:0">Movimiento diario</div>
@@ -527,7 +534,7 @@ var SCRIPT_URL_HISTORICO = 'https://script.google.com/macros/s/AKfycbzeVC3hSW3AZ
 
 var expedientes = [], agentes = [], programasData = [], licenciasData = [];
 var programaActivo = null, editIdx = null;
-var chartA = null, chartM = null, chartD = null;
+var chartA = null, chartM = null, chartD = null, chartO = null;
 var sortCol = null, sortDir = 1;
 var leafletMap = null, geojsonLayer = null, geoCache = null, capaSeleccionada = null;
 var mesActual = new Date().getMonth(), anioActual = new Date().getFullYear();
@@ -725,6 +732,45 @@ function getReparto(e){ return e.reparto; }
 function getSalio(e){ return e.salio; }
 function normalizar(s){ return (s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }
 function initials(s){ return (s||'?').slice(0,2).toUpperCase(); }
+
+// Unifica distintas formas de escribir el mismo organismo (abreviaturas, acentos, mayusculas)
+// para que "Dir. De Comedores" y "Direccion de Comedores" cuenten como uno solo.
+var ABREV_ORGANISMO = [
+  [/\bDIRECC\b/g, 'DIRECCION'], [/\bDIREC\b/g, 'DIRECCION'], [/\bDIR\b/g, 'DIRECCION'],
+  [/\bSUBSEC\b/g, 'SUBSECRETARIA'], [/\bSEC\b/g, 'SECRETARIA'],
+  [/\bGRAL\b/g, 'GENERAL'], [/\bPROV\b/g, 'PROVINCIAL'],
+  [/\bMUNIC\b/g, 'MUNICIPALIDAD'], [/\bMUNI\b/g, 'MUNICIPALIDAD'],
+  [/\bJUZG\b/g, 'JUZGADO'], [/\bJDO\b/g, 'JUZGADO'],
+  [/\bDPTO\b/g, 'DEPARTAMENTO'], [/\bDEPTO\b/g, 'DEPARTAMENTO'],
+  [/\bMIN\b/g, 'MINISTERIO'], [/\bORG\b/g, 'ORGANIZACIONES'],
+  [/\bFORTALEC\b/g, 'FORTALECIMIENTO'], [/\bADM\b/g, 'ADMINISTRATIVO'],
+  [/\bPOLIT\b/g, 'POLITICAS'], [/\bALIMENT\b/g, 'ALIMENTARIA']
+];
+function normalizarOrganismo(s) {
+  var t = normalizar(s).replace(/[.,]/g, '').replace(/\s+/g, ' ').trim();
+  if (!t) return '';
+  ABREV_ORGANISMO.forEach(function(par){ t = t.replace(par[0], par[1]); });
+  return t.replace(/\s+/g, ' ').trim();
+}
+function tituloCase(s) { return s.toLowerCase().replace(/\b\w/g, function(c){ return c.toUpperCase(); }); }
+function agruparPorOrganismo(maxCategorias) {
+  var conteo = {}, etiqueta = {};
+  expedientes.forEach(function(e){
+    var raw = getIniciador(e);
+    var key = normalizarOrganismo(raw) || 'SIN ESPECIFICAR';
+    conteo[key] = (conteo[key] || 0) + 1;
+    if (!etiqueta[key]) etiqueta[key] = key === 'SIN ESPECIFICAR' ? 'Sin especificar' : tituloCase(key);
+  });
+  var pares = Object.keys(conteo).map(function(k){ return { key:k, nombre:etiqueta[k], total:conteo[k] }; });
+  pares.sort(function(a,b){ return b.total - a.total; });
+  if (pares.length > maxCategorias) {
+    var top = pares.slice(0, maxCategorias - 1);
+    var restoTotal = pares.slice(maxCategorias - 1).reduce(function(s,p){ return s + p.total; }, 0);
+    top.push({ key:'__otros__', nombre:'Otros', total:restoTotal });
+    return top;
+  }
+  return pares;
+}
 function toast(msg, tipo){ var t = document.getElementById('toast'); t.textContent = msg; t.classList.toggle('error', tipo === 'error'); t.classList.add('show'); setTimeout(function(){ t.classList.remove('show'); }, 2600); }
 
 var TABS_PROTEGIDAS = ['config'];
@@ -766,7 +812,7 @@ function switchTab(t) {
   tabsEls.forEach(function(el, i){ el.classList.toggle('active', orden[i] === t); });
   document.querySelectorAll('.section').forEach(function(el){ el.classList.remove('active'); });
   document.getElementById('tab-' + t).classList.add('active');
-  if (t === 'analisis') { setTimeout(renderChartMeses, 50); setTimeout(renderDiario, 80); }
+  if (t === 'analisis') { setTimeout(renderChartMeses, 50); setTimeout(renderChartOrganismos, 60); setTimeout(renderDiario, 80); }
   if (t === 'config') { renderConfigAgentes(); renderPorAgente(); setTimeout(renderChartAgentes, 50); }
   if (t === 'programas') renderProgramas();
   if (t === 'licencias') renderLicencias();
@@ -977,6 +1023,41 @@ function renderChartMeses() {
   var mL = mK.map(function(k){ var p = k.split('-'); return nombresMes[+p[1]-1] + ' ' + p[0].slice(2); });
   if (chartM) chartM.destroy();
   chartM = new Chart(document.getElementById('chart-meses'), { type:'line', data:{ labels:mL, datasets:[{label:'Ingresos',data:mK.map(function(k){ return meses[k]; }),borderColor:'#5a9216',backgroundColor:'rgba(139,197,63,0.15)',fill:true,tension:.3,pointRadius:4}] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:11},maxRotation:45,autoSkip:false}},y:{beginAtZero:true,ticks:{stepSize:1}}}} });
+}
+
+// Paleta categorica validada (8 tonos, orden fijo - ver skill de dataviz): CVD-safe, nunca se ciclan ni se reordenan por valor.
+var PALETA_ORGANISMOS = ['#2a78d6','#008300','#e87ba4','#eda100','#1baf7a','#eb6834','#4a3aa7','#e34948'];
+function renderChartOrganismos() {
+  var grupos = agruparPorOrganismo(8);
+  var total = grupos.reduce(function(s,g){ return s + g.total; }, 0) || 1;
+  if (chartO) chartO.destroy();
+  chartO = new Chart(document.getElementById('chart-organismos'), {
+    type: 'pie',
+    data: {
+      labels: grupos.map(function(g){ return g.nombre; }),
+      datasets: [{
+        data: grupos.map(function(g){ return g.total; }),
+        backgroundColor: grupos.map(function(g,i){ return g.key === '__otros__' ? '#B4B2A9' : PALETA_ORGANISMOS[i % PALETA_ORGANISMOS.length]; }),
+        borderColor: '#fff',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: function(ctx){ var pct = Math.round(ctx.parsed / total * 100); return ' ' + ctx.label + ': ' + ctx.parsed + ' (' + pct + '%)'; } } }
+      }
+    }
+  });
+  document.getElementById('organismos-lista').innerHTML = grupos.map(function(g, i){
+    var color = g.key === '__otros__' ? '#B4B2A9' : PALETA_ORGANISMOS[i % PALETA_ORGANISMOS.length];
+    var pct = Math.round(g.total / total * 100);
+    return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line-soft)">' +
+      '<span style="width:10px;height:10px;border-radius:50%;background:' + color + ';flex-shrink:0"></span>' +
+      '<span style="flex:1;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(g.nombre) + '">' + esc(g.nombre) + '</span>' +
+      '<span style="color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums">' + g.total + ' (' + pct + '%)</span></div>';
+  }).join('');
 }
 
 function renderDiario() {
