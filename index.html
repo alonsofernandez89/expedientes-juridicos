@@ -146,8 +146,7 @@ tbody tr:hover td{background:var(--green-50)}
 
   <div class="tabs">
     <button class="tab active" onclick="switchTab('registro')">Registro</button>
-    <button class="tab" onclick="switchTab('agentes')">🔒 Por agente</button>
-    <button class="tab" onclick="switchTab('analisis')">🔒 Analisis</button>
+    <button class="tab" onclick="switchTab('analisis')">Analisis</button>
     <button class="tab" onclick="switchTab('programas')">Programas</button>
     <button class="tab" onclick="switchTab('licencias')">Licencias</button>
     <button class="tab" onclick="switchTab('inventario')">Inventario</button>
@@ -194,16 +193,9 @@ tbody tr:hover td{background:var(--green-50)}
     <div class="alert" id="no-results" style="display:none">🔍 No se encontraron expedientes con los filtros actuales.<br><button class="btn sm" style="margin-top:10px" onclick="limpiarFiltros()">Limpiar filtros</button></div>
   </div>
 
-  <div class="section" id="tab-agentes">
-    <div class="card"><div class="section-title">Carga de trabajo por agente</div><div id="agentes-lista"></div></div>
-  </div>
-
   <div class="section" id="tab-analisis">
     <div class="metric-grid" id="metrics-analisis"></div>
-    <div class="grid-2" style="margin-bottom:20px">
-      <div class="card"><div class="section-title">Expedientes por agente</div><div class="chart-wrap"><canvas id="chart-agentes"></canvas></div></div>
-      <div class="card"><div class="section-title">Ingresos por mes</div><div class="chart-wrap"><canvas id="chart-meses"></canvas></div></div>
-    </div>
+    <div class="card" style="margin-bottom:20px"><div class="section-title">Ingresos por mes</div><div class="chart-wrap"><canvas id="chart-meses"></canvas></div></div>
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
         <div class="section-title" style="margin:0">Movimiento diario</div>
@@ -327,6 +319,8 @@ tbody tr:hover td{background:var(--green-50)}
   </div>
 
   <div class="section" id="tab-config">
+    <div class="card"><div class="section-title">Expedientes por agente</div><div class="chart-wrap"><canvas id="chart-agentes"></canvas></div></div>
+    <div class="card"><div class="section-title">Carga de trabajo por agente</div><div id="agentes-lista"></div></div>
     <div class="card">
       <div class="section-title">Gestion de agentes</div>
       <div style="display:flex;gap:8px;margin-bottom:16px">
@@ -733,7 +727,7 @@ function normalizar(s){ return (s||'').toUpperCase().normalize('NFD').replace(/[
 function initials(s){ return (s||'?').slice(0,2).toUpperCase(); }
 function toast(msg, tipo){ var t = document.getElementById('toast'); t.textContent = msg; t.classList.toggle('error', tipo === 'error'); t.classList.add('show'); setTimeout(function(){ t.classList.remove('show'); }, 2600); }
 
-var TABS_PROTEGIDAS = ['analisis', 'config', 'agentes'];
+var TABS_PROTEGIDAS = ['config'];
 var CLAVE_HASH = 'a181eb72cec525f96f8f9e27201eb05d073b80ccd41d36440397e5b1b0b3699a';
 var tabPendienteClave = null;
 
@@ -768,13 +762,12 @@ async function confirmarClave() {
 function switchTab(t) {
   if (TABS_PROTEGIDAS.indexOf(t) >= 0 && !zonaDesbloqueada()) { abrirModalClave(t); return; }
   var tabsEls = document.querySelectorAll('.container > .tabs > .tab');
-  var orden = ['registro','agentes','analisis','programas','licencias','inventario','config','historico'];
+  var orden = ['registro','analisis','programas','licencias','inventario','config','historico'];
   tabsEls.forEach(function(el, i){ el.classList.toggle('active', orden[i] === t); });
   document.querySelectorAll('.section').forEach(function(el){ el.classList.remove('active'); });
   document.getElementById('tab-' + t).classList.add('active');
-  if (t === 'analisis') { setTimeout(renderCharts, 50); setTimeout(renderDiario, 80); }
-  if (t === 'agentes') renderPorAgente();
-  if (t === 'config') renderConfigAgentes();
+  if (t === 'analisis') { setTimeout(renderChartMeses, 50); setTimeout(renderDiario, 80); }
+  if (t === 'config') { renderConfigAgentes(); renderPorAgente(); setTimeout(renderChartAgentes, 50); }
   if (t === 'programas') renderProgramas();
   if (t === 'licencias') renderLicencias();
   if (t === 'historico') cargarHistorico(anioHistoricoActivo);
@@ -970,17 +963,19 @@ function renderPorAgente() {
   document.getElementById('agentes-lista').innerHTML = html || '<div class="alert">👥 No hay agentes configurados.</div>';
 }
 
-function renderCharts() {
+function renderChartAgentes() {
   var counts = agentes.map(function(a){ return expedientes.filter(function(e){ return getRespAsig(e) === a; }).length; });
   var enDir = agentes.map(function(a){ return expedientes.filter(function(e){ return getRespAsig(e) === a && !estaEgresado(e); }).length; });
+  if (chartA) chartA.destroy();
+  chartA = new Chart(document.getElementById('chart-agentes'), { type:'bar', data:{ labels: agentes.map(function(a){ return a.split(',')[0]; }), datasets:[ {label:'En Dir.',data:enDir,backgroundColor:'#8bc53f'}, {label:'Egres.',data:counts.map(function(t,i){ return t-enDir[i]; }),backgroundColor:'#B4B2A9'} ] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{font:{size:11}}},y:{stacked:true,beginAtZero:true,ticks:{stepSize:1}}}} });
+}
+function renderChartMeses() {
   var meses = {};
   expedientes.forEach(function(e){ var raw = toInput(e.ingreso); if (raw) { var m = raw.slice(0,7); meses[m] = (meses[m]||0)+1; } });
   var mK = Object.keys(meses).sort();
   var nombresMes = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   var mL = mK.map(function(k){ var p = k.split('-'); return nombresMes[+p[1]-1] + ' ' + p[0].slice(2); });
-  if (chartA) chartA.destroy();
   if (chartM) chartM.destroy();
-  chartA = new Chart(document.getElementById('chart-agentes'), { type:'bar', data:{ labels: agentes.map(function(a){ return a.split(',')[0]; }), datasets:[ {label:'En Dir.',data:enDir,backgroundColor:'#8bc53f'}, {label:'Egres.',data:counts.map(function(t,i){ return t-enDir[i]; }),backgroundColor:'#B4B2A9'} ] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{font:{size:11}}},y:{stacked:true,beginAtZero:true,ticks:{stepSize:1}}}} });
   chartM = new Chart(document.getElementById('chart-meses'), { type:'line', data:{ labels:mL, datasets:[{label:'Ingresos',data:mK.map(function(k){ return meses[k]; }),borderColor:'#5a9216',backgroundColor:'rgba(139,197,63,0.15)',fill:true,tension:.3,pointRadius:4}] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:11},maxRotation:45,autoSkip:false}},y:{beginAtZero:true,ticks:{stepSize:1}}}} });
 }
 
