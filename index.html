@@ -1038,8 +1038,16 @@ function renderProgramas() {
 }
 function switchPrograma(p){ programaActivo = p; renderProgramas(); }
 
+var progFiltroEstado = '';
+function filtrarProgEstado(v) { progFiltroEstado = v; renderPrograma(programaActivo); }
+
 function renderPrograma(prog) {
-  var exps = getExptesDeProg(prog);
+  var todos = getExptesDeProg(prog);
+  var exps = todos.filter(function(e){
+    if (progFiltroEstado === 'egresado') return estaEgresado(e);
+    if (progFiltroEstado === 'en_direccion') return !estaEgresado(e);
+    return true;
+  });
   var filas = exps.map(function(e){
     return '<tr>' +
       '<td style="font-weight:500">' + esc(getExpte(e)||'-') + '</td>' +
@@ -1048,14 +1056,27 @@ function renderPrograma(prog) {
       '<td>' + esc(getRespAsig(e)||'-') + '</td>' +
       '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(getTema(e)) + '">' + esc(getTema(e)||'-') + '</td>' +
       '<td><span class="badge ' + (estaEgresado(e)?'egresado':'activo') + '">' + (estaEgresado(e)?'Egresado':'En Dir.') + '</span></td>' +
-      '<td><button class="btn sm danger" onclick="desasignar(\'' + jsArg(prog) + '\',\'' + jsArg(getExpte(e)) + '\')">X</button></td>' +
-      '</tr>';
+      '<td style="white-space:nowrap">' +
+        '<button class="btn sm icon" title="Consultar en el portal" onclick="consultarExpte(\'' + jsArg(getExpte(e)) + '\')">🔗</button> ' +
+        '<button class="btn sm icon" title="Ver dictamenes" onclick="verDictamenes(\'' + jsArg(getExpte(e)) + '\')">📄</button> ' +
+        '<button class="btn sm icon danger" title="Quitar del programa" onclick="desasignar(\'' + jsArg(prog) + '\',\'' + jsArg(getExpte(e)) + '\')">✖</button>' +
+      '</td></tr>';
   }).join('');
-  var tabla = exps.length ? '<div style="overflow-x:auto"><table><thead><tr><th>Expte.</th><th>Iniciador</th><th>Ingreso</th><th>Resp. Asig.</th><th>Tema</th><th>Estado</th><th></th></tr></thead><tbody>' + filas + '</tbody></table></div>' : '<div class="alert">📂 No hay expedientes asignados todavia.</div>';
+  var vacio = todos.length
+    ? '<div class="alert">📂 Ningun expediente de este programa coincide con el filtro.</div>'
+    : '<div class="alert">📂 No hay expedientes asignados todavia.</div>';
+  var tabla = exps.length ? '<div style="overflow-x:auto"><table><thead><tr><th>Expte.</th><th>Iniciador</th><th>Ingreso</th><th>Resp. Asig.</th><th>Tema</th><th>Estado</th><th></th></tr></thead><tbody>' + filas + '</tbody></table></div>' : vacio;
+  var contador = progFiltroEstado ? exps.length + ' de ' + todos.length + ' expediente(s)' : todos.length + ' expediente(s)';
+  var selEstado = '<select onchange="filtrarProgEstado(this.value)" style="font-size:13px;padding:6px 10px;border:1px solid #d0d0c8;border-radius:8px;background:#fff">' +
+    '<option value=""' + (!progFiltroEstado ? ' selected' : '') + '>Todos</option>' +
+    '<option value="en_direccion"' + (progFiltroEstado === 'en_direccion' ? ' selected' : '') + '>En la Direccion</option>' +
+    '<option value="egresado"' + (progFiltroEstado === 'egresado' ? ' selected' : '') + '>Egresados</option>' +
+    '</select>';
   document.getElementById('prog-contenido').innerHTML =
-    '<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">' +
-    '<div><span style="font-size:14px;font-weight:600">' + esc(prog) + '</span><span style="font-size:12px;color:#888;margin-left:8px">' + exps.length + ' expediente(s)</span></div>' +
-    '<div style="display:flex;gap:8px"><button class="btn sm primary" onclick="abrirModalAsignar(\'' + jsArg(prog) + '\')">+ Asignar expediente</button>' +
+    '<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">' +
+    '<div><span style="font-size:14px;font-weight:600">' + esc(prog) + '</span><span style="font-size:12px;color:#888;margin-left:8px">' + contador + '</span></div>' +
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' + selEstado +
+    '<button class="btn sm primary" onclick="abrirModalAsignar(\'' + jsArg(prog) + '\')">+ Asignar expediente</button>' +
     '<button class="btn sm danger" onclick="eliminarPrograma(\'' + jsArg(prog) + '\')">Eliminar programa</button></div></div>' + tabla + '</div>';
 }
 
