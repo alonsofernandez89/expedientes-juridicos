@@ -440,9 +440,11 @@ tbody tr:hover td{background:var(--green-50)}
         <option value="Otro">Otro</option>
       </select></div>
       <div class="fg"><label>Observacion</label><input type="text" id="lic-obs" placeholder="Opcional"></div>
-      <div class="fg"><label>Fecha inicio *</label><input type="date" id="lic-desde"></div>
+      <div class="fg"><label>Fecha inicio *</label><input type="date" id="lic-desde" onchange="calcularHastaPorDias()"></div>
+      <div class="fg"><label>Cantidad de dias habiles</label><input type="number" id="lic-dias" min="1" placeholder="Opcional" oninput="calcularHastaPorDias()"></div>
       <div class="fg"><label>Fecha fin *</label><input type="date" id="lic-hasta"></div>
     </div>
+    <div style="font-size:12px;color:#888;margin:-4px 0 8px">Los fines de semana no se cuentan ni se marcan como licencia. Completa "Cantidad de dias habiles" para calcular la fecha fin automaticamente, o cargala vos misma/o.</div>
     <div class="modal-actions">
       <button class="btn" onclick="cerrarModalLicencia()">Cancelar</button>
       <button class="btn primary" id="btn-guardar-lic" onclick="guardarLicencia()">Guardar</button>
@@ -1518,7 +1520,7 @@ function renderLicencias() {
       var f = new Date(anioActual, mesActual, d);
       var finde = f.getDay() === 0 || f.getDay() === 6;
       var lic = getLic(ag, d);
-      var tipo = lic ? (TIPOS_LIC[lic.tipo] || TIPOS_LIC['Otro']) : null;
+      var tipo = (lic && !finde) ? (TIPOS_LIC[lic.tipo] || TIPOS_LIC['Otro']) : null;
       celdas += '<td style="text-align:center;padding:2px;' + (finde ? 'background:#f9f9f7;' : '') + (tipo ? 'background:' + tipo.color + ';color:' + tipo.texto + ';font-weight:700;' : '') + 'cursor:' + (tipo ? 'pointer' : 'default') + '" title="' + (tipo ? esc(lic.tipo + (lic.obs ? ' - ' + lic.obs : '')) : '') + '" ' + (tipo ? 'onclick="eliminarLicencia(' + Number(lic._fila) + ',\'' + jsArg(ag) + '\')"' : '') + '>' + (tipo ? tipo.icono : '') + '</td>';
     }
     filas += '<tr><td style="font-weight:500;position:sticky;left:0;background:#fff;z-index:1;border-right:1px solid #e0e0d8">' + esc(ag) + '</td>' + celdas + '</tr>';
@@ -1528,7 +1530,8 @@ function renderLicencias() {
   document.getElementById('calendario-licencias').innerHTML = cal;
   var resumen = agentes.map(function(ag){
     var lics = licMes.filter(function(l){ return l.agente === ag; });
-    var enHoy = hoy.getMonth() === mesActual && hoy.getFullYear() === anioActual && getLic(ag, hoy.getDate());
+    var hoyFinde = hoy.getDay() === 0 || hoy.getDay() === 6;
+    var enHoy = !hoyFinde && hoy.getMonth() === mesActual && hoy.getFullYear() === anioActual && getLic(ag, hoy.getDate());
     var detalle = lics.length ? lics.map(function(l){ return '<div style="font-size:11px;color:#555;margin-top:4px">' + (TIPOS_LIC[l.tipo] ? TIPOS_LIC[l.tipo].icono : 'O') + ' ' + esc(l.tipo) + ': ' + fmt(l.desde) + ' - ' + fmt(l.hasta) + '</div>'; }).join('') : '<div style="font-size:11px;color:#aaa">Sin licencias este mes</div>';
     return '<div style="padding:12px;border-radius:8px;border:1px solid ' + (enHoy ? '#8bc53f' : '#e0e0d8') + ';background:' + (enHoy ? '#f0f7e6' : '#fff') + '"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div class="avatar" style="width:28px;height:28px;font-size:11px">' + esc(initials(ag)) + '</div><span style="font-size:13px;font-weight:500">' + esc(ag) + '</span>' + (enHoy ? '<span style="font-size:10px;background:#8bc53f;color:#fff;padding:1px 6px;border-radius:999px">HOY</span>' : '') + '</div>' + detalle + '</div>';
   }).join('');
@@ -1537,8 +1540,25 @@ function renderLicencias() {
 function abrirModalLicencia() {
   document.getElementById('lic-modal-title').textContent = 'Nueva licencia';
   document.getElementById('lic-agente').innerHTML = '<option value="">Seleccionar...</option>' + agentes.map(function(a){ return '<option value="' + esc(a) + '">' + esc(a) + '</option>'; }).join('');
-  document.getElementById('lic-agente').value = ''; document.getElementById('lic-tipo').value = 'Vacaciones'; document.getElementById('lic-obs').value = ''; document.getElementById('lic-desde').value = ''; document.getElementById('lic-hasta').value = '';
+  document.getElementById('lic-agente').value = ''; document.getElementById('lic-tipo').value = 'Vacaciones'; document.getElementById('lic-obs').value = ''; document.getElementById('lic-desde').value = ''; document.getElementById('lic-dias').value = ''; document.getElementById('lic-hasta').value = '';
   document.getElementById('overlay-licencia').classList.add('show');
+}
+function fechaAInputStr(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function sumarDiasHabiles(desdeStr, dias) {
+  var f = new Date(desdeStr + 'T00:00:00');
+  var contados = 0;
+  while (contados < dias) {
+    var finde = f.getDay() === 0 || f.getDay() === 6;
+    if (!finde) contados++;
+    if (contados < dias) f.setDate(f.getDate() + 1);
+  }
+  return f;
+}
+function calcularHastaPorDias() {
+  var desde = document.getElementById('lic-desde').value;
+  var dias = parseInt(document.getElementById('lic-dias').value, 10);
+  if (!desde || !dias || dias < 1) return;
+  document.getElementById('lic-hasta').value = fechaAInputStr(sumarDiasHabiles(desde, dias));
 }
 function cerrarModalLicencia(){ document.getElementById('overlay-licencia').classList.remove('show'); }
 async function guardarLicencia() {
