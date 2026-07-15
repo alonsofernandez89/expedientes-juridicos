@@ -562,6 +562,86 @@ var TIPOS_LIC = {
   'Otro':{color:'#f3f4f6',texto:'#374151',icono:'O'}
 };
 
+// ===== Feriados nacionales y provinciales (Entre Rios) =====
+// Los feriados con formula fija por ley (Pascua y sus derivados, San Martin,
+// Guemes, Diversidad Cultural, Soberania Nacional, etc.) se calculan solos
+// para cualquier año. Verificado contra el calendario oficial 2026
+// (entrerios.gov.ar/dgrrhh/inicio/calendario.pdf y argentina.gob.ar/jefatura).
+//
+// Los feriados "puente" (dias no laborables con fines turisticos) y los
+// corrimientos puntuales por decreto (ej. Dia del Trabajador Estatal) cambian
+// cada año por resolucion/decreto y NO se pueden calcular con una formula.
+// Hay que actualizar FERIADOS_EXTRA_POR_ANIO con el calendario oficial de
+// cada año (mismas fuentes de arriba).
+function fechaPascua(anio) {
+  var a = anio % 19, b = Math.floor(anio / 100), c = anio % 100;
+  var d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+  var g = Math.floor((b - f + 1) / 3), h = (19*a + b - d - g + 15) % 30;
+  var i = Math.floor(c / 4), k = c % 4, l = (32 + 2*e + 2*i - h - k) % 7;
+  var m = Math.floor((a + 11*h + 22*l) / 451);
+  var mes = Math.floor((h + l - 7*m + 114) / 31);
+  var dia = ((h + l - 7*m + 114) % 31) + 1;
+  return new Date(anio, mes - 1, dia);
+}
+function sumarDiasFecha(fecha, dias) { var f = new Date(fecha); f.setDate(f.getDate() + dias); return f; }
+function claveFechaFeriado(f) { return f.getFullYear() + '-' + String(f.getMonth()+1).padStart(2,'0') + '-' + String(f.getDate()).padStart(2,'0'); }
+// Regla oficial de traslado: si cae martes o miercoles, se mueve al lunes
+// anterior; si cae jueves o viernes, al lunes siguiente. Lunes/sabado/domingo no se mueven.
+function trasladarALunes(fecha) {
+  var dow = fecha.getDay();
+  if (dow === 2 || dow === 3) return sumarDiasFecha(fecha, -(dow - 1));
+  if (dow === 4 || dow === 5) return sumarDiasFecha(fecha, 8 - dow);
+  return fecha;
+}
+function tercerLunes(anio, mesIdx) {
+  var f = new Date(anio, mesIdx, 1);
+  var offset = (8 - f.getDay()) % 7;
+  return sumarDiasFecha(f, offset + 14);
+}
+var FERIADOS_EXTRA_POR_ANIO = {
+  2026: [
+    { mes:3, dia:23, nombre:'Dia no laboral con fines turisticos' },
+    { mes:6, dia:26, nombre:'Dia del Trabajador Estatal (feriado provincial, Decreto 1793/2026)' },
+    { mes:7, dia:10, nombre:'Dia no laboral con fines turisticos' },
+    { mes:12, dia:7, nombre:'Dia no laboral con fines turisticos' }
+  ]
+};
+function feriadosDelAnio(anio) {
+  var pascua = fechaPascua(anio);
+  var feriados = {};
+  function agregar(fecha, nombre) {
+    var clave = claveFechaFeriado(fecha);
+    feriados[clave] = feriados[clave] ? feriados[clave] + ' / ' + nombre : nombre;
+  }
+  agregar(new Date(anio, 0, 1), 'Año Nuevo');
+  agregar(sumarDiasFecha(pascua, -48), 'Carnaval');
+  agregar(sumarDiasFecha(pascua, -47), 'Carnaval');
+  agregar(new Date(anio, 2, 24), 'Día Nacional de la Memoria por la Verdad y la Justicia');
+  agregar(new Date(anio, 3, 2), 'Día del Veterano y de los Caídos en la Guerra de Malvinas');
+  agregar(sumarDiasFecha(pascua, -3), 'Jueves Santo');
+  agregar(sumarDiasFecha(pascua, -2), 'Viernes Santo');
+  agregar(new Date(anio, 4, 1), 'Día del Trabajador');
+  agregar(new Date(anio, 4, 25), 'Día de la Revolución de Mayo');
+  agregar(new Date(anio, 5, 20), 'Paso a la Inmortalidad del Gral. Belgrano');
+  agregar(new Date(anio, 6, 9), 'Día de la Independencia');
+  agregar(tercerLunes(anio, 7), 'Paso a la Inmortalidad del Gral. San Martín');
+  agregar(new Date(anio, 11, 8), 'Inmaculada Concepción de María');
+  agregar(new Date(anio, 11, 25), 'Navidad');
+  agregar(trasladarALunes(new Date(anio, 5, 17)), 'Paso a la Inmortalidad del Gral. Güemes');
+  agregar(trasladarALunes(new Date(anio, 9, 12)), 'Día del Respeto a la Diversidad Cultural');
+  agregar(trasladarALunes(new Date(anio, 10, 20)), 'Día de la Soberanía Nacional');
+  agregar(new Date(anio, 1, 3), 'Batalla de Caseros (feriado provincial ER)');
+  agregar(new Date(anio, 8, 29), 'San Miguel Arcángel (feriado provincial ER)');
+  (FERIADOS_EXTRA_POR_ANIO[anio] || []).forEach(function(x){ agregar(new Date(anio, x.mes - 1, x.dia), x.nombre); });
+  return feriados;
+}
+var feriadosCache = {};
+function esFeriado(fecha) {
+  var anio = fecha.getFullYear();
+  if (!feriadosCache[anio]) feriadosCache[anio] = feriadosDelAnio(anio);
+  return feriadosCache[anio][claveFechaFeriado(fecha)] || null;
+}
+
 var LOCALIDAD_DEPTO = {
   "parana":"Parana","oro verde":"Parana","san benito":"Parana","viale":"Parana","crespo":"Parana","segui":"Parana","hasenkamp":"Parana","maria grande":"Parana","cerrito":"Parana","tabossi":"Parana","hernandarias":"Parana","villa urquiza":"Parana","colonia avellaneda":"Parana","sauce montrull":"Parana","el pingo":"Parana","las tunas":"Parana","pueblo brugo":"Parana","la picada":"Parana","aldea brasilera":"Parana","aldea san juan":"Parana",
   "concepcion del uruguay":"Uruguay","basavilbaso":"Uruguay","caseros":"Uruguay","pronunciamiento":"Uruguay","herrera":"Uruguay","santa anita":"Uruguay","primero de mayo":"Uruguay","villa san marcial":"Uruguay","las moscas":"Uruguay","rocamora":"Uruguay",
@@ -1512,26 +1592,28 @@ function renderLicencias() {
   function getLic(ag, dia){ var f = new Date(anioActual, mesActual, dia); for (var i = 0; i < licMes.length; i++) { var l = licMes[i]; if (l.agente !== ag) continue; var d = new Date(toInput(l.desde)), h = new Date(toInput(l.hasta)); if (f >= d && f <= h) return l; } return null; }
   var hoy = new Date();
   var thDias = '';
-  for (var d = 1; d <= totalDias; d++) { var f = new Date(anioActual, mesActual, d); var finde = f.getDay() === 0 || f.getDay() === 6; var esHoy = f.toDateString() === hoy.toDateString(); thDias += '<th style="width:34px;text-align:center;padding:4px 2px;' + (finde ? 'background:#f0f0ee;' : '') + (esHoy ? 'background:#d9edb8;' : '') + '"><div style="font-size:9px;color:#aaa">' + diasSem[f.getDay()] + '</div><div>' + d + '</div></th>'; }
+  for (var d = 1; d <= totalDias; d++) { var f = new Date(anioActual, mesActual, d); var finde = f.getDay() === 0 || f.getDay() === 6; var feriado = esFeriado(f); var esHoy = f.toDateString() === hoy.toDateString(); thDias += '<th style="width:34px;text-align:center;padding:4px 2px;' + (finde ? 'background:#f0f0ee;' : '') + (feriado ? 'background:#fde3cf;' : '') + (esHoy ? 'background:#d9edb8;' : '') + '" title="' + (feriado ? esc(feriado) : '') + '"><div style="font-size:9px;color:#aaa">' + diasSem[f.getDay()] + '</div><div>' + d + '</div></th>'; }
   var filas = '';
   agentes.forEach(function(ag){
     var celdas = '';
     for (var d = 1; d <= totalDias; d++) {
       var f = new Date(anioActual, mesActual, d);
       var finde = f.getDay() === 0 || f.getDay() === 6;
+      var feriado = esFeriado(f);
       var lic = getLic(ag, d);
-      var tipo = (lic && !finde) ? (TIPOS_LIC[lic.tipo] || TIPOS_LIC['Otro']) : null;
-      celdas += '<td style="text-align:center;padding:2px;' + (finde ? 'background:#f9f9f7;' : '') + (tipo ? 'background:' + tipo.color + ';color:' + tipo.texto + ';font-weight:700;' : '') + 'cursor:' + (tipo ? 'pointer' : 'default') + '" title="' + (tipo ? esc(lic.tipo + (lic.obs ? ' - ' + lic.obs : '')) : '') + '" ' + (tipo ? 'onclick="eliminarLicencia(' + Number(lic._fila) + ',\'' + jsArg(ag) + '\')"' : '') + '>' + (tipo ? tipo.icono : '') + '</td>';
+      var tipo = (lic && !finde && !feriado) ? (TIPOS_LIC[lic.tipo] || TIPOS_LIC['Otro']) : null;
+      var titulo = tipo ? (lic.tipo + (lic.obs ? ' - ' + lic.obs : '')) : (feriado || '');
+      celdas += '<td style="text-align:center;padding:2px;' + (finde ? 'background:#f9f9f7;' : '') + (feriado ? 'background:#fdf1e7;' : '') + (tipo ? 'background:' + tipo.color + ';color:' + tipo.texto + ';font-weight:700;' : '') + 'cursor:' + (tipo ? 'pointer' : 'default') + '" title="' + esc(titulo) + '" ' + (tipo ? 'onclick="eliminarLicencia(' + Number(lic._fila) + ',\'' + jsArg(ag) + '\')"' : '') + '>' + (tipo ? tipo.icono : (feriado ? '★' : '')) + '</td>';
     }
     filas += '<tr><td style="font-weight:500;position:sticky;left:0;background:#fff;z-index:1;border-right:1px solid #e0e0d8">' + esc(ag) + '</td>' + celdas + '</tr>';
   });
-  var leyenda = Object.keys(TIPOS_LIC).map(function(t){ var v = TIPOS_LIC[t]; return '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:12px;background:' + v.color + ';color:' + v.texto + ';margin:3px"><b>' + v.icono + '</b> ' + t + '</span>'; }).join('');
+  var leyenda = Object.keys(TIPOS_LIC).map(function(t){ var v = TIPOS_LIC[t]; return '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:12px;background:' + v.color + ';color:' + v.texto + ';margin:3px"><b>' + v.icono + '</b> ' + t + '</span>'; }).join('') + '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:12px;background:#fde3cf;color:#9a4a12;margin:3px"><b>★</b> Feriado</span>';
   var cal = agentes.length ? '<div style="overflow-x:auto"><table style="min-width:' + (100 + totalDias*34) + 'px;font-size:12px"><thead><tr><th style="min-width:110px;position:sticky;left:0;background:#fafaf8;z-index:2">Agente</th>' + thDias + '</tr></thead><tbody>' + filas + '</tbody></table></div><div style="margin-top:12px">' + leyenda + '</div>' : '<div class="alert">👥 No hay agentes configurados.</div>';
   document.getElementById('calendario-licencias').innerHTML = cal;
   var resumen = agentes.map(function(ag){
     var lics = licMes.filter(function(l){ return l.agente === ag; });
     var hoyFinde = hoy.getDay() === 0 || hoy.getDay() === 6;
-    var enHoy = !hoyFinde && hoy.getMonth() === mesActual && hoy.getFullYear() === anioActual && getLic(ag, hoy.getDate());
+    var enHoy = !hoyFinde && !esFeriado(hoy) && hoy.getMonth() === mesActual && hoy.getFullYear() === anioActual && getLic(ag, hoy.getDate());
     var detalle = lics.length ? lics.map(function(l){ return '<div style="font-size:11px;color:#555;margin-top:4px">' + (TIPOS_LIC[l.tipo] ? TIPOS_LIC[l.tipo].icono : 'O') + ' ' + esc(l.tipo) + ': ' + fmt(l.desde) + ' - ' + fmt(l.hasta) + '</div>'; }).join('') : '<div style="font-size:11px;color:#aaa">Sin licencias este mes</div>';
     return '<div style="padding:12px;border-radius:8px;border:1px solid ' + (enHoy ? '#8bc53f' : '#e0e0d8') + ';background:' + (enHoy ? '#f0f7e6' : '#fff') + '"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div class="avatar" style="width:28px;height:28px;font-size:11px">' + esc(initials(ag)) + '</div><span style="font-size:13px;font-weight:500">' + esc(ag) + '</span>' + (enHoy ? '<span style="font-size:10px;background:#8bc53f;color:#fff;padding:1px 6px;border-radius:999px">HOY</span>' : '') + '</div>' + detalle + '</div>';
   }).join('');
@@ -1549,7 +1631,7 @@ function sumarDiasHabiles(desdeStr, dias) {
   var contados = 0;
   while (contados < dias) {
     var finde = f.getDay() === 0 || f.getDay() === 6;
-    if (!finde) contados++;
+    if (!finde && !esFeriado(f)) contados++;
     if (contados < dias) f.setDate(f.getDate() + 1);
   }
   return f;
