@@ -753,15 +753,29 @@ function normalizarOrganismo(s) {
   return t.replace(/\s+/g, ' ').trim();
 }
 function tituloCase(s) { return s.toLowerCase().replace(/\b\w/g, function(c){ return c.toUpperCase(); }); }
+
+// Clave de agrupamiento: mas agresiva que normalizarOrganismo(). Saca conectores
+// ("de", "del", "la"...) y singulariza palabras (comedores/comedor, adultos/adulto)
+// para que variantes con o sin esas palabras cuenten como el mismo organismo.
+// El nombre que se muestra siempre es la forma completa mas larga entre las variantes.
+var CONECTORES_ORGANISMO = ['DE', 'DEL', 'LA', 'LAS', 'LOS', 'EN', 'Y'];
+function claveComparacionOrganismo(normalizado) {
+  var palabras = normalizado.split(' ').filter(function(w){ return w && CONECTORES_ORGANISMO.indexOf(w) < 0; });
+  palabras = palabras.map(function(w){ return (w.length > 3 && w.slice(-1) === 'S') ? w.slice(0, -1) : w; });
+  return palabras.join(' ');
+}
 function agruparPorOrganismo(maxCategorias) {
-  var conteo = {}, etiqueta = {};
+  var conteo = {}, mejorForma = {};
   expedientes.forEach(function(e){
     var raw = getIniciador(e);
-    var key = normalizarOrganismo(raw) || 'SIN ESPECIFICAR';
+    var completo = normalizarOrganismo(raw);
+    var vacio = !completo;
+    var key = vacio ? 'SIN ESPECIFICAR' : claveComparacionOrganismo(completo);
     conteo[key] = (conteo[key] || 0) + 1;
-    if (!etiqueta[key]) etiqueta[key] = key === 'SIN ESPECIFICAR' ? 'Sin especificar' : tituloCase(key);
+    if (vacio) mejorForma[key] = 'SIN ESPECIFICAR';
+    else if (!mejorForma[key] || completo.length > mejorForma[key].length) mejorForma[key] = completo;
   });
-  var pares = Object.keys(conteo).map(function(k){ return { key:k, nombre:etiqueta[k], total:conteo[k] }; });
+  var pares = Object.keys(conteo).map(function(k){ return { key:k, nombre: k === 'SIN ESPECIFICAR' ? 'Sin especificar' : tituloCase(mejorForma[k]), total:conteo[k] }; });
   pares.sort(function(a,b){ return b.total - a.total; });
   if (pares.length > maxCategorias) {
     var top = pares.slice(0, maxCategorias - 1);
