@@ -4,7 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Registro de Expedientes - DGAJ</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb" crossorigin="anonymous">
+<!-- El mapa (Programas > Mapa) esta oculto en la carga inicial, asi que este CSS no hace
+     falta para el primer pintado. Se pide igual enseguida (no bloquea) pero con el truco
+     de media=print no frena el arranque del resto de la app mientras se descarga: sin esto,
+     el script principal (mas abajo en el documento) queda obligado a esperar a que termine
+     de bajar este CSS antes de poder ejecutarse. -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb" crossorigin="anonymous" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb" crossorigin="anonymous"></noscript>
 <style>
 :root{
   --green-900:#3B6D11;--green-700:#5a9216;--green-600:#76aa30;--green-500:#8bc53f;
