@@ -529,8 +529,8 @@ tbody tr:hover td{background:var(--green-50)}
 
 <div class="toast" id="toast"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO" crossorigin="anonymous"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG" crossorigin="anonymous"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO" crossorigin="anonymous"></script>
 <script>
 var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxqh_UKIESenujigna2_nh9v8tHlkWjHMDn7qAuSHgp6tra1sDy68AlXADnzAo8-sVo/exec';
 // Web App del Apps Script independiente que lee las planillas 2024/2025 (ver apps-script-historico.gs).
@@ -548,6 +548,7 @@ var datosMapaActual = {};
 var paginaActual = 1, POR_PAGINA = 50;
 var historicoCache = {}, anioHistoricoActivo = '2025', historicoBuscarTimer = null;
 var inventarioData = [], pedidosData = [], inventarioCargado = false;
+var licenciasCargadas = false;
 var invSubTab = 'bienes', editBienIdx = null, editPedidoIdx = null;
 var ESTADO_CHIP = {
   'Bueno':['#EAF3DE','#3B6D11'],'Regular':['#FEF3C7','#854F0B'],'Malo':['#FEE2E2','#991B1B'],
@@ -809,21 +810,33 @@ async function cargar() {
   document.getElementById('tabla').style.display = 'none';
   document.getElementById('paginacion').innerHTML = '';
   try {
-    expedientes = await api({ method: 'GET', hoja: 'expedientes' });
-    expedientes = (Array.isArray(expedientes) ? expedientes : []).map(normalizarExpediente);
-    var agentesRaw = await api({ method: 'GET', hoja: 'agentes' });
-    programasData = await api({ method: 'GET', hoja: 'programas' });
+    // Las tres hojas necesarias para la pantalla inicial se piden en paralelo (antes se
+    // pedian una por una en serie, lo que multiplicaba por cuatro la espera al backend).
+    // Licencias no hace falta para la carga inicial: se pide recien al abrir esa pestaña.
+    var res = await Promise.all([
+      api({ method: 'GET', hoja: 'expedientes' }),
+      api({ method: 'GET', hoja: 'agentes' }),
+      api({ method: 'GET', hoja: 'programas' })
+    ]);
+    expedientes = (Array.isArray(res[0]) ? res[0] : []).map(normalizarExpediente);
+    var agentesRaw = res[1];
+    programasData = res[2];
     agentesInfo = (Array.isArray(agentesRaw) ? agentesRaw : []).filter(function(a){ return a && a.nombre; });
     agentes = agentesInfo.map(function(a){ return a.nombre; });
-    try {
-      licenciasData = await api({ method: 'GET', hoja: 'licencias' });
-      licenciasData = Array.isArray(licenciasData) ? licenciasData.filter(function(l){ return l.agente; }) : [];
-    } catch (le) { licenciasData = []; }
     renderAll();
     celebrarCumpleanos();
   } catch (e) {
     document.getElementById('loading').innerHTML = '<div class="alert" style="margin:0;border:none">⚠️ Error al conectar. Recarga con Ctrl+F5.</div>';
   }
+}
+async function initLicencias() {
+  if (licenciasCargadas) { renderLicencias(); return; }
+  try {
+    licenciasData = await api({ method: 'GET', hoja: 'licencias' });
+    licenciasData = Array.isArray(licenciasData) ? licenciasData.filter(function(l){ return l.agente; }) : [];
+  } catch (le) { licenciasData = []; }
+  licenciasCargadas = true;
+  renderLicencias();
 }
 
 function fmt(d) {
@@ -963,7 +976,7 @@ function switchTab(t) {
   if (t === 'analisis') { setTimeout(renderChartMeses, 50); setTimeout(renderChartOrganismos, 60); setTimeout(renderDiario, 80); }
   if (t === 'config') { renderConfigAgentes(); renderPorAgente(); setTimeout(renderChartAgentes, 50); }
   if (t === 'programas') renderProgramas();
-  if (t === 'licencias') renderLicencias();
+  if (t === 'licencias') initLicencias();
   if (t === 'historico') cargarHistorico(anioHistoricoActivo);
   if (t === 'inventario') initInventario();
 }
