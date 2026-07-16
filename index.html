@@ -128,6 +128,10 @@ tbody tr:hover td{background:var(--green-50)}
 .chip{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:500;white-space:nowrap}
 .sk-row{height:13px;border-radius:var(--radius-sm);background:linear-gradient(90deg,#ececea 25%,#f8f8f6 50%,#ececea 75%);background-size:200% 100%;animation:shimmer 1.2s linear infinite;margin:14px 0}
 @keyframes shimmer{to{background-position:-200% 0}}
+#globos-cumple{position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden}
+.globo{position:absolute;top:-60px;left:0;animation:caerGlobo linear forwards}
+@keyframes caerGlobo{0%{transform:translateY(0) translateX(0) rotate(0deg);opacity:0}6%{opacity:1}100%{transform:translateY(110vh) translateX(var(--drift,0px)) rotate(var(--rot,20deg));opacity:.9}}
+.cumple-banner{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#fde9c8;color:#92700c;padding:10px 22px;border-radius:999px;font-size:14px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.15);z-index:10000;animation:fadeIn .3s var(--ease)}
 </style>
 </head>
 <body>
@@ -533,7 +537,7 @@ var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxqh_UKIESenujigna2_nh
 // Completar con la URL que da Google al desplegar ese script ("Implementar > Nueva implementacion > Aplicacion web").
 var SCRIPT_URL_HISTORICO = 'https://script.google.com/macros/s/AKfycbzeVC3hSW3AZWjqw2WzbgvDzRhsvSrvfBcqT19yVtuiOu2A-GAfpD0lCaY06DQ8_EvGCA/exec';
 
-var expedientes = [], agentes = [], programasData = [], licenciasData = [];
+var expedientes = [], agentes = [], agentesInfo = [], programasData = [], licenciasData = [];
 var programaActivo = null, editIdx = null;
 var chartA = null, chartM = null, chartD = null, chartO = null;
 var sortCol = null, sortDir = 1;
@@ -639,6 +643,51 @@ function esFeriado(fecha) {
   var anio = fecha.getFullYear();
   if (!feriadosCache[anio]) feriadosCache[anio] = feriadosDelAnio(anio);
   return feriadosCache[anio][claveFechaFeriado(fecha)] || null;
+}
+
+// ===== Cumpleanos de agentes =====
+function cumpleMesDia(nombre) {
+  var info = agentesInfo.filter(function(a){ return a.nombre === nombre; })[0];
+  if (!info || !info.cumpleanos) return null;
+  var iso = toInput(info.cumpleanos);
+  return iso ? iso.slice(5) : null;
+}
+function esCumpleEnFecha(nombre, fecha) {
+  var md = cumpleMesDia(nombre);
+  if (!md) return false;
+  return md === (String(fecha.getMonth()+1).padStart(2,'0') + '-' + String(fecha.getDate()).padStart(2,'0'));
+}
+function fmtDiaMes(d) {
+  var iso = toInput(d);
+  if (!iso) return '';
+  var p = iso.split('-');
+  return p[2] + '/' + p[1];
+}
+function celebrarCumpleanos() {
+  if (document.getElementById('globos-cumple')) return;
+  var hoy = new Date();
+  var cumpleaneros = agentesInfo.filter(function(a){ return esCumpleEnFecha(a.nombre, hoy); }).map(function(a){ return a.nombre; });
+  if (!cumpleaneros.length) return;
+  var cont = document.createElement('div');
+  cont.id = 'globos-cumple';
+  document.body.appendChild(cont);
+  for (var i = 0; i < 40; i++) {
+    var g = document.createElement('div');
+    g.className = 'globo';
+    g.textContent = '🎈';
+    g.style.left = (Math.random()*100) + 'vw';
+    g.style.fontSize = (22 + Math.random()*20) + 'px';
+    g.style.setProperty('--drift', (Math.random()*160-80) + 'px');
+    g.style.setProperty('--rot', (Math.random()*60-30) + 'deg');
+    g.style.animationDuration = (5 + Math.random()*4) + 's';
+    g.style.animationDelay = (Math.random()*4) + 's';
+    cont.appendChild(g);
+  }
+  var banner = document.createElement('div');
+  banner.className = 'cumple-banner';
+  banner.textContent = '🎉 ¡Feliz cumpleaños ' + cumpleaneros.join(' y ') + '! 🎂';
+  document.body.appendChild(banner);
+  setTimeout(function(){ cont.remove(); banner.remove(); }, 10000);
 }
 
 var LOCALIDAD_DEPTO = {
@@ -760,14 +809,16 @@ async function cargar() {
   try {
     expedientes = await api({ method: 'GET', hoja: 'expedientes' });
     expedientes = (Array.isArray(expedientes) ? expedientes : []).map(normalizarExpediente);
-    agentes = await api({ method: 'GET', hoja: 'agentes' });
+    var agentesRaw = await api({ method: 'GET', hoja: 'agentes' });
     programasData = await api({ method: 'GET', hoja: 'programas' });
-    agentes = agentes.map(function(a){ return a.nombre; }).filter(Boolean);
+    agentesInfo = (Array.isArray(agentesRaw) ? agentesRaw : []).filter(function(a){ return a && a.nombre; });
+    agentes = agentesInfo.map(function(a){ return a.nombre; });
     try {
       licenciasData = await api({ method: 'GET', hoja: 'licencias' });
       licenciasData = Array.isArray(licenciasData) ? licenciasData.filter(function(l){ return l.agente; }) : [];
     } catch (le) { licenciasData = []; }
     renderAll();
+    celebrarCumpleanos();
   } catch (e) {
     document.getElementById('loading').innerHTML = '<div class="alert" style="margin:0;border:none">⚠️ Error al conectar. Recarga con Ctrl+F5.</div>';
   }
@@ -1609,7 +1660,7 @@ function renderLicencias() {
   function getLic(ag, dia){ var f = new Date(anioActual, mesActual, dia); for (var i = 0; i < licMes.length; i++) { var l = licMes[i]; if (l.agente !== ag) continue; var d = new Date(toInput(l.desde)), h = new Date(toInput(l.hasta)); if (f >= d && f <= h) return l; } return null; }
   var hoy = new Date();
   var thDias = '';
-  for (var d = 1; d <= totalDias; d++) { var f = new Date(anioActual, mesActual, d); var finde = f.getDay() === 0 || f.getDay() === 6; var feriado = esFeriado(f); var esHoy = f.toDateString() === hoy.toDateString(); thDias += '<th style="width:34px;text-align:center;padding:4px 2px;' + (finde ? 'background:#f0f0ee;' : '') + (feriado ? 'background:#fde3cf;' : '') + (esHoy ? 'background:#d9edb8;' : '') + '" title="' + (feriado ? esc(feriado) : '') + '"><div style="font-size:9px;color:#aaa">' + diasSem[f.getDay()] + '</div><div>' + d + '</div></th>'; }
+  for (var d = 1; d <= totalDias; d++) { var f = new Date(anioActual, mesActual, d); var finde = f.getDay() === 0 || f.getDay() === 6; var feriado = esFeriado(f); var esHoy = f.toDateString() === hoy.toDateString(); thDias += '<th style="width:34px;text-align:center;padding:4px 2px;' + ((finde || feriado) ? 'background:#f0f0ee;' : '') + (esHoy ? 'background:#d9edb8;' : '') + '" title="' + (feriado ? esc(feriado) : '') + '"><div style="font-size:9px;color:#aaa">' + diasSem[f.getDay()] + '</div><div>' + d + '</div></th>'; }
   var filas = '';
   agentes.forEach(function(ag){
     var celdas = '';
@@ -1619,12 +1670,16 @@ function renderLicencias() {
       var feriado = esFeriado(f);
       var lic = getLic(ag, d);
       var tipo = (lic && !finde && !feriado) ? (TIPOS_LIC[lic.tipo] || TIPOS_LIC['Otro']) : null;
+      var cumple = esCumpleEnFecha(ag, f);
       var titulo = tipo ? (lic.tipo + (lic.obs ? ' - ' + lic.obs : '')) : (feriado || '');
-      celdas += '<td style="text-align:center;padding:2px;' + (finde ? 'background:#f9f9f7;' : '') + (feriado ? 'background:#fdf1e7;' : '') + (tipo ? 'background:' + tipo.color + ';color:' + tipo.texto + ';font-weight:700;' : '') + 'cursor:' + (tipo ? 'pointer' : 'default') + '" title="' + esc(titulo) + '" ' + (tipo ? 'onclick="eliminarLicencia(' + Number(lic._fila) + ',\'' + jsArg(ag) + '\')"' : '') + '>' + (tipo ? tipo.icono : (feriado ? '★' : '')) + '</td>';
+      if (cumple) titulo = '🎂 Cumpleaños de ' + ag + (titulo ? ' · ' + titulo : '');
+      var estilo = cumple ? 'background:#fde9c8;color:#92700c;font-weight:700;' : (tipo ? 'background:' + tipo.color + ';color:' + tipo.texto + ';font-weight:700;' : (((finde || feriado)) ? 'background:#f9f9f7;' + (feriado ? 'color:#8f8f86;font-weight:700;' : '') : ''));
+      var icono = cumple ? '🎂' : (tipo ? tipo.icono : (feriado ? 'F' : ''));
+      celdas += '<td style="text-align:center;padding:2px;' + estilo + 'cursor:' + (tipo ? 'pointer' : 'default') + '" title="' + esc(titulo) + '" ' + (tipo ? 'onclick="eliminarLicencia(' + Number(lic._fila) + ',\'' + jsArg(ag) + '\')"' : '') + '>' + icono + '</td>';
     }
     filas += '<tr><td style="font-weight:500;position:sticky;left:0;background:#fff;z-index:1;border-right:1px solid #e0e0d8">' + esc(ag) + '</td>' + celdas + '</tr>';
   });
-  var leyenda = Object.keys(TIPOS_LIC).map(function(t){ var v = TIPOS_LIC[t]; return '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:12px;background:' + v.color + ';color:' + v.texto + ';margin:3px"><b>' + v.icono + '</b> ' + t + '</span>'; }).join('') + '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:12px;background:#fde3cf;color:#9a4a12;margin:3px"><b>★</b> Feriado</span>';
+  var leyenda = Object.keys(TIPOS_LIC).map(function(t){ var v = TIPOS_LIC[t]; return '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:12px;background:' + v.color + ';color:' + v.texto + ';margin:3px"><b>' + v.icono + '</b> ' + t + '</span>'; }).join('') + '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:12px;background:#f9f9f7;color:#8f8f86;margin:3px"><b>F</b> Feriado</span>' + '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:12px;background:#fde9c8;color:#92700c;margin:3px"><b>🎂</b> Cumpleaños</span>';
   var cal = agentes.length ? '<div style="overflow-x:auto"><table style="min-width:' + (100 + totalDias*34) + 'px;font-size:12px"><thead><tr><th style="min-width:110px;position:sticky;left:0;background:#fafaf8;z-index:2">Agente</th>' + thDias + '</tr></thead><tbody>' + filas + '</tbody></table></div><div style="margin-top:12px">' + leyenda + '</div>' : '<div class="alert">👥 No hay agentes configurados.</div>';
   document.getElementById('calendario-licencias').innerHTML = cal;
   var resumen = agentes.map(function(ag){
@@ -1905,17 +1960,31 @@ async function eliminarPedido(i) {
 }
 
 function renderConfigAgentes() {
-  document.getElementById('agentes-config-lista').innerHTML = agentes.length ? agentes.map(function(a, i){ return '<div class="agente-item"><div style="display:flex;align-items:center;gap:10px"><div class="avatar">' + esc(initials(a)) + '</div><span style="font-size:14px">' + esc(a) + '</span></div><button class="btn sm danger" onclick="eliminarAgente(' + i + ')">Eliminar</button></div>'; }).join('') : '<div class="alert">👥 No hay agentes cargados.</div>';
+  document.getElementById('agentes-config-lista').innerHTML = agentes.length ? agentes.map(function(a, i){
+    var cumpleIso = agentesInfo[i] ? toInput(agentesInfo[i].cumpleanos) : '';
+    return '<div class="agente-item"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="avatar">' + esc(initials(a)) + '</div><span style="font-size:14px">' + esc(a) + '</span><label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#888" title="Cumpleaños">🎂<input type="date" value="' + cumpleIso + '" onchange="actualizarCumpleAgente(' + i + ',this.value)" style="padding:4px 6px;font-size:12px;border:1px solid #d0d0c8;border-radius:6px"></label></div><button class="btn sm danger" onclick="eliminarAgente(' + i + ')">Eliminar</button></div>';
+  }).join('') : '<div class="alert">👥 No hay agentes cargados.</div>';
 }
 async function agregarAgente() {
   if (!zonaDesbloqueada()) { toast('Acceso restringido.', 'error'); return; }
   var inp = document.getElementById('nuevo-agente'); var nombre = inp.value.trim(); if (!nombre) return;
-  try { await api({ accion:'agregar', hoja:'agentes', datos:{ nombre:nombre } }); inp.value = ''; agentes.push(nombre); fillSelects(); renderConfigAgentes(); toast('Agente agregado'); } catch (e) { toast('Error: ' + e.message, 'error'); }
+  try { await api({ accion:'agregar', hoja:'agentes', datos:{ nombre:nombre } }); inp.value = ''; agentes.push(nombre); agentesInfo.push({ nombre:nombre, cumpleanos:'' }); fillSelects(); renderConfigAgentes(); toast('Agente agregado'); } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 async function eliminarAgente(i) {
   if (!zonaDesbloqueada()) { toast('Acceso restringido.', 'error'); return; }
   if (!await confirmar('¿Eliminas a "' + agentes[i] + '"?', 'Eliminar')) return;
-  try { await api({ accion:'eliminar', hoja:'agentes', datos:{ _fila:i+2 } }); agentes.splice(i, 1); fillSelects(); renderConfigAgentes(); toast('Agente eliminado'); } catch (e) { toast('Error: ' + e.message, 'error'); }
+  try { await api({ accion:'eliminar', hoja:'agentes', datos:{ _fila:i+2 } }); agentes.splice(i, 1); agentesInfo.splice(i, 1); fillSelects(); renderConfigAgentes(); toast('Agente eliminado'); } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+async function actualizarCumpleAgente(i, valor) {
+  if (!zonaDesbloqueada()) { toast('Acceso restringido.', 'error'); return; }
+  try {
+    await api({ accion:'editar', hoja:'agentes', datos:{ _fila:i+2, nombre:agentes[i], cumpleanos:valor } });
+    agentesInfo[i] = agentesInfo[i] || { nombre:agentes[i] };
+    agentesInfo[i].cumpleanos = valor;
+    toast('Cumpleaños actualizado');
+    if (document.getElementById('tab-licencias').classList.contains('active')) renderLicencias();
+    celebrarCumpleanos();
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 
 function fillSelects() {
