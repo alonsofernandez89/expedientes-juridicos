@@ -1163,6 +1163,40 @@ function renderChartAgentes() {
   if (chartA) chartA.destroy();
   chartA = new Chart(document.getElementById('chart-agentes'), { type:'bar', data:{ labels: agentes.map(function(a){ return a.split(',')[0]; }), datasets:[ {label:'En Dir.',data:enDir,backgroundColor:'#8bc53f'}, {label:'Egres.',data:counts.map(function(t,i){ return t-enDir[i]; }),backgroundColor:'#B4B2A9'} ] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{font:{size:11}}},y:{stacked:true,beginAtZero:true,ticks:{stepSize:1}}}} });
 }
+// Dibuja, para cada mes, la cantidad de ingresos en una etiqueta verde oscuro
+// traslucida centrada sobre ese mes y fija en la base del grafico (banda 0-30),
+// sin importar la altura real de la linea (asi el mes en curso, con la cuenta
+// parcial de lo que va ingresando, se lee igual de claro que los meses cerrados).
+var pluginBadgeIngresosMes = {
+  id: 'badgeIngresosMes',
+  afterDatasetsDraw: function(chart) {
+    var ctx = chart.ctx, xScale = chart.scales.x, yScale = chart.scales.y;
+    var data = chart.data.datasets[0].data;
+    var yBase = yScale.getPixelForValue(15);
+    ctx.save();
+    ctx.font = '700 12px system-ui, -apple-system, "Segoe UI", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    data.forEach(function(val, i){
+      var x = xScale.getPixelForValue(i);
+      var texto = String(val);
+      var w = ctx.measureText(texto).width;
+      var boxW = w + 16, boxH = 20, bx = x - boxW/2, by = yBase - boxH/2, r = 8;
+      ctx.beginPath();
+      ctx.moveTo(bx+r, by);
+      ctx.arcTo(bx+boxW, by, bx+boxW, by+boxH, r);
+      ctx.arcTo(bx+boxW, by+boxH, bx, by+boxH, r);
+      ctx.arcTo(bx, by+boxH, bx, by, r);
+      ctx.arcTo(bx, by, bx+boxW, by, r);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(63,107,15,0.16)';
+      ctx.fill();
+      ctx.fillStyle = '#3f6b0f';
+      ctx.fillText(texto, x, by + boxH/2 + 1);
+    });
+    ctx.restore();
+  }
+};
 function renderChartMeses() {
   var meses = {};
   expedientes.forEach(function(e){ var raw = toInput(e.ingreso); if (raw) { var m = raw.slice(0,7); meses[m] = (meses[m]||0)+1; } });
@@ -1170,7 +1204,7 @@ function renderChartMeses() {
   var nombresMes = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   var mL = mK.map(function(k){ var p = k.split('-'); return nombresMes[+p[1]-1] + ' ' + p[0].slice(2); });
   if (chartM) chartM.destroy();
-  chartM = new Chart(document.getElementById('chart-meses'), { type:'line', data:{ labels:mL, datasets:[{label:'Ingresos',data:mK.map(function(k){ return meses[k]; }),borderColor:'#5a9216',backgroundColor:'rgba(139,197,63,0.15)',fill:true,tension:.3,pointRadius:4}] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:11},maxRotation:45,autoSkip:false}},y:{beginAtZero:true,ticks:{stepSize:1}}}} });
+  chartM = new Chart(document.getElementById('chart-meses'), { type:'line', data:{ labels:mL, datasets:[{label:'Ingresos',data:mK.map(function(k){ return meses[k]; }),borderColor:'#5a9216',backgroundColor:'rgba(139,197,63,0.15)',fill:true,tension:.3,pointRadius:4}] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:11},maxRotation:45,autoSkip:false}},y:{beginAtZero:true,suggestedMax:30,ticks:{stepSize:1}}}}, plugins:[pluginBadgeIngresosMes] });
 }
 
 // Paleta categorica validada (8 tonos, orden fijo - ver skill de dataviz): CVD-safe, nunca se ciclan ni se reordenan por valor.
