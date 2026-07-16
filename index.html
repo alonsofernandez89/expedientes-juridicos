@@ -214,9 +214,8 @@ tbody tr:hover td{background:var(--green-50)}
         </div>
       </div>
       <div class="chart-wrap" style="height:260px"><canvas id="chart-diario"></canvas></div>
-      <div class="grid-2" style="margin-top:20px">
-        <div><div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#5a9216">Ingresos por dia</div><table><thead><tr><th>Fecha</th><th>Cantidad</th></tr></thead><tbody id="tbody-ingresos"></tbody></table></div>
-        <div><div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#854F0B">Egresos por dia</div><table><thead><tr><th>Fecha</th><th>Cantidad</th></tr></thead><tbody id="tbody-egresos"></tbody></table></div>
+      <div style="margin-top:20px">
+        <table><thead><tr><th>Fecha</th><th style="color:#5a9216">Ingresos</th><th style="color:#854F0B">Egresos</th></tr></thead><tbody id="tbody-diario"></tbody></table>
       </div>
     </div>
   </div>
@@ -1156,6 +1155,13 @@ function renderChartOrganismos() {
   }).join('');
 }
 
+// Dia a destacar en "Movimiento diario": hoy, o el ultimo dia habil anterior
+// si hoy es fin de semana o feriado (para que siempre haya un dia real para comparar).
+function ultimoDiaHabil() {
+  var f = new Date();
+  while (f.getDay() === 0 || f.getDay() === 6 || esFeriado(f)) { f.setDate(f.getDate() - 1); }
+  return fechaAInputStr(f);
+}
 function renderDiario() {
   var desde = document.getElementById('f-desde').value;
   var hasta = document.getElementById('f-hasta').value;
@@ -1165,18 +1171,29 @@ function renderDiario() {
     if (i && (!desde || i >= desde) && (!hasta || i <= hasta)) ing[i] = (ing[i]||0)+1;
     if (s && s.length === 10 && (!desde || s >= desde) && (!hasta || s <= hasta)) egr[s] = (egr[s]||0)+1;
   });
-  var todas = Object.keys(ing).concat(Object.keys(egr)).filter(function(v,i,arr){ return arr.indexOf(v)===i; }).sort();
+  // Union de fechas con movimiento: asi un dia con solo egresos (o solo ingresos)
+  // queda nivelado con "0" del otro lado en vez de faltar directamente esa fecha.
+  var todas = Object.keys(ing).concat(Object.keys(egr)).filter(function(v,i,arr){ return arr.indexOf(v)===i; });
+  var destacado = ultimoDiaHabil();
+  if ((!desde || destacado >= desde) && (!hasta || destacado <= hasta) && todas.indexOf(destacado) < 0) todas.push(destacado);
+  todas.sort();
   if (!todas.length) {
-    document.getElementById('tbody-ingresos').innerHTML = '<tr><td colspan="2" style="text-align:center;color:#888">Sin datos.</td></tr>';
-    document.getElementById('tbody-egresos').innerHTML = '<tr><td colspan="2" style="text-align:center;color:#888">Sin datos.</td></tr>';
+    document.getElementById('tbody-diario').innerHTML = '<tr><td colspan="3" style="text-align:center;color:#888">Sin datos.</td></tr>';
     if (chartD) { chartD.destroy(); chartD = null; }
     return;
   }
+  var idxDestacado = todas.indexOf(destacado);
+  var esHoy = destacado === fechaAInputStr(new Date());
   if (chartD) chartD.destroy();
-  chartD = new Chart(document.getElementById('chart-diario'), { type:'bar', data:{ labels: todas.map(function(f){ return fmt(f); }), datasets:[ {label:'Ingresos',data:todas.map(function(f){ return ing[f]||0; }),backgroundColor:'#8bc53f'}, {label:'Egresos',data:todas.map(function(f){ return egr[f]||0; }),backgroundColor:'#F0A045'} ] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top'}},scales:{x:{ticks:{font:{size:11},maxRotation:45,autoSkip:true}},y:{beginAtZero:true,ticks:{stepSize:1}}}} });
-  var iF = Object.keys(ing).sort(), eF = Object.keys(egr).sort();
-  document.getElementById('tbody-ingresos').innerHTML = iF.length ? iF.map(function(f){ return '<tr><td style="white-space:nowrap">' + fmt(f) + '</td><td style="color:#5a9216;font-weight:600">' + ing[f] + '</td></tr>'; }).join('') : '<tr><td colspan="2" style="text-align:center;color:#888">Sin ingresos.</td></tr>';
-  document.getElementById('tbody-egresos').innerHTML = eF.length ? eF.map(function(f){ return '<tr><td style="white-space:nowrap">' + fmt(f) + '</td><td style="color:#854F0B;font-weight:600">' + egr[f] + '</td></tr>'; }).join('') : '<tr><td colspan="2" style="text-align:center;color:#888">Sin egresos.</td></tr>';
+  chartD = new Chart(document.getElementById('chart-diario'), { type:'bar', data:{ labels: todas.map(function(f){ return fmt(f); }), datasets:[
+    {label:'Ingresos',data:todas.map(function(f){ return ing[f]||0; }),backgroundColor:'#8bc53f',borderColor:todas.map(function(f,i){ return i===idxDestacado ? '#3f6b0f' : '#8bc53f'; }),borderWidth:todas.map(function(f,i){ return i===idxDestacado ? 2 : 0; })},
+    {label:'Egresos',data:todas.map(function(f){ return egr[f]||0; }),backgroundColor:'#F0A045',borderColor:todas.map(function(f,i){ return i===idxDestacado ? '#8a4a10' : '#F0A045'; }),borderWidth:todas.map(function(f,i){ return i===idxDestacado ? 2 : 0; })}
+  ] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top'}},scales:{x:{ticks:{font:function(ctx){ return { size:11, weight: ctx.index===idxDestacado ? '700' : '400' }; },color:function(ctx){ return ctx.index===idxDestacado ? '#222' : '#888'; },maxRotation:45,autoSkip:true}},y:{beginAtZero:true,ticks:{stepSize:1}}}} });
+  document.getElementById('tbody-diario').innerHTML = todas.map(function(f,i){
+    var destacar = i === idxDestacado;
+    var etiqueta = destacar ? ' <span style="font-size:10px;background:#8bc53f;color:#fff;padding:1px 6px;border-radius:999px;margin-left:6px">' + (esHoy ? 'HOY' : 'ÚLTIMO HÁBIL') + '</span>' : '';
+    return '<tr style="' + (destacar ? 'background:#f0f7e6' : '') + '"><td style="white-space:nowrap;font-weight:' + (destacar ? '600' : '400') + '">' + fmt(f) + etiqueta + '</td><td style="color:#5a9216;font-weight:600">' + (ing[f]||0) + '</td><td style="color:#854F0B;font-weight:600">' + (egr[f]||0) + '</td></tr>';
+  }).join('');
 }
 
 function getProgramas() {
