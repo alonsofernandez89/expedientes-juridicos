@@ -1173,15 +1173,22 @@ var pluginBadgeIngresosMes = {
     var ctx = chart.ctx, xScale = chart.scales.x, yScale = chart.scales.y;
     var data = chart.data.datasets[0].data;
     var yBase = yScale.getPixelForValue(15);
+    var gap = data.length > 1 ? (xScale.getPixelForValue(1) - xScale.getPixelForValue(0)) : 40;
     ctx.save();
     ctx.font = '700 12px system-ui, -apple-system, "Segoe UI", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     data.forEach(function(val, i){
-      var x = xScale.getPixelForValue(i);
+      // El numero de un mes se centra entre ese mes y el siguiente (ej: el de enero, entre enero y febrero).
+      var xActual = xScale.getPixelForValue(i);
+      var xSiguiente = (i+1 < data.length) ? xScale.getPixelForValue(i+1) : xActual + gap;
+      var x = (xActual + xSiguiente) / 2;
       var texto = String(val);
       var w = ctx.measureText(texto).width;
-      var boxW = w + 16, boxH = 20, bx = x - boxW/2, by = yBase - boxH/2, r = 8;
+      var boxW = w + 16, boxH = 20;
+      // El ultimo mes no tiene "siguiente" real: se acota dentro del area visible para que no quede cortado.
+      x = Math.min(Math.max(x, chart.chartArea.left + boxW/2), chart.chartArea.right - boxW/2);
+      var bx = x - boxW/2, by = yBase - boxH/2, r = 8;
       ctx.beginPath();
       ctx.moveTo(bx+r, by);
       ctx.arcTo(bx+boxW, by, bx+boxW, by+boxH, r);
