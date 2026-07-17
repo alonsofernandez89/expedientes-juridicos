@@ -800,7 +800,14 @@ function api(params, reintentos) {
         }
         if (!r.ok) throw new Error('HTTP ' + r.status);
         var text = await r.text();
-        try { return JSON.parse(text); } catch (pe) { return params.method === 'GET' ? [] : {}; }
+        var parsed;
+        try { parsed = JSON.parse(text); } catch (pe) { return params.method === 'GET' ? [] : {}; }
+        // El Apps Script del backend siempre responde HTTP 200 aunque haya fallado
+        // internamente (ej: "hoja no existe"), y en ese caso devuelve {error:"..."}.
+        // Sin este chequeo, ese error se leia como una respuesta valida y la app
+        // mostraba "Guardado" aunque en realidad no se hubiera escrito nada.
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.error) throw new Error(parsed.error);
+        return parsed;
       } catch (e) {
         if (i < reintentos - 1) { await new Promise(function(res){ setTimeout(res, 400 * (i + 1)); }); }
         else { throw e; }
