@@ -174,6 +174,11 @@ tbody tr:hover td{background:var(--green-50)}
         <option value="en_direccion">En la Direccion</option>
         <option value="egresado">Egresados</option>
       </select>
+      <select id="f-por-pagina" onchange="cambiarPorPagina()" title="Registros por pagina">
+        <option value="25">25 por pagina</option>
+        <option value="50" selected>50 por pagina</option>
+        <option value="100">100 por pagina</option>
+      </select>
     </div>
     <div id="loading" class="card">
       <div class="sk-row" style="width:35%"></div>
@@ -546,7 +551,9 @@ var SCRIPT_URL_HISTORICO = 'https://script.google.com/macros/s/AKfycbzeVC3hSW3AZ
 var expedientes = [], agentes = [], agentesInfo = [], programasData = [], licenciasData = [];
 var programaActivo = null, editIdx = null;
 var chartA = null, chartM = null, chartD = null, chartO = null;
-var sortCol = null, sortDir = 1;
+// Orden por defecto en Registro: ultimos ingresados primero (se puede cambiar clickeando
+// cualquier encabezado de columna, como ya permitia ordenarPor()).
+var sortCol = 'ingreso', sortDir = -1;
 var leafletMap = null, geojsonLayer = null, geoCache = null, capaSeleccionada = null;
 var mesActual = new Date().getMonth(), anioActual = new Date().getFullYear();
 var progAsignar = null, asignarLista = [], asignarSeleccionado = null, dragExpteId = null;
@@ -740,6 +747,7 @@ var buscarTimer = null;
 function buscarDebounced() { clearTimeout(buscarTimer); buscarTimer = setTimeout(function(){ paginaActual = 1; renderTabla(); }, 250); }
 function filtrosCambiaron() { paginaActual = 1; renderTabla(); }
 function cambiarPagina(dir) { paginaActual += dir; renderTabla(); var w = document.querySelector('.tabla-scroll'); if (w) w.scrollTop = 0; }
+function cambiarPorPagina() { POR_PAGINA = parseInt(document.getElementById('f-por-pagina').value, 10) || 50; paginaActual = 1; renderTabla(); }
 function limpiarFiltros() {
   document.getElementById('f-buscar').value = '';
   document.getElementById('f-agente').value = '';
