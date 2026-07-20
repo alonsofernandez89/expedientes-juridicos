@@ -1223,29 +1223,22 @@ function dibujarBadgeMes(ctx, x, yCenter, texto, colorFondo, colorTexto) {
 var pluginBadgeIngresosMes = {
   id: 'badgeIngresosMes',
   afterDatasetsDraw: function(chart) {
-    var ctx = chart.ctx, xScale = chart.scales.x, yScale = chart.scales.y;
+    var ctx = chart.ctx, xScale = chart.scales.x;
     var ingresos = chart.data.datasets[0].data;
     var egresos = chart.data.datasets[1] ? chart.data.datasets[1].data : [];
-    var yBase = yScale.getPixelForValue(15);
-    var gap = ingresos.length > 1 ? (xScale.getPixelForValue(1) - xScale.getPixelForValue(0)) : 40;
+    // Los dos numeros de cada mes quedan apilados justo arriba del nombre del mes:
+    // el de ingresos primero, el de egresos debajo, ambos centrados sobre ese mes.
+    var boxH = 20, gapVertical = 3;
+    var yEgr = chart.chartArea.bottom - boxH/2 - 2;
+    var yIng = yEgr - boxH - gapVertical;
     ctx.save();
     ctx.font = '700 12px system-ui, -apple-system, "Segoe UI", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ingresos.forEach(function(val, i){
-      // El par de numeros de un mes se centra entre ese mes y el siguiente (ej: el de enero, entre enero y febrero).
-      var xActual = xScale.getPixelForValue(i);
-      var xSiguiente = (i+1 < ingresos.length) ? xScale.getPixelForValue(i+1) : xActual + gap;
-      var xCentro = (xActual + xSiguiente) / 2;
-      var textoIng = String(val), textoEgr = String(egresos[i] || 0);
-      var boxWIng = ctx.measureText(textoIng).width + 16, boxWEgr = ctx.measureText(textoEgr).width + 16;
-      var gapBadges = 5, totalW = boxWIng + gapBadges + boxWEgr;
-      // El ultimo mes no tiene "siguiente" real: se acota el par dentro del area visible para que no quede cortado.
-      xCentro = Math.min(Math.max(xCentro, chart.chartArea.left + totalW/2), chart.chartArea.right - totalW/2);
-      var xIng = xCentro - totalW/2 + boxWIng/2;
-      var xEgr = xCentro + totalW/2 - boxWEgr/2;
-      dibujarBadgeMes(ctx, xIng, yBase, textoIng, 'rgba(63,107,15,0.16)', '#3f6b0f');
-      dibujarBadgeMes(ctx, xEgr, yBase, textoEgr, 'rgba(163,45,45,0.16)', '#A32D2D');
+      var x = xScale.getPixelForValue(i);
+      dibujarBadgeMes(ctx, x, yIng, String(val), 'rgba(63,107,15,0.16)', '#3f6b0f');
+      dibujarBadgeMes(ctx, x, yEgr, String(egresos[i] || 0), 'rgba(163,45,45,0.16)', '#A32D2D');
     });
     ctx.restore();
   }
