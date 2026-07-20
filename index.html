@@ -1201,51 +1201,70 @@ function renderChartAgentes() {
 // traslucida centrada sobre ese mes y fija en la base del grafico (banda 0-30),
 // sin importar la altura real de la linea (asi el mes en curso, con la cuenta
 // parcial de lo que va ingresando, se lee igual de claro que los meses cerrados).
+// Dibuja, para cada mes, un par de etiquetas centradas entre ese mes y el siguiente:
+// la de ingresos (verde, dataset 0) y la de egresos (roja, dataset 1 - oculto, solo se
+// usa para tener el dato disponible aca, no dibuja su propia linea en el grafico).
+function dibujarBadgeMes(ctx, x, yCenter, texto, colorFondo, colorTexto) {
+  var w = ctx.measureText(texto).width;
+  var boxW = w + 16, boxH = 20, bx = x - boxW/2, by = yCenter - boxH/2, r = 8;
+  ctx.beginPath();
+  ctx.moveTo(bx+r, by);
+  ctx.arcTo(bx+boxW, by, bx+boxW, by+boxH, r);
+  ctx.arcTo(bx+boxW, by+boxH, bx, by+boxH, r);
+  ctx.arcTo(bx, by+boxH, bx, by, r);
+  ctx.arcTo(bx, by, bx+boxW, by, r);
+  ctx.closePath();
+  ctx.fillStyle = colorFondo;
+  ctx.fill();
+  ctx.fillStyle = colorTexto;
+  ctx.fillText(texto, x, by + boxH/2 + 1);
+  return boxW;
+}
 var pluginBadgeIngresosMes = {
   id: 'badgeIngresosMes',
   afterDatasetsDraw: function(chart) {
     var ctx = chart.ctx, xScale = chart.scales.x, yScale = chart.scales.y;
-    var data = chart.data.datasets[0].data;
+    var ingresos = chart.data.datasets[0].data;
+    var egresos = chart.data.datasets[1] ? chart.data.datasets[1].data : [];
     var yBase = yScale.getPixelForValue(15);
-    var gap = data.length > 1 ? (xScale.getPixelForValue(1) - xScale.getPixelForValue(0)) : 40;
+    var gap = ingresos.length > 1 ? (xScale.getPixelForValue(1) - xScale.getPixelForValue(0)) : 40;
     ctx.save();
     ctx.font = '700 12px system-ui, -apple-system, "Segoe UI", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    data.forEach(function(val, i){
-      // El numero de un mes se centra entre ese mes y el siguiente (ej: el de enero, entre enero y febrero).
+    ingresos.forEach(function(val, i){
+      // El par de numeros de un mes se centra entre ese mes y el siguiente (ej: el de enero, entre enero y febrero).
       var xActual = xScale.getPixelForValue(i);
-      var xSiguiente = (i+1 < data.length) ? xScale.getPixelForValue(i+1) : xActual + gap;
-      var x = (xActual + xSiguiente) / 2;
-      var texto = String(val);
-      var w = ctx.measureText(texto).width;
-      var boxW = w + 16, boxH = 20;
-      // El ultimo mes no tiene "siguiente" real: se acota dentro del area visible para que no quede cortado.
-      x = Math.min(Math.max(x, chart.chartArea.left + boxW/2), chart.chartArea.right - boxW/2);
-      var bx = x - boxW/2, by = yBase - boxH/2, r = 8;
-      ctx.beginPath();
-      ctx.moveTo(bx+r, by);
-      ctx.arcTo(bx+boxW, by, bx+boxW, by+boxH, r);
-      ctx.arcTo(bx+boxW, by+boxH, bx, by+boxH, r);
-      ctx.arcTo(bx, by+boxH, bx, by, r);
-      ctx.arcTo(bx, by, bx+boxW, by, r);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(63,107,15,0.16)';
-      ctx.fill();
-      ctx.fillStyle = '#3f6b0f';
-      ctx.fillText(texto, x, by + boxH/2 + 1);
+      var xSiguiente = (i+1 < ingresos.length) ? xScale.getPixelForValue(i+1) : xActual + gap;
+      var xCentro = (xActual + xSiguiente) / 2;
+      var textoIng = String(val), textoEgr = String(egresos[i] || 0);
+      var boxWIng = ctx.measureText(textoIng).width + 16, boxWEgr = ctx.measureText(textoEgr).width + 16;
+      var gapBadges = 5, totalW = boxWIng + gapBadges + boxWEgr;
+      // El ultimo mes no tiene "siguiente" real: se acota el par dentro del area visible para que no quede cortado.
+      xCentro = Math.min(Math.max(xCentro, chart.chartArea.left + totalW/2), chart.chartArea.right - totalW/2);
+      var xIng = xCentro - totalW/2 + boxWIng/2;
+      var xEgr = xCentro + totalW/2 - boxWEgr/2;
+      dibujarBadgeMes(ctx, xIng, yBase, textoIng, 'rgba(63,107,15,0.16)', '#3f6b0f');
+      dibujarBadgeMes(ctx, xEgr, yBase, textoEgr, 'rgba(163,45,45,0.16)', '#A32D2D');
     });
     ctx.restore();
   }
 };
 function renderChartMeses() {
-  var meses = {};
-  expedientes.forEach(function(e){ var raw = toInput(e.ingreso); if (raw) { var m = raw.slice(0,7); meses[m] = (meses[m]||0)+1; } });
-  var mK = Object.keys(meses).sort();
+  var ing = {}, egr = {};
+  expedientes.forEach(function(e){
+    var i = toInput(e.ingreso); if (i) { var mi = i.slice(0,7); ing[mi] = (ing[mi]||0)+1; }
+    var s = toInput(getSalio(e)); if (s && s.length === 10) { var ms = s.slice(0,7); egr[ms] = (egr[ms]||0)+1; }
+  });
+  // Union de meses con ingresos o egresos, para que un mes con solo egresos tambien aparezca.
+  var mK = Object.keys(ing).concat(Object.keys(egr)).filter(function(v,i,arr){ return arr.indexOf(v)===i; }).sort();
   var nombresMes = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   var mL = mK.map(function(k){ var p = k.split('-'); return nombresMes[+p[1]-1] + ' ' + p[0].slice(2); });
   if (chartM) chartM.destroy();
-  chartM = new Chart(document.getElementById('chart-meses'), { type:'line', data:{ labels:mL, datasets:[{label:'Ingresos',data:mK.map(function(k){ return meses[k]; }),borderColor:'#5a9216',backgroundColor:'rgba(139,197,63,0.15)',fill:true,tension:.3,pointRadius:4}] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:11},maxRotation:45,autoSkip:false}},y:{beginAtZero:true,suggestedMax:30,ticks:{stepSize:1}}}}, plugins:[pluginBadgeIngresosMes] });
+  chartM = new Chart(document.getElementById('chart-meses'), { type:'line', data:{ labels:mL, datasets:[
+    {label:'Ingresos',data:mK.map(function(k){ return ing[k]||0; }),borderColor:'#5a9216',backgroundColor:'rgba(139,197,63,0.15)',fill:true,tension:.3,pointRadius:4},
+    {label:'Egresos',data:mK.map(function(k){ return egr[k]||0; }),hidden:true}
+  ] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:11},maxRotation:45,autoSkip:false}},y:{beginAtZero:true,suggestedMax:30,ticks:{stepSize:1}}}}, plugins:[pluginBadgeIngresosMes] });
 }
 
 // Paleta categorica validada (8 tonos, orden fijo - ver skill de dataviz): CVD-safe, nunca se ciclan ni se reordenan por valor.
