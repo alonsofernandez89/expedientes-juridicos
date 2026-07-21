@@ -2070,8 +2070,13 @@ async function actualizarCumpleAgente(i) {
   if (!zonaDesbloqueada()) { toast('Acceso restringido.', 'error'); return; }
   var mes = document.getElementById('cumple-mes-' + i).value;
   var dia = document.getElementById('cumple-dia-' + i).value;
-  var mesNum = (mes && dia) ? parseInt(mes, 10) : '';
-  var diaNum = (mes && dia) ? parseInt(dia, 10) : '';
+  // Si todavia falta elegir el mes o el dia, no guardar nada: antes esto disparaba un
+  // guardado con los dos campos en blanco (borrando lo ya guardado) apenas se elegia
+  // el primero de los dos selects, y esa peticion "en blanco" podia llegar despues de
+  // la peticion buena (con el mes y el dia completos) si el backend responde lento,
+  // pisandola. Con este corte solo se guarda una vez que estan los dos elegidos.
+  if (!mes || !dia) return;
+  var mesNum = parseInt(mes, 10), diaNum = parseInt(dia, 10);
   try {
     await api({ accion:'editar', hoja:'agentes', datos:{ _fila:i+2, nombre:agentes[i], cumple_mes:mesNum, cumple_dia:diaNum } });
     agentesInfo[i] = agentesInfo[i] || { nombre:agentes[i] };
