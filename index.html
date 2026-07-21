@@ -660,19 +660,17 @@ function esFeriado(fecha) {
 }
 
 // ===== Cumpleanos de agentes =====
-// Se guarda solo dia y mes ("MM-DD", sin año) para que se repita todos los años.
-// normalizarCumpleMesDia() tambien acepta una fecha completa por compatibilidad
-// con datos cargados antes de este cambio (se queda solo con el mes y el dia).
-function normalizarCumpleMesDia(valor) {
-  if (!valor) return null;
-  var s = String(valor).trim();
-  if (/^\d{2}-\d{2}$/.test(s)) return s;
-  var iso = toInput(s);
-  return iso ? iso.slice(5) : null;
-}
+// Mes y dia se guardan en dos columnas numericas separadas (cumple_mes, cumple_dia)
+// en vez de un solo texto tipo "05-03": un valor con guion o barra lo reconoce Google
+// Sheets como fecha y lo reinterpreta segun el idioma/config regional de la planilla
+// (invirtiendo dia y mes en muchos casos). Un numero simple (1-12, 1-31) en su propia
+// columna nunca se confunde con una fecha.
 function cumpleMesDia(nombre) {
   var info = agentesInfo.filter(function(a){ return a.nombre === nombre; })[0];
-  return info ? normalizarCumpleMesDia(info.cumpleanos) : null;
+  if (!info) return null;
+  var mes = parseInt(info.cumple_mes, 10), dia = parseInt(info.cumple_dia, 10);
+  if (!mes || !dia) return null;
+  return String(mes).padStart(2,'0') + '-' + String(dia).padStart(2,'0');
 }
 function esCumpleEnFecha(nombre, fecha) {
   var md = cumpleMesDia(nombre);
@@ -2051,7 +2049,7 @@ async function eliminarPedido(i) {
 function renderConfigAgentes() {
   var MESES_CUMPLE = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   document.getElementById('agentes-config-lista').innerHTML = agentes.length ? agentes.map(function(a, i){
-    var md = agentesInfo[i] ? normalizarCumpleMesDia(agentesInfo[i].cumpleanos) : null;
+    var md = cumpleMesDia(a);
     var mesSel = md ? md.slice(0,2) : '', diaSel = md ? md.slice(3,5) : '';
     var optsMes = '<option value="">Mes</option>' + MESES_CUMPLE.map(function(m, idx){ var v = String(idx+1).padStart(2,'0'); return '<option value="' + v + '"' + (v===mesSel?' selected':'') + '>' + m + '</option>'; }).join('');
     var optsDia = '<option value="">Día</option>' + Array.from({length:31}, function(_, idx){ var v = String(idx+1).padStart(2,'0'); return '<option value="' + v + '"' + (v===diaSel?' selected':'') + '>' + (idx+1) + '</option>'; }).join('');
@@ -2061,7 +2059,7 @@ function renderConfigAgentes() {
 async function agregarAgente() {
   if (!zonaDesbloqueada()) { toast('Acceso restringido.', 'error'); return; }
   var inp = document.getElementById('nuevo-agente'); var nombre = inp.value.trim(); if (!nombre) return;
-  try { await api({ accion:'agregar', hoja:'agentes', datos:{ nombre:nombre } }); inp.value = ''; agentes.push(nombre); agentesInfo.push({ nombre:nombre, cumpleanos:'' }); fillSelects(); renderConfigAgentes(); toast('Agente agregado'); } catch (e) { toast('Error: ' + e.message, 'error'); }
+  try { await api({ accion:'agregar', hoja:'agentes', datos:{ nombre:nombre } }); inp.value = ''; agentes.push(nombre); agentesInfo.push({ nombre:nombre, cumple_mes:'', cumple_dia:'' }); fillSelects(); renderConfigAgentes(); toast('Agente agregado'); } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 async function eliminarAgente(i) {
   if (!zonaDesbloqueada()) { toast('Acceso restringido.', 'error'); return; }
@@ -2072,11 +2070,13 @@ async function actualizarCumpleAgente(i) {
   if (!zonaDesbloqueada()) { toast('Acceso restringido.', 'error'); return; }
   var mes = document.getElementById('cumple-mes-' + i).value;
   var dia = document.getElementById('cumple-dia-' + i).value;
-  var valor = (mes && dia) ? (mes + '-' + dia) : '';
+  var mesNum = (mes && dia) ? parseInt(mes, 10) : '';
+  var diaNum = (mes && dia) ? parseInt(dia, 10) : '';
   try {
-    await api({ accion:'editar', hoja:'agentes', datos:{ _fila:i+2, nombre:agentes[i], cumpleanos:valor } });
+    await api({ accion:'editar', hoja:'agentes', datos:{ _fila:i+2, nombre:agentes[i], cumple_mes:mesNum, cumple_dia:diaNum } });
     agentesInfo[i] = agentesInfo[i] || { nombre:agentes[i] };
-    agentesInfo[i].cumpleanos = valor;
+    agentesInfo[i].cumple_mes = mesNum;
+    agentesInfo[i].cumple_dia = diaNum;
     toast('Cumpleaños actualizado');
     if (document.getElementById('tab-licencias').classList.contains('active')) renderLicencias();
     celebrarCumpleanos();
