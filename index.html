@@ -1194,16 +1194,46 @@ async function verDictamenes(nro) {
 
 // ===== Mi Panel (control personal de expedientes por agente) =====
 var panelAgente = null, panelFiltro = '', panelBuscar = '';
-function diasEntre(iso1, iso2) {
-  if (!iso1 || !iso2) return null;
-  var d = (new Date(iso2) - new Date(iso1)) / 86400000;
-  return isNaN(d) ? null : d;
+// Plazo para dictaminar: 20 dias habiles contados desde el DIA SIGUIENTE al ingreso
+// (el dia de ingreso no cuenta, criterio habitual de plazos administrativos).
+// Reutiliza esFeriado() del modulo de licencias: excluye sabados, domingos y
+// feriados nacionales + provinciales de Entre Rios.
+var DIAS_DICTAMEN = 20;
+function esDiaHabil(d) { return d.getDay() !== 0 && d.getDay() !== 6 && !esFeriado(d); }
+function vencimientoDictamen(iso) {
+  var d = new Date(iso + 'T00:00:00');
+  if (isNaN(d.getTime())) return null;
+  var c = 0;
+  while (c < DIAS_DICTAMEN) { d.setDate(d.getDate() + 1); if (esDiaHabil(d)) c++; }
+  return d;
+}
+// Dias habiles desde hoy hasta la fecha de vencimiento (0 = vence hoy, negativo = vencido).
+function diasHabilesRestantes(venc) {
+  var hoy = new Date(); hoy.setHours(0,0,0,0);
+  var v = new Date(venc.getTime()); v.setHours(0,0,0,0);
+  if (v.getTime() === hoy.getTime()) return 0;
+  var futuro = v.getTime() > hoy.getTime();
+  var a = new Date((futuro ? hoy : v).getTime()), fin = (futuro ? v : hoy).getTime(), c = 0;
+  while (a.getTime() < fin) { a.setDate(a.getDate() + 1); if (esDiaHabil(a)) c++; }
+  return futuro ? c : -c;
+}
+function plazoDictamen(e) {
+  var iso = toInput(e.ingreso);
+  if (!iso) return null;
+  var venc = vencimientoDictamen(iso);
+  if (!venc) return null;
+  return { venc: venc, restantes: diasHabilesRestantes(venc) };
 }
 function statsAgente(nombre) {
   var mine = expedientes.filter(function(e){ return getRespAsig(e) === nombre; });
   var resueltos = mine.filter(function(e){ return estaEgresado(e); }).length;
-  var viejos = mine.filter(function(e){ if (estaEgresado(e)) return false; var d = diasEntre(toInput(e.ingreso), toInput(new Date())); return d !== null && d > 90; }).length;
-  return { nombre:nombre, total:mine.length, enDir:mine.length - resueltos, resueltos:resueltos, viejos:viejos, mine:mine };
+  var vencidos = 0, porVencer = 0;
+  mine.forEach(function(e){
+    if (estaEgresado(e)) return;
+    var p = plazoDictamen(e); if (!p) return;
+    if (p.restantes < 0) vencidos++; else if (p.restantes <= 5) porVencer++;
+  });
+  return { nombre:nombre, total:mine.length, enDir:mine.length - resueltos, resueltos:resueltos, vencidos:vencidos, porVencer:porVencer, mine:mine };
 }
 function initPanel() {
   var sel = document.getElementById('panel-sel');
@@ -1235,10 +1265,10 @@ function renderPanel() {
 
   // Métricas de estado (control, sin analítica)
   var metrics = '<div class="metric-grid">' +
-    '<div class="metric"><div class="lbl">Mis expedientes</div><div class="val">' + s.total + '</div></div>' +
     '<div class="metric"><div class="lbl">En la Dirección</div><div class="val blue">' + s.enDir + '</div></div>' +
+    '<div class="metric"><div class="lbl">Dictamen por vencer <span style="font-weight:400;color:var(--muted)">(≤5 días háb.)</span></div><div class="val' + (s.porVencer > 0 ? ' amber' : '') + '">' + s.porVencer + '</div></div>' +
+    '<div class="metric"><div class="lbl">Dictamen vencido</div><div class="val" style="' + (s.vencidos > 0 ? 'color:var(--danger)' : '') + '">' + s.vencidos + '</div></div>' +
     '<div class="metric"><div class="lbl">Resueltos</div><div class="val green">' + s.resueltos + '</div></div>' +
-    '<div class="metric"><div class="lbl">+90 días sin resolver</div><div class="val' + (s.viejos > 0 ? ' amber' : '') + '">' + s.viejos + '</div></div>' +
     '</div>';
 
   // Mis expedientes (centro del panel): buscador + filtros
@@ -1249,7 +1279,8 @@ function renderPanel() {
       '<button class="btn sm" data-f="en_direccion" onclick="filtrarPanel(\'en_direccion\')">En la Dirección</button>' +
       '<button class="btn sm" data-f="egresado" onclick="filtrarPanel(\'egresado\')">Resueltos</button>' +
     '</div></div>' +
-    '<input type="text" id="panel-buscar" placeholder="Buscar por número, tema o iniciador..." oninput="buscarPanel(this.value)" value="' + esc(panelBuscar) + '" style="width:100%;padding:8px 10px;font-size:14px;border:1px solid var(--input-line);border-radius:var(--radius);margin-bottom:12px">' +
+    '<input type="text" id="panel-buscar" placeholder="Buscar por número, tema o iniciador..." oninput="buscarPanel(this.value)" value="' + esc(panelBuscar) + '" style="width:100%;padding:8px 10px;font-size:14px;border:1px solid var(--input-line);border-radius:var(--radius);margin-bottom:8px">' +
+    '<div style="font-size:11px;color:var(--muted);margin-bottom:12px">📅 Plazo para dictaminar: 20 días hábiles desde el ingreso (excluye fines de semana y feriados; el día de ingreso no cuenta). Se muestra en cada expediente en la Dirección.</div>' +
     '<div id="panel-exp-lista"></div></div>';
 
   cont.innerHTML = hero + metrics + lista;
@@ -1276,12 +1307,25 @@ function renderMisExpedientes() {
   cont.setAttribute('data-count', fil.length);
   cont.innerHTML = fil.map(function(e){
     var egr = estaEgresado(e);
-    var dias = egr ? null : diasEntre(toInput(e.ingreso), toInput(new Date()));
-    var alerta = (!egr && dias !== null && dias > 90) ? '<span class="chip" style="background:#FEF3C7;color:var(--amber-700);margin-left:6px">⏳ ' + Math.round(dias) + ' días</span>' : '';
+    var chipPlazo = '';
+    if (!egr) {
+      var p = plazoDictamen(e);
+      if (p) {
+        var vf = fmt(p.venc), col, txt;
+        if (p.restantes > 5) { col = 'background:var(--green-100);color:var(--green-900)'; txt = '📅 Vence ' + vf + ' · ' + p.restantes + ' días háb.'; }
+        else if (p.restantes > 0) { col = 'background:#FEF3C7;color:var(--amber-700)'; txt = '⏳ Vence ' + vf + ' · ' + p.restantes + ' día(s) háb.'; }
+        else if (p.restantes === 0) { col = 'background:#FEE2E2;color:var(--danger)'; txt = '⚠️ Vence HOY (' + vf + ')'; }
+        else { col = 'background:#FEE2E2;color:var(--danger)'; txt = '🚫 Vencido hace ' + (-p.restantes) + ' día(s) háb. (' + vf + ')'; }
+        chipPlazo = '<div style="margin-top:5px"><span class="chip" style="' + col + '">' + txt + '</span></div>';
+      } else {
+        chipPlazo = '<div style="margin-top:5px"><span class="chip" style="background:var(--surface-muted);color:var(--muted)">Sin fecha de ingreso</span></div>';
+      }
+    }
     return '<div class="mini-exp">' +
       '<div style="flex:1;min-width:0">' +
-        '<div style="font-weight:600;font-size:13px">' + esc(getExpte(e) || '(sin nro)') + alerta + '</div>' +
+        '<div style="font-weight:600;font-size:13px">' + esc(getExpte(e) || '(sin nro)') + '</div>' +
         '<div style="font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(getTema(e) || 'Sin tema') + '</div>' +
+        chipPlazo +
       '</div>' +
       '<span class="badge ' + (egr ? 'egresado' : 'activo') + '">' + (egr ? 'Resuelto' : 'En Dir.') + '</span>' +
       '<div style="white-space:nowrap;margin-left:4px">' +

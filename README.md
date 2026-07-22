@@ -22,7 +22,8 @@ Control personal de expedientes de cada agente: elige su nombre en un selector (
 
 - Encabezado con su nombre y estado (total, en la Dirección, resueltos).
 - Métricas de control: mis expedientes, en la Dirección, resueltos y cuántos llevan +90 días sin resolver.
-- Lista de sus expedientes con **buscador** (número, tema o iniciador) y filtros (Todos / En la Dirección / Resueltos), con acciones de consulta en el portal y ver dictámenes; destaca con un chip los que llevan +90 días en la Dirección.
+- Lista de sus expedientes con **buscador** (número, tema o iniciador) y filtros (Todos / En la Dirección / Resueltos), con acciones de consulta en el portal y ver dictámenes.
+- **Plazo para dictaminar**: cada expediente en la Dirección muestra su fecha de vencimiento y los días hábiles restantes (chip verde / ámbar "por vencer" / rojo "vencido"). Son 20 días hábiles contados desde el día siguiente al ingreso, excluyendo fines de semana y feriados nacionales + provinciales de Entre Ríos (usa el mismo `esFeriado()` que el módulo de Licencias; el plazo `DIAS_DICTAMEN` y los feriados se editan en el código). Las métricas incluyen "Dictamen por vencer" (≤5 días hábiles) y "Dictamen vencido".
 
 **No requiere hojas ni cambios en el backend**: todo se calcula en el navegador a partir de los datos ya cargados de `expedientes` y `agentes`.
 
