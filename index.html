@@ -447,6 +447,35 @@ tbody tr:hover td{background:var(--green-50)}
   </div>
 </div>
 
+<div class="overlay" id="overlay-clave-panel">
+  <div class="modal" style="width:360px">
+    <h3>🔒 Mi Panel</h3>
+    <div class="fg" style="margin-bottom:12px">
+      <label id="clave-panel-label">Contraseña</label>
+      <input type="password" id="clave-panel-input" placeholder="Tu contraseña" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarClavePanel();}">
+    </div>
+    <div style="font-size:12px;color:#888">Si no tenés contraseña, pedísela al Director.</div>
+    <div class="modal-actions">
+      <button class="btn" onclick="document.getElementById('overlay-clave-panel').classList.remove('show')">Cancelar</button>
+      <button class="btn primary" onclick="confirmarClavePanel()">Ingresar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-set-clave">
+  <div class="modal" style="width:400px">
+    <h3 id="set-clave-title">Contraseña del agente</h3>
+    <div class="fg" style="margin-bottom:10px"><label>Nueva contraseña</label><input type="password" id="set-clave-1" placeholder="Contraseña"></div>
+    <div class="fg" style="margin-bottom:10px"><label>Repetir contraseña</label><input type="password" id="set-clave-2" placeholder="Repetir contraseña" onkeydown="if(event.key==='Enter'){event.preventDefault();guardarClaveAgente();}"></div>
+    <div style="font-size:12px;color:#888">Se guarda encriptada (hash SHA-256); no queda en texto plano. El agente la usará para entrar a su panel.</div>
+    <div class="modal-actions">
+      <button class="btn danger" id="btn-quitar-clave" onclick="quitarClaveAgente()" style="margin-right:auto">Quitar contraseña</button>
+      <button class="btn" onclick="document.getElementById('overlay-set-clave').classList.remove('show')">Cancelar</button>
+      <button class="btn primary" id="btn-set-clave" onclick="guardarClaveAgente()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="overlay-programa">
   <div class="modal">
     <h3>Nuevo programa</h3>
@@ -1194,6 +1223,18 @@ async function verDictamenes(nro) {
 
 // ===== Mi Panel (control personal de expedientes por agente) =====
 var panelAgente = null, panelFiltro = '', panelBuscar = '';
+// El Director accede a todos los paneles y pestañas usando la clave maestra
+// (la misma que desbloquea la pestaña Agentes). Cada agente tiene su propia
+// contraseña, guardada como hash en la columna clave_hash de la hoja "agentes",
+// asignada por el Director desde la pestaña Agentes.
+var DIRECTOR = 'Alonso';
+function claveHashDe(nombre) { var info = agentesInfo.filter(function(a){ return a.nombre === nombre; })[0]; return info && info.clave_hash ? String(info.clave_hash).trim() : ''; }
+function panelDesbloqueado(nombre) { try { return sessionStorage.getItem('panel-ok-' + nombre) === '1'; } catch (e) { return false; } }
+function puedeVerPanel(nombre) {
+  if (zonaDesbloqueada()) return true;        // el Director (clave maestra) ve todos los paneles
+  if (panelDesbloqueado(nombre)) return true; // este agente ya ingresó su clave en esta sesión
+  return !claveHashDe(nombre);                // sin clave asignada todavía => panel abierto
+}
 // Plazo para dictaminar: 20 dias habiles contados desde el DIA SIGUIENTE al ingreso
 // (el dia de ingreso no cuenta, criterio habitual de plazos administrativos).
 // Reutiliza esFeriado() del modulo de licencias: excluye sabados, domingos y
@@ -1246,13 +1287,47 @@ function elegirPanelAgente(v) {
   panelAgente = v || null;
   try { if (v) localStorage.setItem('panel-agente', v); else localStorage.removeItem('panel-agente'); } catch (e) {}
   panelFiltro = ''; panelBuscar = '';
+  if (v && !puedeVerPanel(v)) { abrirModalClavePanel(v); return; }
   renderPanel();
 }
 function filtrarPanel(v){ panelFiltro = v; renderMisExpedientes(); document.querySelectorAll('#panel-filtros .btn').forEach(function(b){ b.classList.toggle('primary', b.getAttribute('data-f') === v); }); }
 function buscarPanel(v){ panelBuscar = v; renderMisExpedientes(); }
+var panelClavePendiente = null;
+function abrirModalClavePanel(nombre) {
+  panelClavePendiente = nombre;
+  document.getElementById('clave-panel-label').textContent = 'Contraseña de ' + nombre;
+  document.getElementById('clave-panel-input').value = '';
+  document.getElementById('overlay-clave-panel').classList.add('show');
+  setTimeout(function(){ document.getElementById('clave-panel-input').focus(); }, 100);
+}
+async function confirmarClavePanel() {
+  var nombre = panelClavePendiente;
+  var intento = document.getElementById('clave-panel-input').value;
+  if (!intento) { toast('Ingresá la contraseña', 'error'); return; }
+  var h = await sha256Hex(intento);
+  if (h === CLAVE_HASH) {                       // clave maestra del Director
+    sessionStorage.setItem('zona-protegida-ok', '1');
+  } else {
+    var agHash = claveHashDe(nombre);
+    if (!agHash || h !== agHash) { toast('Contraseña incorrecta', 'error'); return; }
+    try { sessionStorage.setItem('panel-ok-' + nombre, '1'); } catch (e) {}
+  }
+  document.getElementById('overlay-clave-panel').classList.remove('show');
+  panelClavePendiente = null;
+  renderPanel();
+}
 function renderPanel() {
   var cont = document.getElementById('panel-contenido');
   if (!panelAgente) { cont.innerHTML = '<div class="alert">👋 Elegí tu nombre en el selector de arriba para ver y controlar tus expedientes.</div>'; return; }
+  if (!puedeVerPanel(panelAgente)) {
+    cont.innerHTML = '<div class="card" style="text-align:center;padding:32px 20px">' +
+      '<div style="font-size:34px">🔒</div>' +
+      '<div style="font-weight:700;margin:10px 0 4px">Panel de ' + esc(panelAgente) + ' protegido</div>' +
+      '<div style="font-size:13px;color:var(--muted);margin-bottom:18px">Ingresá tu contraseña para ver y controlar tus expedientes.</div>' +
+      '<button class="btn primary" onclick="abrirModalClavePanel(\'' + jsArg(panelAgente) + '\')">Ingresar contraseña</button>' +
+      '</div>';
+    return;
+  }
   var s = statsAgente(panelAgente);
 
   // Encabezado personal (identidad + estado, sin gamificación)
@@ -2214,7 +2289,11 @@ function renderConfigAgentes() {
     var mesSel = md ? md.slice(0,2) : '', diaSel = md ? md.slice(3,5) : '';
     var optsMes = '<option value="">Mes</option>' + MESES_CUMPLE.map(function(m, idx){ var v = String(idx+1).padStart(2,'0'); return '<option value="' + v + '"' + (v===mesSel?' selected':'') + '>' + m + '</option>'; }).join('');
     var optsDia = '<option value="">Día</option>' + Array.from({length:31}, function(_, idx){ var v = String(idx+1).padStart(2,'0'); return '<option value="' + v + '"' + (v===diaSel?' selected':'') + '>' + (idx+1) + '</option>'; }).join('');
-    return '<div class="agente-item"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="avatar">' + esc(initials(a)) + '</div><span style="font-size:14px">' + esc(a) + '</span><span style="display:flex;align-items:center;gap:4px;font-size:12px;color:#888" title="Cumpleaños (dia y mes, se repite todos los años)">🎂<select id="cumple-mes-' + i + '" onchange="actualizarCumpleAgente(' + i + ')" style="padding:4px 6px;font-size:12px;border:1px solid #d0d0c8;border-radius:6px">' + optsMes + '</select><select id="cumple-dia-' + i + '" onchange="actualizarCumpleAgente(' + i + ')" style="padding:4px 6px;font-size:12px;border:1px solid #d0d0c8;border-radius:6px">' + optsDia + '</select></span></div><button class="btn sm danger" onclick="eliminarAgente(' + i + ')">Eliminar</button></div>';
+    var esDir = a === DIRECTOR;
+    var badgeDir = esDir ? '<span class="chip" style="background:var(--green-100);color:var(--green-900)" title="Accede a todas las pestañas y paneles con la clave maestra">👑 Director</span>' : '';
+    var tieneClave = !!claveHashDe(a);
+    var claveCtrl = '<span style="display:flex;align-items:center;gap:4px;font-size:12px;color:#888">🔑<button class="btn sm" onclick="abrirSetClave(' + i + ')">' + (tieneClave ? 'Cambiar clave' : 'Asignar clave') + '</button>' + (tieneClave ? '<span title="Contraseña asignada" style="color:var(--green-700)">🔒</span>' : '<span title="Sin contraseña" style="color:var(--muted-3)">— sin clave</span>') + '</span>';
+    return '<div class="agente-item"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="avatar">' + esc(initials(a)) + '</div><span style="font-size:14px">' + esc(a) + '</span>' + badgeDir + '<span style="display:flex;align-items:center;gap:4px;font-size:12px;color:#888" title="Cumpleaños (dia y mes, se repite todos los años)">🎂<select id="cumple-mes-' + i + '" onchange="actualizarCumpleAgente(' + i + ')" style="padding:4px 6px;font-size:12px;border:1px solid #d0d0c8;border-radius:6px">' + optsMes + '</select><select id="cumple-dia-' + i + '" onchange="actualizarCumpleAgente(' + i + ')" style="padding:4px 6px;font-size:12px;border:1px solid #d0d0c8;border-radius:6px">' + optsDia + '</select></span>' + claveCtrl + '</div><button class="btn sm danger" onclick="eliminarAgente(' + i + ')">Eliminar</button></div>';
   }).join('') : '<div class="alert">👥 No hay agentes cargados.</div>';
 }
 async function agregarAgente() {
@@ -2246,6 +2325,49 @@ async function actualizarCumpleAgente(i) {
     toast('Cumpleaños actualizado');
     if (document.getElementById('tab-licencias').classList.contains('active')) renderLicencias();
     celebrarCumpleanos();
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+var setClaveIdx = null;
+function abrirSetClave(i) {
+  if (!zonaDesbloqueada()) { toast('Acceso restringido.', 'error'); return; }
+  setClaveIdx = i;
+  document.getElementById('set-clave-title').textContent = 'Contraseña de ' + agentes[i];
+  document.getElementById('set-clave-1').value = '';
+  document.getElementById('set-clave-2').value = '';
+  document.getElementById('btn-quitar-clave').style.display = claveHashDe(agentes[i]) ? 'inline-block' : 'none';
+  document.getElementById('overlay-set-clave').classList.add('show');
+  setTimeout(function(){ document.getElementById('set-clave-1').focus(); }, 100);
+}
+async function guardarClaveAgente() {
+  if (!zonaDesbloqueada()) { toast('Acceso restringido.', 'error'); return; }
+  var i = setClaveIdx;
+  var c1 = document.getElementById('set-clave-1').value, c2 = document.getElementById('set-clave-2').value;
+  if (!c1) { toast('Ingresá una contraseña', 'error'); return; }
+  if (c1 !== c2) { toast('Las contraseñas no coinciden', 'error'); return; }
+  var hash = await sha256Hex(c1);
+  var btn = document.getElementById('btn-set-clave'); btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    await api({ accion:'editar', hoja:'agentes', datos:{ _fila:i+2, nombre:agentes[i], clave_hash:hash } });
+    agentesInfo[i] = agentesInfo[i] || { nombre:agentes[i] };
+    agentesInfo[i].clave_hash = hash;
+    try { sessionStorage.removeItem('panel-ok-' + agentes[i]); } catch (e) {}
+    document.getElementById('overlay-set-clave').classList.remove('show');
+    renderConfigAgentes();
+    toast('Contraseña asignada');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Guardar';
+}
+async function quitarClaveAgente() {
+  if (!zonaDesbloqueada()) { toast('Acceso restringido.', 'error'); return; }
+  var i = setClaveIdx;
+  if (!await confirmar('¿Quitar la contraseña de "' + agentes[i] + '"? Su panel quedará abierto.', 'Quitar')) return;
+  try {
+    await api({ accion:'editar', hoja:'agentes', datos:{ _fila:i+2, nombre:agentes[i], clave_hash:'' } });
+    if (agentesInfo[i]) agentesInfo[i].clave_hash = '';
+    try { sessionStorage.removeItem('panel-ok-' + agentes[i]); } catch (e) {}
+    document.getElementById('overlay-set-clave').classList.remove('show');
+    renderConfigAgentes();
+    toast('Contraseña quitada');
   } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 

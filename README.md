@@ -7,7 +7,7 @@ App de gestión de expedientes de la Dirección General de Asuntos Jurídicos. E
 | Hoja | Uso |
 |---|---|
 | `expedientes` | registro principal (expte., iniciador, ingreso, reparto, resp. asig, tema, salio) |
-| `agentes` | lista de agentes (columnas: `nombre`, `cumple_mes`, `cumple_dia` — mes y dia de cumpleaños en columnas numericas separadas, **no** una sola columna de fecha: Sheets reconoce texto tipo "05-03" como fecha y lo reinterpreta segun el idioma de la planilla, invirtiendo dia y mes) |
+| `agentes` | lista de agentes (columnas: `nombre`, `cumple_mes`, `cumple_dia` — mes y dia de cumpleaños en columnas numericas separadas, **no** una sola columna de fecha: Sheets reconoce texto tipo "05-03" como fecha y lo reinterpreta segun el idioma de la planilla, invirtiendo dia y mes; y `clave_hash` — hash SHA-256 de la contraseña de cada agente para "Mi Panel", ver abajo) |
 | `programas` | pares programa/expediente para la pestaña Programas |
 | `licencias` | licencias por agente (agente, tipo, desde, hasta, obs) |
 | `dictamenes` | búsqueda de PDFs en Drive por número de expediente (solo GET) |
@@ -25,7 +25,16 @@ Control personal de expedientes de cada agente: elige su nombre en un selector (
 - Lista de sus expedientes con **buscador** (número, tema o iniciador) y filtros (Todos / En la Dirección / Resueltos), con acciones de consulta en el portal y ver dictámenes.
 - **Plazo para dictaminar**: cada expediente en la Dirección muestra su fecha de vencimiento y los días hábiles restantes (chip verde / ámbar "por vencer" / rojo "vencido"). Son 20 días hábiles contados desde el día siguiente al ingreso, excluyendo fines de semana y feriados nacionales + provinciales de Entre Ríos (usa el mismo `esFeriado()` que el módulo de Licencias; el plazo `DIAS_DICTAMEN` y los feriados se editan en el código). Las métricas incluyen "Dictamen por vencer" (≤5 días hábiles) y "Dictamen vencido".
 
-**No requiere hojas ni cambios en el backend**: todo se calcula en el navegador a partir de los datos ya cargados de `expedientes` y `agentes`.
+**No requiere hojas ni cambios en el backend** (salvo la contraseña, ver abajo): todo se calcula en el navegador a partir de los datos ya cargados de `expedientes` y `agentes`.
+
+### Contraseña por agente y rol Director
+
+- Cada agente puede tener una **contraseña propia** para ver su panel. La asigna el **Director** desde la pestaña **Agentes** (botón "Asignar/Cambiar clave" en cada fila). Se guarda como **hash SHA-256** en la columna `clave_hash` de la hoja `agentes` (nunca en texto plano).
+- **El Director es `Alonso`** (constante `DIRECTOR` en el código). Se autentica con la **clave maestra** (la misma que ya desbloquea la pestaña Agentes, `CLAVE_HASH`) y con eso accede a **todas las pestañas y a todos los paneles** de los agentes, sin necesidad de la contraseña individual de cada uno.
+- En "Mi Panel", al elegir un agente con contraseña asignada se pide la clave; una vez validada, queda desbloqueado por esa sesión (`sessionStorage`). Un agente **sin** `clave_hash` tiene el panel abierto (útil para la carga inicial: el Director va asignando las contraseñas).
+- **Requisito de backend**: agregar la columna `clave_hash` a la hoja `agentes`. El Apps Script debe permitir `editar` esa hoja escribiendo solo las columnas enviadas (igual que ya hace con `cumple_mes`/`cumple_dia`).
+
+> ⚠️ **Alcance de seguridad**: esta protección es del lado del cliente (un "candado blando"). Sirve para separar vistas entre agentes, pero alguien con conocimientos técnicos podría eludirla desde el navegador. Los hashes son SHA-256 **sin sal**, así que conviene usar contraseñas no triviales. Para una protección real, la validación debe hacerse en el Apps Script (ver la sección de seguridad del backend más abajo).
 
 ## ⚠️ Seguridad del backend (pendiente — requiere cambios en el Apps Script)
 
