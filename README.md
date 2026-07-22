@@ -7,7 +7,7 @@ App de gestión de expedientes de la Dirección General de Asuntos Jurídicos. E
 | Hoja | Uso |
 |---|---|
 | `expedientes` | registro principal (expte., iniciador, ingreso, reparto, resp. asig, tema, salio) |
-| `agentes` | lista de agentes (columnas: `nombre`, `cumple_mes`, `cumple_dia` — mes y dia de cumpleaños en columnas numericas separadas, **no** una sola columna de fecha: Sheets reconoce texto tipo "05-03" como fecha y lo reinterpreta segun el idioma de la planilla, invirtiendo dia y mes; y `clave_hash` — hash SHA-256 de la contraseña de cada agente para "Mi Panel", ver abajo) |
+| `agentes` | lista de agentes (columnas: `nombre`, `cumple_mes`, `cumple_dia` — mes y dia de cumpleaños en columnas numericas separadas, **no** una sola columna de fecha: Sheets reconoce texto tipo "05-03" como fecha y lo reinterpreta segun el idioma de la planilla, invirtiendo dia y mes. **Ademas** estas columnas se guardan como texto (string), no como numero: si la celda tiene formato Fecha, un numero como `5` se coerce al serial de fecha `1900-01-04` y se pierde el mes; guardar `"5"` evita esa coercion y "cura" el formato. La lectura ademas ignora valores fuera de rango (1-12 / 1-31) por si quedo algun valor corrupto de antes; y `clave_hash` — hash SHA-256 de la contraseña de cada agente para "Mi Panel", ver abajo) |
 | `programas` | pares programa/expediente para la pestaña Programas |
 | `licencias` | licencias por agente (agente, tipo, desde, hasta, obs) |
 | `dictamenes` | búsqueda de PDFs en Drive por número de expediente (solo GET) |
