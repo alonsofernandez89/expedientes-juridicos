@@ -16,6 +16,10 @@ App de gestión de expedientes de la Dirección General de Asuntos Jurídicos. E
 
 > **Para activar la pestaña Inventario**: crear en la planilla dos hojas nuevas llamadas exactamente `inventario` y `pedidos`, con los encabezados de la tabla de arriba en la fila 1 (en minúsculas). El Apps Script debe soportar las acciones `agregar`, `editar` y `eliminar` de forma genérica por nombre de hoja (igual que con las hojas existentes).
 
+### Pestaña "Mi Panel" (rendimiento por agente)
+
+Vista personal de cada agente: elige su nombre en un selector (sin contraseña, para acceso rápido; la elección se recuerda en `localStorage` bajo la clave `panel-agente`). Muestra sus expedientes de forma simplificada y un análisis de rendimiento con gamificación (nivel, logros, racha del mes, podio del equipo) pensado como incentivo. **No requiere hojas ni cambios en el backend**: todas las métricas se calculan en el navegador a partir de los datos ya cargados de `expedientes` y `agentes`. El "nivel" sube cada 20 expedientes resueltos (egresados) y el ranking ordena por resueltos.
+
 ## ⚠️ Seguridad del backend (pendiente — requiere cambios en el Apps Script)
 
 El frontend ya escapa todo el HTML que renderiza (mitiga XSS), pero **la protección real tiene que estar en el Apps Script**, porque cualquiera que conozca `SCRIPT_URL` puede llamarlo directo con `fetch`/`curl`, sin pasar por esta página. Hoy ese endpoint permite leer, editar y **borrar** expedientes sin autenticación.

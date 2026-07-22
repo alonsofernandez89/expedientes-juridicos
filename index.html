@@ -132,6 +132,32 @@ tbody tr:hover td{background:var(--green-50)}
 .overlay.show{animation:fadeIn .15s var(--ease)}
 .overlay.show .modal{animation:modalIn .18s var(--ease)}
 .chip{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:500;white-space:nowrap}
+/* Mi Panel */
+.panel-hero{background:linear-gradient(135deg,var(--green-700),var(--green-500));color:#fff;border-radius:var(--radius-xl);padding:22px 24px;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:16px}
+.panel-hero .avatar{width:64px;height:64px;font-size:24px;background:rgba(255,255,255,.22);color:#fff}
+.hero-nombre{font-size:21px;font-weight:700;letter-spacing:-.02em}
+.hero-sub{font-size:13px;opacity:.92;font-variant-numeric:tabular-nums}
+.nivel-badge{background:rgba(255,255,255,.2);border-radius:999px;padding:5px 14px;font-size:13px;font-weight:700;display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
+.hero-progress{height:8px;background:rgba(255,255,255,.28);border-radius:4px;overflow:hidden;margin-top:8px;max-width:320px}
+.hero-progress>div{height:100%;background:#fff;border-radius:4px;transition:width .5s var(--ease)}
+.logros-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px}
+.logro{border:1px solid var(--line);border-radius:var(--radius-lg);padding:14px 12px;text-align:center;background:var(--surface);transition:transform .15s var(--ease),box-shadow .15s var(--ease)}
+.logro.on{border-color:var(--green-500);background:var(--green-50);box-shadow:var(--shadow-sm)}
+.logro.on:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.logro.off{opacity:.5;filter:grayscale(.6)}
+.logro .ic{font-size:30px;line-height:1}
+.logro .nm{font-size:13px;font-weight:700;margin-top:7px}
+.logro .ds{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.35}
+.podio{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin-top:8px;flex-wrap:wrap}
+.podio-col{flex:1;min-width:96px;max-width:170px;text-align:center}
+.podio-cara{width:44px;height:44px;margin:0 auto 6px;border-radius:50%;background:var(--avatar-bg);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--green-700)}
+.podio-bar{border-radius:var(--radius) var(--radius) 0 0;color:#fff;font-weight:700;font-size:18px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;font-variant-numeric:tabular-nums}
+.podio-nm{font-size:12px;font-weight:600;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.podio-yo{outline:2px solid var(--green-500);outline-offset:2px;border-radius:var(--radius)}
+.mini-exp{display:flex;align-items:center;gap:12px;padding:11px 12px;border:1px solid var(--line);border-radius:var(--radius);margin-bottom:8px;background:var(--surface)}
+.mini-exp:hover{border-color:var(--green-500);background:var(--green-50)}
+.trend{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.trend.up{color:var(--green-700)}.trend.down{color:var(--amber-700)}
 .sk-row{height:13px;border-radius:var(--radius-sm);background:linear-gradient(90deg,#ececea 25%,#f8f8f6 50%,#ececea 75%);background-size:200% 100%;animation:shimmer 1.2s linear infinite;margin:14px 0}
 @keyframes shimmer{to{background-position:-200% 0}}
 #globos-cumple{position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden}
@@ -156,6 +182,7 @@ tbody tr:hover td{background:var(--green-50)}
 
   <div class="tabs">
     <button class="tab active" onclick="switchTab('registro')">Registro</button>
+    <button class="tab" onclick="switchTab('panel')">⭐ Mi Panel</button>
     <button class="tab" onclick="switchTab('analisis')">Analisis</button>
     <button class="tab" onclick="switchTab('programas')">Programas</button>
     <button class="tab" onclick="switchTab('licencias')">Licencias</button>
@@ -206,6 +233,15 @@ tbody tr:hover td{background:var(--green-50)}
     </div>
     <div id="paginacion"></div>
     <div class="alert" id="no-results" style="display:none">🔍 No se encontraron expedientes con los filtros actuales.<br><button class="btn sm" style="margin-top:10px" onclick="limpiarFiltros()">Limpiar filtros</button></div>
+  </div>
+
+  <div class="section" id="tab-panel">
+    <div class="card" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+      <label style="font-size:14px;font-weight:600">👤 Agente:</label>
+      <select id="panel-sel" onchange="elegirPanelAgente(this.value)" style="flex:1;min-width:180px;padding:8px 10px;font-size:14px;border:1px solid var(--input-line);border-radius:var(--radius);background:var(--surface)"><option value="">Elegí tu nombre...</option></select>
+      <span style="font-size:12px;color:var(--muted)">Se recuerda en este dispositivo</span>
+    </div>
+    <div id="panel-contenido"></div>
   </div>
 
   <div class="section" id="tab-analisis">
@@ -988,10 +1024,11 @@ async function confirmarClave() {
 function switchTab(t) {
   if (TABS_PROTEGIDAS.indexOf(t) >= 0 && !zonaDesbloqueada()) { abrirModalClave(t); return; }
   var tabsEls = document.querySelectorAll('.container > .tabs > .tab');
-  var orden = ['registro','analisis','programas','licencias','inventario','config','historico'];
+  var orden = ['registro','panel','analisis','programas','licencias','inventario','config','historico'];
   tabsEls.forEach(function(el, i){ el.classList.toggle('active', orden[i] === t); });
   document.querySelectorAll('.section').forEach(function(el){ el.classList.remove('active'); });
   document.getElementById('tab-' + t).classList.add('active');
+  if (t === 'panel') initPanel();
   if (t === 'analisis') { setTimeout(renderChartMeses, 50); setTimeout(renderChartOrganismos, 60); setTimeout(renderDiario, 80); }
   if (t === 'config') { renderConfigAgentes(); renderPorAgente(); setTimeout(renderChartAgentes, 50); }
   if (t === 'programas') renderProgramas();
@@ -1172,6 +1209,183 @@ async function verDictamenes(nro) {
   } catch (e) {
     document.getElementById('dict-contenido').innerHTML = '<div class="alert">Error al buscar: ' + e.message + '</div>';
   }
+}
+
+// ===== Mi Panel (vista personal + rendimiento por agente) =====
+var panelAgente = null, panelFiltro = '';
+function diasEntre(iso1, iso2) {
+  if (!iso1 || !iso2) return null;
+  var d = (new Date(iso2) - new Date(iso1)) / 86400000;
+  return isNaN(d) ? null : d;
+}
+function statsAgente(nombre) {
+  var mine = expedientes.filter(function(e){ return getRespAsig(e) === nombre; });
+  var egres = mine.filter(function(e){ return estaEgresado(e); });
+  var tiempos = [];
+  egres.forEach(function(e){ var d = diasEntre(toInput(e.ingreso), toInput(getSalio(e))); if (d !== null && d >= 0) tiempos.push(d); });
+  var prom = tiempos.length ? Math.round(tiempos.reduce(function(a,b){ return a+b; }, 0) / tiempos.length) : null;
+  var now = new Date();
+  var ym = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2, '0');
+  var mesResueltos = egres.filter(function(e){ var s = toInput(getSalio(e)); return s && s.slice(0,7) === ym; }).length;
+  var viejos = mine.filter(function(e){ if (estaEgresado(e)) return false; var d = diasEntre(toInput(e.ingreso), toInput(new Date())); return d !== null && d > 90; }).length;
+  var tasa = mine.length ? Math.round(egres.length / mine.length * 100) : 0;
+  return { nombre:nombre, total:mine.length, enDir:mine.length - egres.length, resueltos:egres.length, tasa:tasa, prom:prom, mesResueltos:mesResueltos, viejos:viejos, mine:mine };
+}
+function rankingEquipo() {
+  var arr = agentes.map(statsAgente);
+  arr.sort(function(a,b){ return b.resueltos - a.resueltos || b.tasa - a.tasa; });
+  arr.forEach(function(s,i){ s.pos = i+1; });
+  return arr;
+}
+function nivelDe(resueltos){ return Math.floor(resueltos / 20) + 1; }
+function logrosDe(s, esLider) {
+  return [
+    { on: s.resueltos >= 1, ic:'🎯', nm:'Primer paso', ds:'Resolver 1 expediente' },
+    { on: s.resueltos >= 10, ic:'🏅', nm:'Resolvedor', ds:'Resolver 10 expedientes' },
+    { on: s.resueltos >= 50, ic:'🏆', nm:'Experto', ds:'Resolver 50 expedientes' },
+    { on: s.prom !== null && s.prom <= 30 && s.resueltos >= 5, ic:'⚡', nm:'Ágil', ds:'Promedio ≤ 30 días (5+ resueltos)' },
+    { on: s.mesResueltos >= 3, ic:'🔥', nm:'En racha', ds:'Resolver 3 este mes' },
+    { on: s.enDir > 0 && s.viejos === 0, ic:'📚', nm:'Al día', ds:'Sin expedientes de +90 días' },
+    { on: esLider, ic:'👑', nm:'Líder del equipo', ds:'Ser #1 en resueltos' }
+  ];
+}
+function initPanel() {
+  var sel = document.getElementById('panel-sel');
+  var guardado = null; try { guardado = localStorage.getItem('panel-agente'); } catch (e) {}
+  if (!panelAgente && guardado && agentes.indexOf(guardado) >= 0) panelAgente = guardado;
+  sel.innerHTML = '<option value="">Elegí tu nombre...</option>' + agentes.map(function(a){ return '<option value="' + esc(a) + '"' + (a === panelAgente ? ' selected' : '') + '>' + esc(a) + '</option>'; }).join('');
+  renderPanel();
+}
+function elegirPanelAgente(v) {
+  panelAgente = v || null;
+  try { if (v) localStorage.setItem('panel-agente', v); else localStorage.removeItem('panel-agente'); } catch (e) {}
+  panelFiltro = '';
+  renderPanel();
+}
+function filtrarPanel(v){ panelFiltro = v; renderMisExpedientes(); document.querySelectorAll('#panel-filtros .btn').forEach(function(b){ b.classList.toggle('primary', b.getAttribute('data-f') === v); }); }
+function renderPanel() {
+  var cont = document.getElementById('panel-contenido');
+  if (!panelAgente) { cont.innerHTML = '<div class="alert">👋 Elegí tu nombre en el selector de arriba para ver tu panel personal, tu rendimiento y tus logros.</div>'; return; }
+  var ranking = rankingEquipo();
+  var s = null;
+  for (var i = 0; i < ranking.length; i++) { if (ranking[i].nombre === panelAgente) { s = ranking[i]; break; } }
+  if (!s) s = statsAgente(panelAgente);
+  var esLider = s.pos === 1 && s.resueltos > 0;
+  var nivel = nivelDe(s.resueltos);
+  var prog = s.resueltos % 20, faltan = 20 - prog;
+  var medalla = s.pos === 1 ? '🥇' : s.pos === 2 ? '🥈' : s.pos === 3 ? '🥉' : '#' + s.pos;
+  var conCasos = ranking.filter(function(r){ return r.total > 0; });
+  var promTasa = conCasos.length ? Math.round(conCasos.reduce(function(a,r){ return a + r.tasa; }, 0) / conCasos.length) : 0;
+  var conTiempo = ranking.filter(function(r){ return r.prom !== null; });
+  var promTiempo = conTiempo.length ? Math.round(conTiempo.reduce(function(a,r){ return a + r.prom; }, 0) / conTiempo.length) : null;
+
+  // Hero
+  var aliento = s.mesResueltos >= 3 ? '¡Gran mes! Seguí así 🔥' : s.mesResueltos > 0 ? '¡Buen ritmo este mes! 💪' : 'Un expediente resuelto arranca la racha 💪';
+  var hero = '<div class="panel-hero">' +
+    '<div class="avatar">' + esc(initials(panelAgente)) + '</div>' +
+    '<div style="flex:1;min-width:200px">' +
+      '<div class="hero-nombre">' + esc(panelAgente) + '</div>' +
+      '<div class="hero-sub">Nivel ' + nivel + ' &middot; puesto ' + medalla + ' de ' + ranking.length + ' en el equipo</div>' +
+      '<div class="hero-progress"><div style="width:' + (prog/20*100) + '%"></div></div>' +
+      '<div class="hero-sub" style="margin-top:5px">' + (faltan === 20 && prog === 0 ? 'Resolvé 20 para llegar al nivel ' + (nivel+1) : 'Te faltan ' + faltan + ' resueltos para el nivel ' + (nivel+1)) + '</div>' +
+    '</div>' +
+    '<div style="text-align:right;display:flex;flex-direction:column;gap:8px;align-items:flex-end">' +
+      '<div class="nivel-badge">🔥 ' + s.mesResueltos + ' este mes</div>' +
+      '<div class="hero-sub" style="max-width:180px">' + aliento + '</div>' +
+    '</div></div>';
+
+  // Métricas
+  var cmpTasa = s.tasa >= promTasa ? '<span class="trend up">▲ ' + (s.tasa - promTasa) + ' pts sobre el promedio</span>' : '<span class="trend down">▼ ' + (promTasa - s.tasa) + ' pts bajo el promedio</span>';
+  var metrics = '<div class="metric-grid">' +
+    '<div class="metric"><div class="lbl">Mis expedientes</div><div class="val">' + s.total + '</div></div>' +
+    '<div class="metric"><div class="lbl">En la Dirección</div><div class="val blue">' + s.enDir + '</div></div>' +
+    '<div class="metric"><div class="lbl">Resueltos</div><div class="val green">' + s.resueltos + '</div></div>' +
+    '<div class="metric"><div class="lbl">Tasa de resolución</div><div class="val amber">' + s.tasa + '%</div><div style="margin-top:4px">' + cmpTasa + '</div></div>' +
+    '</div>';
+
+  // Rendimiento (tiempo)
+  var tiempoTxt = s.prom !== null ? s.prom + ' días' : 'sin datos';
+  var cmpTiempo = '';
+  if (s.prom !== null && promTiempo !== null) {
+    cmpTiempo = s.prom <= promTiempo ? '<span class="trend up">▲ ' + (promTiempo - s.prom) + ' días más rápido que el promedio</span>' : '<span class="trend down">▼ ' + (s.prom - promTiempo) + ' días más lento que el promedio</span>';
+  }
+  var avisoViejos = s.viejos > 0 ? '<div class="alert" style="margin:12px 0 0;text-align:left;border-color:var(--amber-700);color:var(--amber-700)">⏳ Tenés <b>' + s.viejos + '</b> expediente(s) de más de 90 días en la Dirección. Resolverlos mejora tu tasa y suma a tu nivel.</div>' : '';
+  var rendimiento = '<div class="card"><div class="section-title">⏱️ Rendimiento</div>' +
+    '<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:baseline">' +
+    '<div><div class="lbl" style="font-size:12px;color:var(--muted)">Tiempo promedio de resolución</div><div style="font-size:24px;font-weight:700;font-variant-numeric:tabular-nums">' + tiempoTxt + '</div><div style="margin-top:4px">' + cmpTiempo + '</div></div>' +
+    '<div><div class="lbl" style="font-size:12px;color:var(--muted)">Resueltos este mes</div><div style="font-size:24px;font-weight:700;font-variant-numeric:tabular-nums">' + s.mesResueltos + '</div></div>' +
+    '</div>' + avisoViejos + '</div>';
+
+  // Logros
+  var logros = logrosDe(s, esLider);
+  var ganados = logros.filter(function(l){ return l.on; }).length;
+  var logrosHtml = '<div class="card"><div class="section-title">🏅 Logros <span style="font-size:12px;color:var(--muted);font-weight:500">(' + ganados + '/' + logros.length + ')</span></div><div class="logros-grid">' +
+    logros.map(function(l){ return '<div class="logro ' + (l.on ? 'on' : 'off') + '"><div class="ic">' + l.ic + '</div><div class="nm">' + esc(l.nm) + '</div><div class="ds">' + esc(l.ds) + '</div></div>'; }).join('') +
+    '</div></div>';
+
+  // Podio del equipo (top 3 por resueltos)
+  var top = ranking.filter(function(r){ return r.resueltos > 0; }).slice(0, 3);
+  var podio = '';
+  if (top.length) {
+    var maxR = top[0].resueltos || 1;
+    var medallas = ['🥇','🥈','🥉'], alturas = [96, 74, 58], colores = ['var(--green-700)','var(--green-500)','var(--green-600)'];
+    // ordenar visualmente 2-1-3
+    var visual = top.length === 3 ? [top[1], top[0], top[2]] : top.slice();
+    podio = '<div class="card"><div class="section-title">🏆 Podio del equipo</div><div class="podio">' +
+      visual.map(function(r){
+        var idx = top.indexOf(r);
+        var h = alturas[idx], col = colores[idx];
+        var yo = r.nombre === panelAgente ? ' podio-yo' : '';
+        return '<div class="podio-col"><div class="podio-cara">' + esc(initials(r.nombre)) + '</div>' +
+          '<div class="podio-bar' + yo + '" style="height:' + h + 'px;background:' + col + '">' + r.resueltos + '</div>' +
+          '<div class="podio-nm">' + medallas[idx] + ' ' + esc(r.nombre) + '</div></div>';
+      }).join('') +
+      '</div><div style="text-align:center;font-size:12px;color:var(--muted);margin-top:12px">Ranking por expedientes resueltos</div></div>';
+  }
+
+  // Mis expedientes (contenedor; el detalle lo pinta renderMisExpedientes)
+  var lista = '<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">' +
+    '<div class="section-title" style="margin:0">📁 Mis expedientes</div>' +
+    '<div id="panel-filtros" style="display:flex;gap:6px">' +
+      '<button class="btn sm primary" data-f="" onclick="filtrarPanel(\'\')">Todos</button>' +
+      '<button class="btn sm" data-f="en_direccion" onclick="filtrarPanel(\'en_direccion\')">En la Dirección</button>' +
+      '<button class="btn sm" data-f="egresado" onclick="filtrarPanel(\'egresado\')">Resueltos</button>' +
+    '</div></div><div id="panel-exp-lista"></div></div>';
+
+  cont.innerHTML = hero + metrics + rendimiento + logrosHtml + podio + lista;
+  renderMisExpedientes();
+}
+function renderMisExpedientes() {
+  var cont = document.getElementById('panel-exp-lista');
+  if (!cont || !panelAgente) return;
+  var mine = expedientes.filter(function(e){ return getRespAsig(e) === panelAgente; });
+  var fil = mine.filter(function(e){
+    if (panelFiltro === 'egresado') return estaEgresado(e);
+    if (panelFiltro === 'en_direccion') return !estaEgresado(e);
+    return true;
+  });
+  // en dirección primero, y dentro los más antiguos arriba (los que necesitan atención)
+  fil.sort(function(a,b){
+    var ea = estaEgresado(a) ? 1 : 0, eb = estaEgresado(b) ? 1 : 0;
+    if (ea !== eb) return ea - eb;
+    return (toInput(a.ingreso) || '').localeCompare(toInput(b.ingreso) || '');
+  });
+  if (!fil.length) { cont.innerHTML = '<div class="alert">📭 No hay expedientes en esta vista.</div>'; return; }
+  cont.innerHTML = fil.map(function(e){
+    var egr = estaEgresado(e);
+    var dias = egr ? null : diasEntre(toInput(e.ingreso), toInput(new Date()));
+    var alerta = (!egr && dias !== null && dias > 90) ? '<span class="chip" style="background:#FEF3C7;color:var(--amber-700);margin-left:6px">⏳ ' + Math.round(dias) + ' días</span>' : '';
+    return '<div class="mini-exp">' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-weight:600;font-size:13px">' + esc(getExpte(e) || '(sin nro)') + alerta + '</div>' +
+        '<div style="font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(getTema(e) || 'Sin tema') + '</div>' +
+      '</div>' +
+      '<span class="badge ' + (egr ? 'egresado' : 'activo') + '">' + (egr ? 'Resuelto' : 'En Dir.') + '</span>' +
+      '<div style="white-space:nowrap;margin-left:4px">' +
+        '<button class="btn sm icon" title="Consultar en el portal" onclick="consultarExpte(\'' + jsArg(getExpte(e)) + '\')">🔗</button> ' +
+        '<button class="btn sm icon" title="Ver dictamenes" onclick="verDictamenes(\'' + jsArg(getExpte(e)) + '\')">📄</button>' +
+      '</div></div>';
+  }).join('');
 }
 
 function renderPorAgente() {
