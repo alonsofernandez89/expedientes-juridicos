@@ -148,16 +148,20 @@ tbody tr:hover td{background:var(--green-50)}
 .logro .ic{font-size:30px;line-height:1}
 .logro .nm{font-size:13px;font-weight:700;margin-top:7px}
 .logro .ds{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.35}
-.podio{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin-top:8px;flex-wrap:wrap}
-.podio-col{flex:1;min-width:96px;max-width:170px;text-align:center}
-.podio-cara{width:44px;height:44px;margin:0 auto 6px;border-radius:50%;background:var(--avatar-bg);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--green-700)}
-.podio-bar{border-radius:var(--radius) var(--radius) 0 0;color:#fff;font-weight:700;font-size:18px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;font-variant-numeric:tabular-nums}
-.podio-nm{font-size:12px;font-weight:600;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.podio-yo{outline:2px solid var(--green-500);outline-offset:2px;border-radius:var(--radius)}
 .mini-exp{display:flex;align-items:center;gap:12px;padding:11px 12px;border:1px solid var(--line);border-radius:var(--radius);margin-bottom:8px;background:var(--surface)}
 .mini-exp:hover{border-color:var(--green-500);background:var(--green-50)}
-.trend{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
-.trend.up{color:var(--green-700)}.trend.down{color:var(--amber-700)}
+.stat-big{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.stat-lbl{font-size:12px;color:var(--muted);font-weight:500}
+.vbars{display:flex;align-items:flex-end;gap:10px;height:130px;padding-top:8px}
+.vbar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0}
+.vbar-pair{display:flex;align-items:flex-end;gap:3px;height:110px}
+.vbar{width:13px;border-radius:3px 3px 0 0;min-height:3px;transition:height .4s var(--ease)}
+.vbar.r{background:var(--green-500)}
+.vbar.i{background:#cdd6c0}
+.vbar-lbl{font-size:10px;color:var(--muted);white-space:nowrap;text-align:center}
+.vlegend{display:flex;gap:16px;justify-content:center;font-size:12px;color:var(--muted);margin-top:10px}
+.vlegend span{display:inline-flex;align-items:center;gap:6px}
+.vdot{width:10px;height:10px;border-radius:3px;display:inline-block}
 .sk-row{height:13px;border-radius:var(--radius-sm);background:linear-gradient(90deg,#ececea 25%,#f8f8f6 50%,#ececea 75%);background-size:200% 100%;animation:shimmer 1.2s linear infinite;margin:14px 0}
 @keyframes shimmer{to{background-position:-200% 0}}
 #globos-cumple{position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden}
@@ -1227,27 +1231,62 @@ function statsAgente(nombre) {
   var now = new Date();
   var ym = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2, '0');
   var mesResueltos = egres.filter(function(e){ var s = toInput(getSalio(e)); return s && s.slice(0,7) === ym; }).length;
+  var lunes = inicioSemana(now);
+  var semResueltos = egres.filter(function(e){ var s = toInput(getSalio(e)); if (!s) return false; var o = offsetDiasLocal(s, lunes); return o >= 0 && o < 7; }).length;
   var viejos = mine.filter(function(e){ if (estaEgresado(e)) return false; var d = diasEntre(toInput(e.ingreso), toInput(new Date())); return d !== null && d > 90; }).length;
   var tasa = mine.length ? Math.round(egres.length / mine.length * 100) : 0;
-  return { nombre:nombre, total:mine.length, enDir:mine.length - egres.length, resueltos:egres.length, tasa:tasa, prom:prom, mesResueltos:mesResueltos, viejos:viejos, mine:mine };
-}
-function rankingEquipo() {
-  var arr = agentes.map(statsAgente);
-  arr.sort(function(a,b){ return b.resueltos - a.resueltos || b.tasa - a.tasa; });
-  arr.forEach(function(s,i){ s.pos = i+1; });
-  return arr;
+  return { nombre:nombre, total:mine.length, enDir:mine.length - egres.length, resueltos:egres.length, tasa:tasa, prom:prom, mesResueltos:mesResueltos, semResueltos:semResueltos, viejos:viejos, mine:mine };
 }
 function nivelDe(resueltos){ return Math.floor(resueltos / 20) + 1; }
-function logrosDe(s, esLider) {
+function logrosDe(s) {
   return [
     { on: s.resueltos >= 1, ic:'🎯', nm:'Primer paso', ds:'Resolver 1 expediente' },
     { on: s.resueltos >= 10, ic:'🏅', nm:'Resolvedor', ds:'Resolver 10 expedientes' },
     { on: s.resueltos >= 50, ic:'🏆', nm:'Experto', ds:'Resolver 50 expedientes' },
     { on: s.prom !== null && s.prom <= 30 && s.resueltos >= 5, ic:'⚡', nm:'Ágil', ds:'Promedio ≤ 30 días (5+ resueltos)' },
-    { on: s.mesResueltos >= 3, ic:'🔥', nm:'En racha', ds:'Resolver 3 este mes' },
-    { on: s.enDir > 0 && s.viejos === 0, ic:'📚', nm:'Al día', ds:'Sin expedientes de +90 días' },
-    { on: esLider, ic:'👑', nm:'Líder del equipo', ds:'Ser #1 en resueltos' }
+    { on: s.semResueltos >= 3, ic:'🔥', nm:'Semana en racha', ds:'Resolver 3 esta semana' },
+    { on: s.mesResueltos >= 10, ic:'🌟', nm:'Gran mes', ds:'Resolver 10 este mes' },
+    { on: s.enDir > 0 && s.viejos === 0, ic:'📚', nm:'Al día', ds:'Sin expedientes de +90 días' }
   ];
+}
+// ---- Rendimiento por semana y por mes (individual) ----
+function inicioSemana(d) { var x = new Date(d); var dow = x.getDay(); x.setDate(x.getDate() + (dow === 0 ? -6 : 1 - dow)); x.setHours(0,0,0,0); return x; }
+function offsetDiasLocal(iso, base) { var d = new Date(iso + 'T00:00:00'); return Math.floor((d - base) / 86400000); }
+function statSemana(mine) {
+  var lunes = inicioSemana(new Date());
+  var R = [0,0,0,0,0,0,0], I = [0,0,0,0,0,0,0];
+  mine.forEach(function(e){
+    var s = toInput(getSalio(e)); if (s) { var o = offsetDiasLocal(s, lunes); if (o >= 0 && o < 7) R[o]++; }
+    var ing = toInput(e.ingreso); if (ing) { var o2 = offsetDiasLocal(ing, lunes); if (o2 >= 0 && o2 < 7) I[o2]++; }
+  });
+  return { R:R, I:I, resueltos:R.reduce(function(a,b){return a+b;},0), ingresos:I.reduce(function(a,b){return a+b;},0), labels:['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'] };
+}
+function statMes(mine) {
+  var now = new Date(), y = now.getFullYear(), m = now.getMonth();
+  var diasMes = new Date(y, m+1, 0).getDate(), nb = Math.ceil(diasMes / 7);
+  var R = [], I = [], labels = [];
+  for (var k = 0; k < nb; k++) { R.push(0); I.push(0); labels.push((k*7+1) + '-' + Math.min(diasMes, k*7+7)); }
+  mine.forEach(function(e){
+    var s = toInput(getSalio(e));
+    if (s && +s.slice(0,4) === y && +s.slice(5,7) === m+1) R[Math.floor((+s.slice(8,10)-1)/7)]++;
+    var ing = toInput(e.ingreso);
+    if (ing && +ing.slice(0,4) === y && +ing.slice(5,7) === m+1) I[Math.floor((+ing.slice(8,10)-1)/7)]++;
+  });
+  return { R:R, I:I, resueltos:R.reduce(function(a,b){return a+b;},0), ingresos:I.reduce(function(a,b){return a+b;},0), labels:labels };
+}
+function barrasHtml(st) {
+  var max = 1;
+  st.R.concat(st.I).forEach(function(v){ if (v > max) max = v; });
+  var cols = st.labels.map(function(lbl, k){
+    var r = st.R[k], i = st.I[k];
+    return '<div class="vbar-col"><div class="vbar-pair">' +
+      '<div class="vbar r" style="height:' + Math.max(3, Math.round(r/max*110)) + 'px" title="' + r + ' resueltos"></div>' +
+      '<div class="vbar i" style="height:' + Math.max(3, Math.round(i/max*110)) + 'px" title="' + i + ' ingresados"></div>' +
+      '</div><div class="vbar-lbl">' + esc(lbl) + '</div></div>';
+  }).join('');
+  return '<div class="vbars">' + cols + '</div>' +
+    '<div class="vlegend"><span><i class="vdot" style="background:var(--green-500)"></i>Resueltos</span>' +
+    '<span><i class="vdot" style="background:#cdd6c0"></i>Ingresados</span></div>';
 }
 function initPanel() {
   var sel = document.getElementById('panel-sel');
@@ -1266,82 +1305,59 @@ function filtrarPanel(v){ panelFiltro = v; renderMisExpedientes(); document.quer
 function renderPanel() {
   var cont = document.getElementById('panel-contenido');
   if (!panelAgente) { cont.innerHTML = '<div class="alert">👋 Elegí tu nombre en el selector de arriba para ver tu panel personal, tu rendimiento y tus logros.</div>'; return; }
-  var ranking = rankingEquipo();
-  var s = null;
-  for (var i = 0; i < ranking.length; i++) { if (ranking[i].nombre === panelAgente) { s = ranking[i]; break; } }
-  if (!s) s = statsAgente(panelAgente);
-  var esLider = s.pos === 1 && s.resueltos > 0;
+  var s = statsAgente(panelAgente);
   var nivel = nivelDe(s.resueltos);
   var prog = s.resueltos % 20, faltan = 20 - prog;
-  var medalla = s.pos === 1 ? '🥇' : s.pos === 2 ? '🥈' : s.pos === 3 ? '🥉' : '#' + s.pos;
-  var conCasos = ranking.filter(function(r){ return r.total > 0; });
-  var promTasa = conCasos.length ? Math.round(conCasos.reduce(function(a,r){ return a + r.tasa; }, 0) / conCasos.length) : 0;
-  var conTiempo = ranking.filter(function(r){ return r.prom !== null; });
-  var promTiempo = conTiempo.length ? Math.round(conTiempo.reduce(function(a,r){ return a + r.prom; }, 0) / conTiempo.length) : null;
 
-  // Hero
-  var aliento = s.mesResueltos >= 3 ? '¡Gran mes! Seguí así 🔥' : s.mesResueltos > 0 ? '¡Buen ritmo este mes! 💪' : 'Un expediente resuelto arranca la racha 💪';
+  // Hero (individual)
+  var aliento = s.semResueltos >= 3 ? '¡Gran semana! Seguí así 🔥' : s.semResueltos > 0 ? '¡Buen ritmo esta semana! 💪' : 'Un expediente resuelto arranca la racha 💪';
   var hero = '<div class="panel-hero">' +
     '<div class="avatar">' + esc(initials(panelAgente)) + '</div>' +
     '<div style="flex:1;min-width:200px">' +
       '<div class="hero-nombre">' + esc(panelAgente) + '</div>' +
-      '<div class="hero-sub">Nivel ' + nivel + ' &middot; puesto ' + medalla + ' de ' + ranking.length + ' en el equipo</div>' +
+      '<div class="hero-sub">Nivel ' + nivel + '</div>' +
       '<div class="hero-progress"><div style="width:' + (prog/20*100) + '%"></div></div>' +
-      '<div class="hero-sub" style="margin-top:5px">' + (faltan === 20 && prog === 0 ? 'Resolvé 20 para llegar al nivel ' + (nivel+1) : 'Te faltan ' + faltan + ' resueltos para el nivel ' + (nivel+1)) + '</div>' +
+      '<div class="hero-sub" style="margin-top:5px">' + (prog === 0 ? 'Resolvé 20 para llegar al nivel ' + (nivel+1) : 'Te faltan ' + faltan + ' resueltos para el nivel ' + (nivel+1)) + '</div>' +
     '</div>' +
     '<div style="text-align:right;display:flex;flex-direction:column;gap:8px;align-items:flex-end">' +
-      '<div class="nivel-badge">🔥 ' + s.mesResueltos + ' este mes</div>' +
+      '<div class="nivel-badge">🔥 ' + s.semResueltos + ' esta semana</div>' +
       '<div class="hero-sub" style="max-width:180px">' + aliento + '</div>' +
     '</div></div>';
 
-  // Métricas
-  var cmpTasa = s.tasa >= promTasa ? '<span class="trend up">▲ ' + (s.tasa - promTasa) + ' pts sobre el promedio</span>' : '<span class="trend down">▼ ' + (promTasa - s.tasa) + ' pts bajo el promedio</span>';
+  // Métricas acumuladas (individual, sin comparación con el equipo)
+  var tiempoTxt = s.prom !== null ? s.prom + ' días' : '—';
   var metrics = '<div class="metric-grid">' +
     '<div class="metric"><div class="lbl">Mis expedientes</div><div class="val">' + s.total + '</div></div>' +
     '<div class="metric"><div class="lbl">En la Dirección</div><div class="val blue">' + s.enDir + '</div></div>' +
     '<div class="metric"><div class="lbl">Resueltos</div><div class="val green">' + s.resueltos + '</div></div>' +
-    '<div class="metric"><div class="lbl">Tasa de resolución</div><div class="val amber">' + s.tasa + '%</div><div style="margin-top:4px">' + cmpTasa + '</div></div>' +
+    '<div class="metric"><div class="lbl">Tiempo prom. de resolución</div><div class="val amber">' + tiempoTxt + '</div></div>' +
     '</div>';
 
-  // Rendimiento (tiempo)
-  var tiempoTxt = s.prom !== null ? s.prom + ' días' : 'sin datos';
-  var cmpTiempo = '';
-  if (s.prom !== null && promTiempo !== null) {
-    cmpTiempo = s.prom <= promTiempo ? '<span class="trend up">▲ ' + (promTiempo - s.prom) + ' días más rápido que el promedio</span>' : '<span class="trend down">▼ ' + (s.prom - promTiempo) + ' días más lento que el promedio</span>';
-  }
-  var avisoViejos = s.viejos > 0 ? '<div class="alert" style="margin:12px 0 0;text-align:left;border-color:var(--amber-700);color:var(--amber-700)">⏳ Tenés <b>' + s.viejos + '</b> expediente(s) de más de 90 días en la Dirección. Resolverlos mejora tu tasa y suma a tu nivel.</div>' : '';
-  var rendimiento = '<div class="card"><div class="section-title">⏱️ Rendimiento</div>' +
-    '<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:baseline">' +
-    '<div><div class="lbl" style="font-size:12px;color:var(--muted)">Tiempo promedio de resolución</div><div style="font-size:24px;font-weight:700;font-variant-numeric:tabular-nums">' + tiempoTxt + '</div><div style="margin-top:4px">' + cmpTiempo + '</div></div>' +
-    '<div><div class="lbl" style="font-size:12px;color:var(--muted)">Resueltos este mes</div><div style="font-size:24px;font-weight:700;font-variant-numeric:tabular-nums">' + s.mesResueltos + '</div></div>' +
-    '</div>' + avisoViejos + '</div>';
+  // Rendimiento de la SEMANA
+  var sem = statSemana(s.mine);
+  var semana = '<div class="card"><div class="section-title">📅 Esta semana</div>' +
+    '<div style="display:flex;gap:28px;flex-wrap:wrap;margin-bottom:8px">' +
+    '<div><div class="stat-lbl">Resueltos</div><div class="stat-big" style="color:var(--green-700)">' + sem.resueltos + '</div></div>' +
+    '<div><div class="stat-lbl">Ingresados</div><div class="stat-big">' + sem.ingresos + '</div></div>' +
+    '</div>' + barrasHtml(sem) + '</div>';
 
-  // Logros
-  var logros = logrosDe(s, esLider);
+  // Rendimiento del MES
+  var mes = statMes(s.mine);
+  var nombresMes = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var mesCard = '<div class="card"><div class="section-title">📆 Este mes <span style="font-size:12px;color:var(--muted);font-weight:500">(' + nombresMes[new Date().getMonth()] + ')</span></div>' +
+    '<div style="display:flex;gap:28px;flex-wrap:wrap;margin-bottom:8px">' +
+    '<div><div class="stat-lbl">Resueltos</div><div class="stat-big" style="color:var(--green-700)">' + mes.resueltos + '</div></div>' +
+    '<div><div class="stat-lbl">Ingresados</div><div class="stat-big">' + mes.ingresos + '</div></div>' +
+    '</div>' + barrasHtml(mes) + '</div>';
+
+  var avisoViejos = s.viejos > 0 ? '<div class="alert" style="text-align:left;border-color:var(--amber-700);color:var(--amber-700)">⏳ Tenés <b>' + s.viejos + '</b> expediente(s) de más de 90 días en la Dirección. Resolverlos mejora tu tasa y suma a tu nivel.</div>' : '';
+
+  // Logros (individual)
+  var logros = logrosDe(s);
   var ganados = logros.filter(function(l){ return l.on; }).length;
   var logrosHtml = '<div class="card"><div class="section-title">🏅 Logros <span style="font-size:12px;color:var(--muted);font-weight:500">(' + ganados + '/' + logros.length + ')</span></div><div class="logros-grid">' +
     logros.map(function(l){ return '<div class="logro ' + (l.on ? 'on' : 'off') + '"><div class="ic">' + l.ic + '</div><div class="nm">' + esc(l.nm) + '</div><div class="ds">' + esc(l.ds) + '</div></div>'; }).join('') +
     '</div></div>';
-
-  // Podio del equipo (top 3 por resueltos)
-  var top = ranking.filter(function(r){ return r.resueltos > 0; }).slice(0, 3);
-  var podio = '';
-  if (top.length) {
-    var maxR = top[0].resueltos || 1;
-    var medallas = ['🥇','🥈','🥉'], alturas = [96, 74, 58], colores = ['var(--green-700)','var(--green-500)','var(--green-600)'];
-    // ordenar visualmente 2-1-3
-    var visual = top.length === 3 ? [top[1], top[0], top[2]] : top.slice();
-    podio = '<div class="card"><div class="section-title">🏆 Podio del equipo</div><div class="podio">' +
-      visual.map(function(r){
-        var idx = top.indexOf(r);
-        var h = alturas[idx], col = colores[idx];
-        var yo = r.nombre === panelAgente ? ' podio-yo' : '';
-        return '<div class="podio-col"><div class="podio-cara">' + esc(initials(r.nombre)) + '</div>' +
-          '<div class="podio-bar' + yo + '" style="height:' + h + 'px;background:' + col + '">' + r.resueltos + '</div>' +
-          '<div class="podio-nm">' + medallas[idx] + ' ' + esc(r.nombre) + '</div></div>';
-      }).join('') +
-      '</div><div style="text-align:center;font-size:12px;color:var(--muted);margin-top:12px">Ranking por expedientes resueltos</div></div>';
-  }
 
   // Mis expedientes (contenedor; el detalle lo pinta renderMisExpedientes)
   var lista = '<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">' +
@@ -1352,7 +1368,7 @@ function renderPanel() {
       '<button class="btn sm" data-f="egresado" onclick="filtrarPanel(\'egresado\')">Resueltos</button>' +
     '</div></div><div id="panel-exp-lista"></div></div>';
 
-  cont.innerHTML = hero + metrics + rendimiento + logrosHtml + podio + lista;
+  cont.innerHTML = hero + metrics + avisoViejos + semana + mesCard + logrosHtml + lista;
   renderMisExpedientes();
 }
 function renderMisExpedientes() {
