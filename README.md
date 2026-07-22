@@ -18,14 +18,13 @@ App de gestión de expedientes de la Dirección General de Asuntos Jurídicos. E
 
 ### Pestaña "Mi Panel" (rendimiento por agente)
 
-Vista personal de cada agente: elige su nombre en un selector (sin contraseña, para acceso rápido; la elección se recuerda en `localStorage` bajo la clave `panel-agente`). Muestra sus expedientes de forma simplificada y un análisis de rendimiento **puramente individual** (sin ranking ni comparación con otros agentes) pensado como incentivo personal:
+Control personal de expedientes de cada agente: elige su nombre en un selector (sin contraseña, para acceso rápido; la elección se recuerda en `localStorage` bajo la clave `panel-agente`). Es una vista enfocada en gestionar los expedientes propios, sin gamificación ni analítica:
 
-- Nivel con barra de progreso (sube cada 20 expedientes resueltos/egresados) y racha de la semana.
-- Métricas acumuladas: mis expedientes, en la Dirección, resueltos y tiempo promedio de resolución.
-- **Rendimiento de la semana** (barras por día, Lun-Dom) y **del mes** (barras por semana), mostrando resueltos vs. ingresados.
-- Logros individuales desbloqueables (Primer paso, Resolvedor, Experto, Ágil, Semana en racha, Gran mes, Al día).
+- Encabezado con su nombre y estado (total, en la Dirección, resueltos).
+- Métricas de control: mis expedientes, en la Dirección, resueltos y cuántos llevan +90 días sin resolver.
+- Lista de sus expedientes con **buscador** (número, tema o iniciador) y filtros (Todos / En la Dirección / Resueltos), con acciones de consulta en el portal y ver dictámenes; destaca con un chip los que llevan +90 días en la Dirección.
 
-**No requiere hojas ni cambios en el backend**: todas las métricas se calculan en el navegador a partir de los datos ya cargados de `expedientes` y `agentes`.
+**No requiere hojas ni cambios en el backend**: todo se calcula en el navegador a partir de los datos ya cargados de `expedientes` y `agentes`.
 
 ## ⚠️ Seguridad del backend (pendiente — requiere cambios en el Apps Script)
 
