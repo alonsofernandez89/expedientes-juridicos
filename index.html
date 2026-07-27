@@ -267,18 +267,9 @@ tbody tr:hover td{background:var(--green-50)}
       </div>
     </div>
     <div class="card" style="margin-top:20px">
-      <div class="section-title">Tiempo promedio de resolución</div>
-      <div style="font-size:12px;color:#888;margin-top:-8px;margin-bottom:16px">Días hábiles entre el ingreso y la salida de los expedientes ya egresados.</div>
-      <div class="grid-2" style="align-items:start">
-        <div>
-          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#555">Por agente</div>
-          <div class="chart-wrap" style="height:240px"><canvas id="chart-tiempos-agente"></canvas></div>
-        </div>
-        <div>
-          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#555">Por trámite (los más frecuentes)</div>
-          <div id="tiempos-tema-lista" style="font-size:13px"></div>
-        </div>
-      </div>
+      <div class="section-title">Tiempo promedio de resolución por trámite</div>
+      <div style="font-size:12px;color:#888;margin-top:-8px;margin-bottom:16px">Días hábiles entre el ingreso y la salida de los expedientes ya egresados (trámites más frecuentes).</div>
+      <div id="tiempos-tema-lista" style="font-size:13px"></div>
     </div>
   </div>
 
@@ -389,6 +380,11 @@ tbody tr:hover td{background:var(--green-50)}
   <div class="section" id="tab-config">
     <div class="card"><div class="section-title">Expedientes por agente</div><div class="chart-wrap"><canvas id="chart-agentes"></canvas></div></div>
     <div class="card"><div class="section-title">Carga de trabajo por agente</div><div id="agentes-lista"></div></div>
+    <div class="card">
+      <div class="section-title">Tiempo promedio de resolución por agente</div>
+      <div style="font-size:12px;color:#888;margin-top:-8px;margin-bottom:16px">Días hábiles entre el ingreso y la salida de los expedientes ya egresados.</div>
+      <div class="chart-wrap" style="height:240px"><canvas id="chart-tiempos-agente"></canvas></div>
+    </div>
     <div class="card">
       <div class="section-title">Gestion de agentes</div>
       <div style="display:flex;gap:8px;margin-bottom:16px">
@@ -1126,8 +1122,8 @@ function switchTab(t) {
   document.querySelectorAll('.section').forEach(function(el){ el.classList.remove('active'); });
   document.getElementById('tab-' + t).classList.add('active');
   if (t === 'panel') initPanel();
-  if (t === 'analisis') { setTimeout(renderChartMeses, 50); setTimeout(renderChartOrganismos, 60); setTimeout(renderDiario, 80); setTimeout(renderTiemposResolucion, 90); }
-  if (t === 'config') { renderConfigAgentes(); renderPorAgente(); setTimeout(renderChartAgentes, 50); }
+  if (t === 'analisis') { setTimeout(renderChartMeses, 50); setTimeout(renderChartOrganismos, 60); setTimeout(renderDiario, 80); setTimeout(renderTiempoPorTema, 90); }
+  if (t === 'config') { renderConfigAgentes(); renderPorAgente(); setTimeout(renderChartAgentes, 50); setTimeout(renderTiempoPorAgente, 60); }
   if (t === 'programas') renderProgramas();
   if (t === 'licencias') initLicencias();
   if (t === 'historico') cargarHistorico(anioHistoricoActivo);
@@ -1648,7 +1644,7 @@ function calcularTiemposResolucion() {
   });
   return { porAgente: porAgente, porTema: porTema };
 }
-function renderTiemposResolucion() {
+function renderTiempoPorAgente() {
   var datos = calcularTiemposResolucion();
   var agentesOrden = Object.keys(datos.porAgente).map(function(ag){
     return { nombre: ag, promedio: datos.porAgente[ag].total / datos.porAgente[ag].cant, cant: datos.porAgente[ag].cant };
@@ -1666,6 +1662,9 @@ function renderTiemposResolucion() {
       scales:{ x:{ beginAtZero:true, ticks:{ font:{size:11} } }, y:{ ticks:{ font:{size:11} } } }
     }
   });
+}
+function renderTiempoPorTema() {
+  var datos = calcularTiemposResolucion();
   var temasOrden = Object.keys(datos.porTema).map(function(k){
     var t = datos.porTema[k];
     return { nombre: t.muestra, promedio: t.total / t.cant, cant: t.cant };
