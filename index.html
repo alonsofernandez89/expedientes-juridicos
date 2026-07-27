@@ -138,6 +138,14 @@ tbody tr:hover td{background:var(--green-50)}
 .globo{position:absolute;top:-60px;left:0;animation:caerGlobo linear forwards}
 @keyframes caerGlobo{0%{transform:translateY(0) translateX(0) rotate(0deg);opacity:0}6%{opacity:1}100%{transform:translateY(110vh) translateX(var(--drift,0px)) rotate(var(--rot,20deg));opacity:.9}}
 .cumple-banner{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#fde9c8;color:#92700c;padding:10px 22px;border-radius:999px;font-size:14px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.15);z-index:10000;animation:fadeIn .3s var(--ease)}
+.print-only{display:none}
+@media print{
+  .no-print,.topbar,.container>.tabs{display:none !important}
+  .print-only{display:block !important}
+  body{background:#fff}
+  .card{box-shadow:none;border:1px solid #ccc;break-inside:avoid}
+  .chart-wrap{height:220px !important}
+}
 </style>
 </head>
 <body>
@@ -209,6 +217,14 @@ tbody tr:hover td{background:var(--green-50)}
   </div>
 
   <div class="section" id="tab-analisis">
+    <div class="print-only" style="margin-bottom:16px">
+      <div style="font-size:18px;font-weight:700">Reporte de Análisis - Dirección General de Asuntos Jurídicos</div>
+      <div id="print-fecha" style="font-size:13px;color:#555"></div>
+    </div>
+    <div class="no-print" style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:12px">
+      <button class="btn sm" onclick="exportarCSV()">📊 Exportar CSV</button>
+      <button class="btn sm" onclick="exportarPDF()">📄 Exportar PDF</button>
+    </div>
     <div class="metric-grid" id="metrics-analisis"></div>
     <div class="card" style="margin-bottom:20px"><div class="section-title">Ingresos por mes</div><div class="chart-wrap"><canvas id="chart-meses"></canvas></div></div>
     <div class="card" style="margin-bottom:20px">
@@ -231,6 +247,20 @@ tbody tr:hover td{background:var(--green-50)}
       <div class="chart-wrap" style="height:260px"><canvas id="chart-diario"></canvas></div>
       <div style="margin-top:20px">
         <table><thead><tr><th>Fecha</th><th style="color:#5a9216">Ingresos</th><th style="color:#854F0B">Egresos</th></tr></thead><tbody id="tbody-diario"></tbody></table>
+      </div>
+    </div>
+    <div class="card" style="margin-top:20px">
+      <div class="section-title">Tiempo promedio de resolución</div>
+      <div style="font-size:12px;color:#888;margin-top:-8px;margin-bottom:16px">Días hábiles entre el ingreso y la salida de los expedientes ya egresados.</div>
+      <div class="grid-2" style="align-items:start">
+        <div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#555">Por agente</div>
+          <div class="chart-wrap" style="height:240px"><canvas id="chart-tiempos-agente"></canvas></div>
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#555">Por trámite (los más frecuentes)</div>
+          <div id="tiempos-tema-lista" style="font-size:13px"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -538,6 +568,16 @@ tbody tr:hover td{background:var(--green-50)}
   </div>
 </div>
 
+<div class="overlay" id="overlay-historial" onclick="if(event.target===this)cerrarHistorial()">
+  <div class="modal" style="width:520px">
+    <h3>🕘 Historial del expediente <span id="hist-expte-titulo"></span></h3>
+    <div id="hist-contenido" style="font-size:13px;max-height:60vh;overflow-y:auto"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="cerrarHistorial()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG" crossorigin="anonymous"></script>
@@ -550,7 +590,7 @@ var SCRIPT_URL_HISTORICO = 'https://script.google.com/macros/s/AKfycbzeVC3hSW3AZ
 
 var expedientes = [], agentes = [], agentesInfo = [], programasData = [], licenciasData = [];
 var programaActivo = null, editIdx = null;
-var chartA = null, chartM = null, chartD = null, chartO = null;
+var chartA = null, chartM = null, chartD = null, chartO = null, chartT = null;
 // Orden por defecto en Registro: ultimos ingresados primero (se puede cambiar clickeando
 // cualquier encabezado de columna, como ya permitia ordenarPor()).
 var sortCol = 'ingreso', sortDir = -1;
@@ -562,6 +602,7 @@ var paginaActual = 1, POR_PAGINA = 50;
 var historicoCache = {}, anioHistoricoActivo = '2025', historicoBuscarTimer = null;
 var inventarioData = [], pedidosData = [], inventarioCargado = false;
 var licenciasCargadas = false;
+var logData = null; // null = todavia no se pidio; [] = pedido pero vacio (o no existe la hoja "log" en la planilla)
 var invSubTab = 'bienes', editBienIdx = null, editPedidoIdx = null;
 var ESTADO_CHIP = {
   'Bueno':['#EAF3DE','#3B6D11'],'Regular':['#FEF3C7','#854F0B'],'Malo':['#FEE2E2','#991B1B'],
@@ -858,6 +899,50 @@ async function initLicencias() {
   renderLicencias();
 }
 
+// ===== Historial / trazabilidad =====
+// Lee la hoja "log" (si existe) donde el Apps Script registra cada alta/edicion/baja,
+// y muestra las que correspondan al numero de expediente abierto.
+var ACCION_LABEL = { agregar: 'Alta', editar: 'Edición', eliminar: 'Baja' };
+function fmtFechaHora(d) {
+  var dt = new Date(d);
+  if (isNaN(dt)) return String(d || '-');
+  return String(dt.getDate()).padStart(2,'0') + '/' + String(dt.getMonth()+1).padStart(2,'0') + '/' + dt.getFullYear() + ' ' + String(dt.getHours()).padStart(2,'0') + ':' + String(dt.getMinutes()).padStart(2,'0');
+}
+async function verHistorial(expte) {
+  document.getElementById('hist-expte-titulo').textContent = expte;
+  document.getElementById('hist-contenido').innerHTML = '<div class="alert" style="margin:0">Cargando...</div>';
+  document.getElementById('overlay-historial').classList.add('show');
+  if (logData === null) {
+    try {
+      var d = await api({ method: 'GET', hoja: 'log' });
+      logData = Array.isArray(d) ? d : [];
+    } catch (le) { logData = []; }
+  }
+  renderHistorial(expte);
+}
+function cerrarHistorial() { document.getElementById('overlay-historial').classList.remove('show'); }
+function renderHistorial(expte) {
+  var eventos = logData.filter(function(l){
+    if (String(l.hoja || '').trim() !== 'expedientes') return false;
+    try {
+      var d = JSON.parse(l.datos);
+      return d && String(d.expte || '').trim() === String(expte).trim();
+    } catch (pe) { return false; }
+  }).sort(function(a,b){ return new Date(b.fecha) - new Date(a.fecha); });
+  if (!eventos.length) {
+    document.getElementById('hist-contenido').innerHTML = '<div class="alert" style="margin:0">📭 Todavía no hay historial registrado para este expediente. Los cambios que se hagan de ahora en más van a quedar guardados acá.</div>';
+    return;
+  }
+  document.getElementById('hist-contenido').innerHTML = eventos.map(function(l){
+    var d = {}; try { d = JSON.parse(l.datos); } catch (pe) {}
+    var detalle = Object.keys(d).filter(function(k){ return k !== '_fila' && k !== 'expte'; }).map(function(k){ return esc(k) + ': ' + esc(d[k]); }).join(' · ');
+    return '<div style="padding:10px 0;border-bottom:1px solid var(--line-soft)">' +
+      '<div style="display:flex;justify-content:space-between;gap:8px"><b>' + (ACCION_LABEL[l.accion] || esc(l.accion)) + '</b><span style="color:#888;white-space:nowrap">' + fmtFechaHora(l.fecha) + '</span></div>' +
+      (detalle ? '<div style="color:#666;margin-top:2px;font-size:12px">' + detalle + '</div>' : '') +
+    '</div>';
+  }).join('');
+}
+
 function fmt(d) {
   if (!d) return '-';
   try {
@@ -992,7 +1077,7 @@ function switchTab(t) {
   tabsEls.forEach(function(el, i){ el.classList.toggle('active', orden[i] === t); });
   document.querySelectorAll('.section').forEach(function(el){ el.classList.remove('active'); });
   document.getElementById('tab-' + t).classList.add('active');
-  if (t === 'analisis') { setTimeout(renderChartMeses, 50); setTimeout(renderChartOrganismos, 60); setTimeout(renderDiario, 80); }
+  if (t === 'analisis') { setTimeout(renderChartMeses, 50); setTimeout(renderChartOrganismos, 60); setTimeout(renderDiario, 80); setTimeout(renderTiemposResolucion, 90); }
   if (t === 'config') { renderConfigAgentes(); renderPorAgente(); setTimeout(renderChartAgentes, 50); }
   if (t === 'programas') renderProgramas();
   if (t === 'licencias') initLicencias();
@@ -1136,7 +1221,8 @@ function renderTabla() {
         '<button class="btn sm icon" title="Editar" onclick="abrirModal(' + e._idx + ')">✏️</button> ' +
         '<button class="btn sm icon danger" title="Borrar" onclick="eliminar(' + e._idx + ')">🗑️</button> ' +
         '<button class="btn sm icon" title="Consultar en el portal" onclick="consultarExpte(\'' + jsArg(getExpte(e)) + '\')">🔗</button> ' +
-        '<button class="btn sm icon" title="Ver dictamenes" onclick="verDictamenes(\'' + jsArg(getExpte(e)) + '\')">📄</button>' +
+        '<button class="btn sm icon" title="Ver dictamenes" onclick="verDictamenes(\'' + jsArg(getExpte(e)) + '\')">📄</button> ' +
+        '<button class="btn sm icon" title="Ver historial" onclick="verHistorial(\'' + jsArg(getExpte(e)) + '\')">🕘</button>' +
       '</td></tr>';
   });
   document.getElementById('tabla-body').innerHTML = html;
@@ -1291,6 +1377,129 @@ function renderChartOrganismos() {
       '<span style="flex:1;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(g.nombre) + '">' + esc(g.nombre) + '</span>' +
       '<span style="color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums">' + g.total + ' (' + pct + '%)</span></div>';
   }).join('');
+}
+
+// Cuenta dias habiles entre dos fechas (excluye fines de semana y feriados), para medir
+// cuanto tardo en resolverse un expediente desde que ingreso hasta que salio.
+function diasHabilesEntre(desdeStr, hastaStr) {
+  var d = new Date(desdeStr + 'T00:00:00'), h = new Date(hastaStr + 'T00:00:00');
+  if (isNaN(d) || isNaN(h) || h < d) return null;
+  var contador = 0, f = new Date(d);
+  while (f < h) {
+    f.setDate(f.getDate() + 1);
+    if (f.getDay() !== 0 && f.getDay() !== 6 && !esFeriado(f)) contador++;
+  }
+  return contador;
+}
+function calcularTiemposResolucion() {
+  var porAgente = {}, porTema = {};
+  expedientes.forEach(function(e){
+    if (!estaEgresado(e)) return;
+    var ing = toInput(e.ingreso), sal = toInput(getSalio(e));
+    if (!ing || !sal) return;
+    var dias = diasHabilesEntre(ing, sal);
+    if (dias === null) return;
+    var ag = getRespAsig(e) || 'Sin asignar';
+    if (!porAgente[ag]) porAgente[ag] = { total:0, cant:0 };
+    porAgente[ag].total += dias; porAgente[ag].cant++;
+    var tmRaw = (getTema(e) || '').trim();
+    var tmKey = normalizar(tmRaw) || 'SIN ESPECIFICAR';
+    if (!porTema[tmKey]) porTema[tmKey] = { total:0, cant:0, muestra: tmRaw || 'Sin especificar' };
+    porTema[tmKey].total += dias; porTema[tmKey].cant++;
+    if (tmRaw.length > porTema[tmKey].muestra.length) porTema[tmKey].muestra = tmRaw;
+  });
+  return { porAgente: porAgente, porTema: porTema };
+}
+function renderTiemposResolucion() {
+  var datos = calcularTiemposResolucion();
+  var agentesOrden = Object.keys(datos.porAgente).map(function(ag){
+    return { nombre: ag, promedio: datos.porAgente[ag].total / datos.porAgente[ag].cant, cant: datos.porAgente[ag].cant };
+  }).sort(function(a,b){ return a.promedio - b.promedio; });
+  if (chartT) chartT.destroy();
+  chartT = new Chart(document.getElementById('chart-tiempos-agente'), {
+    type: 'bar',
+    data: {
+      labels: agentesOrden.map(function(a){ return a.nombre.split(',')[0]; }),
+      datasets: [{ label:'Días hábiles promedio', data: agentesOrden.map(function(a){ return Math.round(a.promedio*10)/10; }), backgroundColor:'#2a78d6' }]
+    },
+    options: {
+      indexAxis: 'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:function(ctx){ var a = agentesOrden[ctx.dataIndex]; return ' ' + ctx.parsed.x + ' días hábiles promedio (' + a.cant + ' expediente' + (a.cant===1?'':'s') + ')'; } } } },
+      scales:{ x:{ beginAtZero:true, ticks:{ font:{size:11} } }, y:{ ticks:{ font:{size:11} } } }
+    }
+  });
+  var temasOrden = Object.keys(datos.porTema).map(function(k){
+    var t = datos.porTema[k];
+    return { nombre: t.muestra, promedio: t.total / t.cant, cant: t.cant };
+  }).sort(function(a,b){ return b.cant - a.cant; }).slice(0, 12);
+  document.getElementById('tiempos-tema-lista').innerHTML = temasOrden.length ? ('<table><thead><tr><th>Trámite</th><th style="text-align:right">Cant.</th><th style="text-align:right">Prom. días</th></tr></thead><tbody>' +
+    temasOrden.map(function(t){ return '<tr><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(t.nombre) + '">' + esc(t.nombre) + '</td><td style="text-align:right">' + t.cant + '</td><td style="text-align:right;font-weight:600">' + (Math.round(t.promedio*10)/10) + '</td></tr>'; }).join('') +
+    '</tbody></table>') : '<div class="alert" style="margin:0">Todavía no hay expedientes egresados para calcular tiempos.</div>';
+}
+
+function exportarPDF() {
+  document.getElementById('print-fecha').textContent = 'Generado el ' + fmt(new Date());
+  window.print();
+}
+function csvEscape(v) {
+  var s = String(v === null || v === undefined ? '' : v);
+  if (/[",\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+function filaCSV(arr) { return arr.map(csvEscape).join(','); }
+function exportarCSV() {
+  var lineas = [];
+  lineas.push('Reporte de Análisis - Dirección General de Asuntos Jurídicos');
+  lineas.push('Generado el ' + fmt(new Date()));
+  lineas.push('');
+
+  lineas.push('Resumen general');
+  var egresados = expedientes.filter(estaEgresado).length;
+  lineas.push(filaCSV(['Total ingresados', expedientes.length]));
+  lineas.push(filaCSV(['En la Dirección', expedientes.length - egresados]));
+  lineas.push(filaCSV(['Egresados', egresados]));
+  lineas.push(filaCSV(['Agentes activos', agentes.length]));
+  lineas.push('');
+
+  lineas.push('Ingresos y egresos por mes');
+  lineas.push(filaCSV(['Mes', 'Ingresos', 'Egresos']));
+  var ing = {}, egr = {};
+  expedientes.forEach(function(e){
+    var i = toInput(e.ingreso); if (i) { var mi = i.slice(0,7); ing[mi] = (ing[mi]||0)+1; }
+    var s = toInput(getSalio(e)); if (s && s.length === 10) { var ms = s.slice(0,7); egr[ms] = (egr[ms]||0)+1; }
+  });
+  Object.keys(ing).concat(Object.keys(egr)).filter(function(v,i,arr){ return arr.indexOf(v)===i; }).sort().forEach(function(k){
+    lineas.push(filaCSV([k, ing[k]||0, egr[k]||0]));
+  });
+  lineas.push('');
+
+  lineas.push('Expedientes por organismo iniciador');
+  lineas.push(filaCSV(['Organismo', 'Cantidad']));
+  agruparPorOrganismo(9999).forEach(function(g){ lineas.push(filaCSV([g.nombre, g.total])); });
+  lineas.push('');
+
+  var datosT = calcularTiemposResolucion();
+  lineas.push('Tiempo promedio de resolución por agente (días hábiles)');
+  lineas.push(filaCSV(['Agente', 'Expedientes resueltos', 'Promedio días hábiles']));
+  Object.keys(datosT.porAgente).sort().forEach(function(ag){
+    var t = datosT.porAgente[ag];
+    lineas.push(filaCSV([ag, t.cant, Math.round(t.total / t.cant * 10) / 10]));
+  });
+  lineas.push('');
+
+  lineas.push('Tiempo promedio de resolución por trámite (días hábiles)');
+  lineas.push(filaCSV(['Trámite', 'Expedientes resueltos', 'Promedio días hábiles']));
+  Object.keys(datosT.porTema).map(function(k){ return datosT.porTema[k]; }).sort(function(a,b){ return b.cant - a.cant; }).forEach(function(t){
+    lineas.push(filaCSV([t.muestra, t.cant, Math.round(t.total / t.cant * 10) / 10]));
+  });
+
+  var csv = '\uFEFF' + lineas.join('\r\n');
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'reporte-analisis-' + fechaAInputStr(new Date()) + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
 }
 
 // Dia a destacar en "Movimiento diario": hoy, o el ultimo dia habil anterior
