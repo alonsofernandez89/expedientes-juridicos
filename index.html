@@ -502,6 +502,20 @@ tbody tr:hover td{background:var(--green-50)}
   </div>
 </div>
 
+<div class="overlay" id="overlay-mi-clave">
+  <div class="modal" style="width:400px">
+    <h3>🔑 Mi contraseña</h3>
+    <div class="fg" style="margin-bottom:10px"><label>Nueva contraseña</label><input type="password" id="mi-clave-1" placeholder="Contraseña"></div>
+    <div class="fg" style="margin-bottom:10px"><label>Repetir contraseña</label><input type="password" id="mi-clave-2" placeholder="Repetir contraseña" onkeydown="if(event.key==='Enter'){event.preventDefault();guardarMiClave();}"></div>
+    <div style="font-size:12px;color:#888">Se guarda encriptada (hash SHA-256); no queda en texto plano. Solo vos (con esta contraseña) y el Director (con la clave maestra) van a poder ver tu panel.</div>
+    <div class="modal-actions">
+      <button class="btn danger" id="btn-quitar-mi-clave" onclick="quitarMiClave()" style="margin-right:auto">Quitar mi contraseña</button>
+      <button class="btn" onclick="cerrarModalMiClave()">Cancelar</button>
+      <button class="btn primary" id="btn-guardar-mi-clave" onclick="guardarMiClave()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="overlay-programa">
   <div class="modal">
     <h3>Nuevo programa</h3>
@@ -1416,12 +1430,15 @@ function renderPanel() {
   var s = statsAgente(panelAgente);
 
   // Encabezado personal (identidad + estado, sin gamificación)
+  var tieneMiClave = !!claveHashDe(panelAgente);
   var hero = '<div class="panel-hero">' +
     '<div class="avatar">' + esc(initials(panelAgente)) + '</div>' +
     '<div style="flex:1;min-width:200px">' +
       '<div class="hero-nombre">' + esc(panelAgente) + '</div>' +
       '<div class="hero-sub">' + s.total + ' expediente(s) &middot; ' + s.enDir + ' en la Dirección &middot; ' + s.resueltos + ' resuelto(s)</div>' +
-    '</div></div>';
+    '</div>' +
+    '<button class="btn sm" onclick="abrirModalMiClave()" style="background:rgba(255,255,255,.18);color:#fff;border-color:rgba(255,255,255,.4)">🔑 ' + (tieneMiClave ? 'Cambiar mi contraseña' : 'Fijar mi contraseña') + '</button>' +
+    '</div>';
 
   // Métricas de estado (control, sin analítica)
   var metrics = '<div class="metric-grid">' +
@@ -2597,6 +2614,52 @@ async function quitarClaveAgente() {
     document.getElementById('overlay-set-clave').classList.remove('show');
     renderConfigAgentes();
     toast('Contraseña quitada');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+
+// Autogestion desde Mi Panel: el propio agente fija/cambia/quita su contraseña
+// (solo disponible una vez que ya esta viendo su panel desbloqueado - con clave
+// vieja correcta, con la clave maestra del Director, o porque todavia no tenia clave).
+function abrirModalMiClave() {
+  if (!panelAgente || !puedeVerPanel(panelAgente)) return;
+  document.getElementById('mi-clave-1').value = '';
+  document.getElementById('mi-clave-2').value = '';
+  document.getElementById('btn-quitar-mi-clave').style.display = claveHashDe(panelAgente) ? 'inline-block' : 'none';
+  document.getElementById('overlay-mi-clave').classList.add('show');
+  setTimeout(function(){ document.getElementById('mi-clave-1').focus(); }, 100);
+}
+function cerrarModalMiClave() { document.getElementById('overlay-mi-clave').classList.remove('show'); }
+async function guardarMiClave() {
+  if (!panelAgente || !puedeVerPanel(panelAgente)) return;
+  var c1 = document.getElementById('mi-clave-1').value, c2 = document.getElementById('mi-clave-2').value;
+  if (!c1) { toast('Ingresá una contraseña', 'error'); return; }
+  if (c1 !== c2) { toast('Las contraseñas no coinciden', 'error'); return; }
+  var idx = agentes.indexOf(panelAgente);
+  if (idx < 0) return;
+  var hash = await sha256Hex(c1);
+  var btn = document.getElementById('btn-guardar-mi-clave'); btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    await api({ accion:'editar', hoja:'agentes', datos:{ _fila:idx+2, nombre:panelAgente, clave_hash:hash } });
+    agentesInfo[idx] = agentesInfo[idx] || { nombre:panelAgente };
+    agentesInfo[idx].clave_hash = hash;
+    try { sessionStorage.setItem('panel-ok-' + panelAgente, '1'); } catch (e) {}
+    cerrarModalMiClave();
+    toast('Contraseña guardada');
+    renderPanel();
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Guardar';
+}
+async function quitarMiClave() {
+  if (!panelAgente || !puedeVerPanel(panelAgente)) return;
+  if (!await confirmar('¿Quitar tu contraseña? Tu panel quedará abierto para cualquiera que elija tu nombre.', 'Quitar')) return;
+  var idx = agentes.indexOf(panelAgente);
+  if (idx < 0) return;
+  try {
+    await api({ accion:'editar', hoja:'agentes', datos:{ _fila:idx+2, nombre:panelAgente, clave_hash:'' } });
+    if (agentesInfo[idx]) agentesInfo[idx].clave_hash = '';
+    cerrarModalMiClave();
+    toast('Contraseña quitada');
+    renderPanel();
   } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 
