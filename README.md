@@ -32,7 +32,7 @@ Control personal de expedientes de cada agente: elige su nombre en un selector (
 
 ### Contraseña por agente y rol Director
 
-- Cada agente puede tener una **contraseña propia** para ver su panel. La asigna el **Director** desde la pestaña **Agentes** (botón "Asignar/Cambiar clave" en cada fila). Se guarda como **hash SHA-256** en la columna `clave_hash` de la hoja `agentes` (nunca en texto plano).
+- Cada agente puede tener una **contraseña propia** para ver su panel. Se la puede fijar/cambiar/quitar **el mismo agente** desde "Mi Panel" (botón "Fijar mi contraseña" / "Cambiar mi contraseña" una vez que ya está viendo su panel desbloqueado), o el **Director** desde la pestaña **Agentes** (botón "Asignar/Cambiar clave" en cada fila). Se guarda como **hash SHA-256** en la columna `clave_hash` de la hoja `agentes` (nunca en texto plano).
 - **El Director es `Alonso`** (constante `DIRECTOR` en el código). Se autentica con la **clave maestra** (la misma que ya desbloquea la pestaña Agentes, `CLAVE_HASH`) y con eso accede a **todas las pestañas y a todos los paneles** de los agentes, sin necesidad de la contraseña individual de cada uno.
 - En "Mi Panel", al elegir un agente con contraseña asignada se pide la clave; una vez validada, queda desbloqueado por esa sesión (`sessionStorage`). Un agente **sin** `clave_hash` tiene el panel abierto (útil para la carga inicial: el Director va asignando las contraseñas).
 - **Requisito de backend**: agregar la columna `clave_hash` a la hoja `agentes`. El Apps Script debe permitir `editar` esa hoja escribiendo solo las columnas enviadas (igual que ya hace con `cumple_mes`/`cumple_dia`).
