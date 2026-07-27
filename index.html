@@ -532,6 +532,7 @@ tbody tr:hover td{background:var(--green-50)}
     </div>
     <div style="font-size:12px;color:#888;margin:-4px 0 8px">Los fines de semana no se cuentan ni se marcan como licencia. Completa "Cantidad de dias habiles" para calcular la fecha fin automaticamente, o cargala vos misma/o.</div>
     <div class="modal-actions">
+      <button class="btn danger" id="btn-eliminar-lic" onclick="eliminarLicenciaDesdeModal()" style="display:none;margin-right:auto">Eliminar</button>
       <button class="btn" onclick="cerrarModalLicencia()">Cancelar</button>
       <button class="btn primary" id="btn-guardar-lic" onclick="guardarLicencia()">Guardar</button>
     </div>
@@ -2204,11 +2205,11 @@ function renderLicencias() {
       var lic = getLic(ag, d);
       var tipo = (lic && !finde && !feriado) ? (TIPOS_LIC[lic.tipo] || TIPOS_LIC['Otro']) : null;
       var cumple = esCumpleEnFecha(ag, f);
-      var titulo = tipo ? (lic.tipo + (lic.obs ? ' - ' + lic.obs : '')) : (feriado || '');
+      var titulo = tipo ? (lic.tipo + (lic.obs ? ' - ' + lic.obs : '') + ' (clic para editar)') : (feriado || '');
       if (cumple) titulo = '🎂 Cumpleaños de ' + ag + (titulo ? ' · ' + titulo : '');
       var estilo = cumple ? 'background:#fde9c8;color:#92700c;font-weight:700;' : (tipo ? 'background:' + tipo.color + ';color:' + tipo.texto + ';font-weight:700;' : (((finde || feriado)) ? 'background:#f9f9f7;' + (feriado ? 'color:#8f8f86;font-weight:700;' : '') : ''));
       var icono = cumple ? '🎂' : (tipo ? tipo.icono : (feriado ? 'F' : ''));
-      celdas += '<td style="text-align:center;padding:2px;' + estilo + 'cursor:' + (tipo ? 'pointer' : 'default') + '" title="' + esc(titulo) + '" ' + (tipo ? 'onclick="eliminarLicencia(' + Number(lic._fila) + ',\'' + jsArg(ag) + '\')"' : '') + '>' + icono + '</td>';
+      celdas += '<td style="text-align:center;padding:2px;' + estilo + 'cursor:' + (tipo ? 'pointer' : 'default') + '" title="' + esc(titulo) + '" ' + (tipo ? 'onclick="abrirModalLicencia(' + Number(lic._fila) + ')"' : '') + '>' + icono + '</td>';
     }
     filas += '<tr><td style="font-weight:500;position:sticky;left:0;background:#fff;z-index:1;border-right:1px solid #e0e0d8">' + esc(ag) + '</td>' + celdas + '</tr>';
   });
@@ -2224,10 +2225,19 @@ function renderLicencias() {
   }).join('');
   document.getElementById('resumen-licencias').innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">' + resumen + '</div>';
 }
-function abrirModalLicencia() {
-  document.getElementById('lic-modal-title').textContent = 'Nueva licencia';
+var editLicFila = null;
+function abrirModalLicencia(fila) {
+  var lic = fila !== undefined ? licenciasData.filter(function(l){ return l._fila === fila; })[0] : null;
+  editLicFila = lic ? fila : null;
+  document.getElementById('lic-modal-title').textContent = lic ? 'Editar licencia' : 'Nueva licencia';
+  document.getElementById('btn-eliminar-lic').style.display = lic ? '' : 'none';
   document.getElementById('lic-agente').innerHTML = '<option value="">Seleccionar...</option>' + agentes.map(function(a){ return '<option value="' + esc(a) + '">' + esc(a) + '</option>'; }).join('');
-  document.getElementById('lic-agente').value = ''; document.getElementById('lic-tipo').value = 'Vacaciones'; document.getElementById('lic-obs').value = ''; document.getElementById('lic-desde').value = ''; document.getElementById('lic-dias').value = ''; document.getElementById('lic-hasta').value = '';
+  document.getElementById('lic-agente').value = lic ? lic.agente : '';
+  document.getElementById('lic-tipo').value = lic ? lic.tipo : 'Vacaciones';
+  document.getElementById('lic-obs').value = lic ? (lic.obs || '') : '';
+  document.getElementById('lic-desde').value = lic ? toInput(lic.desde) : '';
+  document.getElementById('lic-dias').value = '';
+  document.getElementById('lic-hasta').value = lic ? toInput(lic.hasta) : '';
   document.getElementById('overlay-licencia').classList.add('show');
 }
 function fechaAInputStr(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
@@ -2247,7 +2257,7 @@ function calcularHastaPorDias() {
   if (!desde || !dias || dias < 1) return;
   document.getElementById('lic-hasta').value = fechaAInputStr(sumarDiasHabiles(desde, dias));
 }
-function cerrarModalLicencia(){ document.getElementById('overlay-licencia').classList.remove('show'); }
+function cerrarModalLicencia(){ document.getElementById('overlay-licencia').classList.remove('show'); editLicFila = null; }
 async function guardarLicencia() {
   var agente = document.getElementById('lic-agente').value, tipo = document.getElementById('lic-tipo').value, desde = document.getElementById('lic-desde').value, hasta = document.getElementById('lic-hasta').value;
   if (!agente || !desde || !hasta) { toast('Completa agente, fecha inicio y fecha fin.', 'error'); return; }
@@ -2255,16 +2265,23 @@ async function guardarLicencia() {
   var datos = { agente:agente, tipo:tipo, desde:fmt(desde), hasta:fmt(hasta), obs:document.getElementById('lic-obs').value };
   var btn = document.getElementById('btn-guardar-lic'); btn.disabled = true; btn.textContent = 'Guardando...';
   try {
-    await api({ accion:'agregar', hoja:'licencias', datos:datos });
+    if (editLicFila !== null) { datos._fila = editLicFila; await api({ accion:'editar', hoja:'licencias', datos:datos }); }
+    else await api({ accion:'agregar', hoja:'licencias', datos:datos });
     licenciasData = await api({ method:'GET', hoja:'licencias' });
     licenciasData = Array.isArray(licenciasData) ? licenciasData.filter(function(l){ return l.agente; }) : [];
-    cerrarModalLicencia(); renderLicencias(); toast('Licencia guardada');
+    cerrarModalLicencia(); renderLicencias(); toast(editLicFila !== null ? 'Licencia actualizada' : 'Licencia guardada');
   } catch (e) { toast('Error: ' + e.message, 'error'); }
   btn.disabled = false; btn.textContent = 'Guardar';
 }
 async function eliminarLicencia(fila, agente) {
   if (!await confirmar('¿Eliminas esta licencia de ' + agente + '?', 'Eliminar')) return;
   try { await api({ accion:'eliminar', hoja:'licencias', datos:{ _fila:fila } }); licenciasData = licenciasData.filter(function(l){ return l._fila !== fila; }); renderLicencias(); toast('Licencia eliminada'); } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+async function eliminarLicenciaDesdeModal() {
+  if (editLicFila === null) return;
+  var lic = licenciasData.filter(function(l){ return l._fila === editLicFila; })[0];
+  await eliminarLicencia(editLicFila, lic ? lic.agente : '');
+  if (!licenciasData.some(function(l){ return l._fila === editLicFila; })) cerrarModalLicencia();
 }
 
 function chipEstado(est) {
