@@ -266,11 +266,6 @@ tbody tr:hover td{background:var(--green-50)}
         <table><thead><tr><th>Fecha</th><th style="color:#5a9216">Ingresos</th><th style="color:#854F0B">Egresos</th></tr></thead><tbody id="tbody-diario"></tbody></table>
       </div>
     </div>
-    <div class="card" style="margin-top:20px">
-      <div class="section-title">Tiempo promedio de resolución por trámite</div>
-      <div style="font-size:12px;color:#888;margin-top:-8px;margin-bottom:16px">Días hábiles entre el ingreso y la salida de los expedientes ya egresados (trámites más frecuentes).</div>
-      <div id="tiempos-tema-lista" style="font-size:13px"></div>
-    </div>
   </div>
 
   <div class="section" id="tab-programas">
@@ -384,6 +379,11 @@ tbody tr:hover td{background:var(--green-50)}
       <div class="section-title">Tiempo promedio de resolución por agente</div>
       <div style="font-size:12px;color:#888;margin-top:-8px;margin-bottom:16px">Días hábiles entre el ingreso y la salida de los expedientes ya egresados.</div>
       <div class="chart-wrap" style="height:240px"><canvas id="chart-tiempos-agente"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="section-title">Tiempo promedio de resolución por trámite</div>
+      <div style="font-size:12px;color:#888;margin-top:-8px;margin-bottom:16px">Días hábiles entre el ingreso y la salida de los expedientes ya egresados (trámites más frecuentes).</div>
+      <div id="tiempos-tema-lista" style="font-size:13px"></div>
     </div>
     <div class="card">
       <div class="section-title">Gestion de agentes</div>
@@ -1123,8 +1123,8 @@ function switchTab(t) {
   document.querySelectorAll('.section').forEach(function(el){ el.classList.remove('active'); });
   document.getElementById('tab-' + t).classList.add('active');
   if (t === 'panel') initPanel();
-  if (t === 'analisis') { setTimeout(renderChartMeses, 50); setTimeout(renderChartOrganismos, 60); setTimeout(renderDiario, 80); setTimeout(renderTiempoPorTema, 90); }
-  if (t === 'config') { renderConfigAgentes(); renderPorAgente(); setTimeout(renderChartAgentes, 50); setTimeout(renderTiempoPorAgente, 60); }
+  if (t === 'analisis') { setTimeout(renderChartMeses, 50); setTimeout(renderChartOrganismos, 60); setTimeout(renderDiario, 80); }
+  if (t === 'config') { renderConfigAgentes(); renderPorAgente(); setTimeout(renderChartAgentes, 50); setTimeout(renderTiempoPorAgente, 60); setTimeout(renderTiempoPorTema, 70); }
   if (t === 'programas') renderProgramas();
   if (t === 'licencias') initLicencias();
   if (t === 'historico') cargarHistorico(anioHistoricoActivo);
