@@ -379,7 +379,7 @@ tbody tr:hover td{background:var(--green-50)}
   <div class="section" id="tab-normativas">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
       <div style="font-size:15px;font-weight:600">Normativas</div>
-      <button class="btn primary" onclick="abrirModalNormativa()">+ Nueva normativa</button>
+      <button class="btn" onclick="initNormativas(true)">🔄 Actualizar</button>
     </div>
     <div class="tabs" style="margin-bottom:16px" id="norm-subtabs">
       <button class="tab active" onclick="switchNormTab('Programas')">Programas</button>
@@ -387,7 +387,8 @@ tbody tr:hover td{background:var(--green-50)}
       <button class="tab" onclick="switchNormTab('Dictámenes Fiscalía')">Dictámenes Fiscalía</button>
       <button class="tab" onclick="switchNormTab('Legal y Técnica')">Legal y Técnica</button>
     </div>
-    <input type="text" id="norm-buscar" placeholder="Buscar por título u observación..." oninput="renderNormativas()" style="width:100%;padding:8px 10px;font-size:14px;border:1px solid #d0d0c8;border-radius:8px;margin-bottom:16px">
+    <input type="text" id="norm-buscar" placeholder="Buscar por nombre de archivo..." oninput="renderNormativas()" style="width:100%;padding:8px 10px;font-size:14px;border:1px solid #d0d0c8;border-radius:8px;margin-bottom:16px">
+    <div style="font-size:12px;color:#888;margin-bottom:12px">📁 Los archivos se suben directamente a la carpeta de Drive de cada categoría; acá solo se listan (no se pueden agregar, editar ni borrar desde la app).</div>
     <div id="norm-lista"></div>
   </div>
 
@@ -620,29 +621,6 @@ tbody tr:hover td{background:var(--green-50)}
     <div class="modal-actions">
       <button class="btn" onclick="document.getElementById('overlay-pedido').classList.remove('show')">Cancelar</button>
       <button class="btn primary" id="btn-guardar-pedido" onclick="guardarPedido()">Guardar</button>
-    </div>
-  </div>
-</div>
-
-<div class="overlay" id="overlay-normativa">
-  <div class="modal">
-    <h3 id="norm-modal-title">Nueva normativa</h3>
-    <div class="form-grid">
-      <div class="fg"><label>Categoría *</label><select id="norm-categoria">
-        <option value="Programas">Programas</option>
-        <option value="Contrataciones">Contrataciones</option>
-        <option value="Dictámenes Fiscalía">Dictámenes Fiscalía</option>
-        <option value="Legal y Técnica">Legal y Técnica</option>
-      </select></div>
-      <div class="fg"><label>Fecha</label><input type="date" id="norm-fecha"></div>
-      <div class="fg full"><label>Título *</label><input type="text" id="norm-titulo" placeholder="Ej: Decreto 1234/2024, Resolución 56/2023..."></div>
-      <div class="fg full"><label>Link (opcional)</label><input type="text" id="norm-link" placeholder="URL al PDF, Drive, boletín oficial..."></div>
-      <div class="fg full"><label>Observaciones</label><textarea id="norm-obs" placeholder="Opcional"></textarea></div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn danger" id="btn-eliminar-norm" onclick="eliminarNormativaDesdeModal()" style="display:none;margin-right:auto">Eliminar</button>
-      <button class="btn" onclick="cerrarModalNormativa()">Cancelar</button>
-      <button class="btn primary" id="btn-guardar-norm" onclick="guardarNormativa()">Guardar</button>
     </div>
   </div>
 </div>
@@ -1098,6 +1076,7 @@ function normalizarExpediente(e, i) {
     agente: e['resp. asig'] || e['resp.asig'] || e['resp asig'] || e['Resp. Asig'] || e['Resp. Asig.'] || '',
     tema: e['tema'] || e['Tema'] || '',
     salio: salio,
+    vencimiento: e['vencimiento'] || e['Vencimiento'] || '',
     _fila: e._fila,
     _idx: i
   };
@@ -1404,19 +1383,11 @@ function puedeVerPanel(nombre) {
   if (panelDesbloqueado(nombre)) return true; // este agente ya ingresó su clave en esta sesión
   return !claveHashDe(nombre);                // sin clave asignada todavía => panel abierto
 }
-// Plazo para dictaminar: 20 dias habiles contados desde el DIA SIGUIENTE al ingreso
-// (el dia de ingreso no cuenta, criterio habitual de plazos administrativos).
-// Reutiliza esFeriado() del modulo de licencias: excluye sabados, domingos y
-// feriados nacionales + provinciales de Entre Rios.
-var DIAS_DICTAMEN = 20;
+// Vencimiento para dictaminar: NO se calcula automaticamente. Es opcional y cada
+// agente lo carga si quiere, expediente por expediente, desde su panel (columna
+// "vencimiento" de la hoja expedientes). Reutiliza esFeriado() del modulo de
+// licencias: excluye sabados, domingos y feriados nacionales + provinciales de ER.
 function esDiaHabil(d) { return d.getDay() !== 0 && d.getDay() !== 6 && !esFeriado(d); }
-function vencimientoDictamen(iso) {
-  var d = new Date(iso + 'T00:00:00');
-  if (isNaN(d.getTime())) return null;
-  var c = 0;
-  while (c < DIAS_DICTAMEN) { d.setDate(d.getDate() + 1); if (esDiaHabil(d)) c++; }
-  return d;
-}
 // Dias habiles desde hoy hasta la fecha de vencimiento (0 = vence hoy, negativo = vencido).
 function diasHabilesRestantes(venc) {
   var hoy = new Date(); hoy.setHours(0,0,0,0);
@@ -1428,11 +1399,21 @@ function diasHabilesRestantes(venc) {
   return futuro ? c : -c;
 }
 function plazoDictamen(e) {
-  var iso = toInput(e.ingreso);
+  var iso = toInput(e.vencimiento);
   if (!iso) return null;
-  var venc = vencimientoDictamen(iso);
-  if (!venc) return null;
+  var venc = new Date(iso + 'T00:00:00');
+  if (isNaN(venc.getTime())) return null;
   return { venc: venc, restantes: diasHabilesRestantes(venc) };
+}
+async function actualizarVencimiento(fila, valor) {
+  try {
+    await api({ accion:'editar', hoja:'expedientes', datos:{ _fila:fila, vencimiento: valor ? fmt(valor) : '' } });
+    var exp = expedientes.filter(function(e){ return e._fila === fila; })[0];
+    if (exp) exp.vencimiento = valor;
+    renderMisExpedientes();
+    actualizarMetricasPanel();
+    toast(valor ? 'Vencimiento guardado' : 'Vencimiento quitado');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 function statsAgente(nombre) {
   var mine = expedientes.filter(function(e){ return getRespAsig(e) === nombre; });
@@ -1510,14 +1491,6 @@ function renderPanel() {
     '<button class="btn sm" onclick="abrirModalMiClave()" style="background:rgba(255,255,255,.18);color:#fff;border-color:rgba(255,255,255,.4)">🔑 ' + (tieneMiClave ? 'Cambiar mi contraseña' : 'Fijar mi contraseña') + '</button>' +
     '</div>';
 
-  // Métricas de estado (control, sin analítica)
-  var metrics = '<div class="metric-grid">' +
-    '<div class="metric"><div class="lbl">En la Dirección</div><div class="val blue">' + s.enDir + '</div></div>' +
-    '<div class="metric"><div class="lbl">Dictamen por vencer <span style="font-weight:400;color:var(--muted)">(≤5 días háb.)</span></div><div class="val' + (s.porVencer > 0 ? ' amber' : '') + '">' + s.porVencer + '</div></div>' +
-    '<div class="metric"><div class="lbl">Dictamen vencido</div><div class="val" style="' + (s.vencidos > 0 ? 'color:var(--danger)' : '') + '">' + s.vencidos + '</div></div>' +
-    '<div class="metric"><div class="lbl">Resueltos</div><div class="val green">' + s.resueltos + '</div></div>' +
-    '</div>';
-
   // Mis expedientes (centro del panel): buscador + filtros
   var lista = '<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">' +
     '<div class="section-title" style="margin:0">📁 Mis expedientes</div>' +
@@ -1527,11 +1500,22 @@ function renderPanel() {
       '<button class="btn sm" data-f="egresado" onclick="filtrarPanel(\'egresado\')">Resueltos</button>' +
     '</div></div>' +
     '<input type="text" id="panel-buscar" placeholder="Buscar por número, tema o iniciador..." oninput="buscarPanel(this.value)" value="' + esc(panelBuscar) + '" style="width:100%;padding:8px 10px;font-size:14px;border:1px solid var(--input-line);border-radius:var(--radius);margin-bottom:8px">' +
-    '<div style="font-size:11px;color:var(--muted);margin-bottom:12px">📅 Plazo para dictaminar: 20 días hábiles desde el ingreso (excluye fines de semana y feriados; el día de ingreso no cuenta). Se muestra en cada expediente en la Dirección.</div>' +
+    '<div style="font-size:11px;color:var(--muted);margin-bottom:12px">📅 El vencimiento para dictaminar es opcional: cargalo en el expediente que quieras para hacer tu propio seguimiento de plazos.</div>' +
     '<div id="panel-exp-lista"></div></div>';
 
-  cont.innerHTML = hero + metrics + lista;
+  cont.innerHTML = hero + '<div class="metric-grid"></div>' + lista;
+  actualizarMetricasPanel();
   renderMisExpedientes();
+}
+function actualizarMetricasPanel() {
+  var grid = document.querySelector('#panel-contenido .metric-grid');
+  if (!grid || !panelAgente) return;
+  var s = statsAgente(panelAgente);
+  grid.innerHTML =
+    '<div class="metric"><div class="lbl">En la Dirección</div><div class="val blue">' + s.enDir + '</div></div>' +
+    '<div class="metric"><div class="lbl">Dictamen por vencer <span style="font-weight:400;color:var(--muted)">(≤5 días háb.)</span></div><div class="val' + (s.porVencer > 0 ? ' amber' : '') + '">' + s.porVencer + '</div></div>' +
+    '<div class="metric"><div class="lbl">Dictamen vencido</div><div class="val" style="' + (s.vencidos > 0 ? 'color:var(--danger)' : '') + '">' + s.vencidos + '</div></div>' +
+    '<div class="metric"><div class="lbl">Resueltos</div><div class="val green">' + s.resueltos + '</div></div>';
 }
 function renderMisExpedientes() {
   var cont = document.getElementById('panel-exp-lista');
@@ -1557,15 +1541,16 @@ function renderMisExpedientes() {
     var chipPlazo = '';
     if (!egr) {
       var p = plazoDictamen(e);
+      var inputVenc = '<input type="date" title="Fijar vencimiento (opcional)" value="' + esc(toInput(e.vencimiento)) + '" onchange="actualizarVencimiento(' + Number(e._fila) + ',this.value)" style="font-size:11px;padding:2px 5px;border:1px solid var(--input-line);border-radius:6px">';
       if (p) {
         var vf = fmt(p.venc), col, txt;
         if (p.restantes > 5) { col = 'background:var(--green-100);color:var(--green-900)'; txt = '📅 Vence ' + vf + ' · ' + p.restantes + ' días háb.'; }
         else if (p.restantes > 0) { col = 'background:#FEF3C7;color:var(--amber-700)'; txt = '⏳ Vence ' + vf + ' · ' + p.restantes + ' día(s) háb.'; }
         else if (p.restantes === 0) { col = 'background:#FEE2E2;color:var(--danger)'; txt = '⚠️ Vence HOY (' + vf + ')'; }
         else { col = 'background:#FEE2E2;color:var(--danger)'; txt = '🚫 Vencido hace ' + (-p.restantes) + ' día(s) háb. (' + vf + ')'; }
-        chipPlazo = '<div style="margin-top:5px"><span class="chip" style="' + col + '">' + txt + '</span></div>';
+        chipPlazo = '<div style="margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="chip" style="' + col + '">' + txt + '</span>' + inputVenc + '</div>';
       } else {
-        chipPlazo = '<div style="margin-top:5px"><span class="chip" style="background:var(--surface-muted);color:var(--muted)">Sin fecha de ingreso</span></div>';
+        chipPlazo = '<div style="margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:11px;color:var(--muted)">Sin vencimiento cargado (opcional)</span>' + inputVenc + '</div>';
       }
     }
     return '<div class="mini-exp">' +
@@ -2397,8 +2382,10 @@ async function recargarInventario(hoja) {
 }
 
 // ===== Normativas (Programas, Contrataciones, Dictamenes Fiscalia, Legal y Tecnica) =====
-async function initNormativas() {
-  if (normativasCargadas) { renderNormativas(); return; }
+// Solo lectura: lista archivos de una carpeta de Drive con una subcarpeta por
+// categoria (ver README). Cargar/editar/borrar se hace en Drive, no en la app.
+async function initNormativas(forzar) {
+  if (normativasCargadas && !forzar) { renderNormativas(); return; }
   document.getElementById('norm-lista').innerHTML = SKELETON_HTML;
   try {
     var d = await api({ method:'GET', hoja:'normativas' });
@@ -2416,70 +2403,19 @@ function switchNormTab(cat) {
 function renderNormativas() {
   var buscar = (document.getElementById('norm-buscar').value || '').toLowerCase();
   var filtrado = normativasData.filter(function(n){
-    if ((n.categoria || 'Legal y Técnica') !== normSubTab) return false;
+    if ((n.categoria || '') !== normSubTab) return false;
     if (!buscar) return true;
-    return ((n.titulo||'') + ' ' + (n.obs||'')).toLowerCase().indexOf(buscar) >= 0;
-  }).sort(function(a,b){ return (toInput(b.fecha)||'').localeCompare(toInput(a.fecha)||''); });
+    return (n.titulo||'').toLowerCase().indexOf(buscar) >= 0;
+  }).sort(function(a,b){ return (toInput(b.fecha)||'').localeCompare(toInput(a.fecha)||'') || (a.titulo||'').localeCompare(b.titulo||''); });
   document.getElementById('norm-lista').innerHTML = filtrado.length ? filtrado.map(function(n){
-    return '<div class="agente-item" style="align-items:flex-start">' +
+    return '<div class="agente-item">' +
       '<div style="flex:1;min-width:0;padding-right:10px">' +
-        '<div style="font-weight:600">' + esc(n.titulo || '-') + (n.fecha ? ' <span style="font-weight:400;color:#888;font-size:12px">(' + fmt(n.fecha) + ')</span>' : '') + '</div>' +
-        (n.obs ? '<div style="font-size:13px;color:#555;margin-top:4px">' + esc(n.obs) + '</div>' : '') +
-        (n.link ? '<div style="margin-top:4px"><a href="' + esc(n.link) + '" target="_blank" rel="noopener" style="font-size:12px">🔗 Ver documento</a></div>' : '') +
+        '<div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(n.titulo || '-') + '</div>' +
+        (n.fecha ? '<div style="font-size:12px;color:#888">' + fmt(n.fecha) + '</div>' : '') +
       '</div>' +
-      '<div style="white-space:nowrap">' +
-        '<button class="btn sm icon" title="Editar" onclick="abrirModalNormativa(' + Number(n._fila) + ')">✏️</button> ' +
-        '<button class="btn sm icon danger" title="Eliminar" onclick="eliminarNormativa(' + Number(n._fila) + ')">🗑️</button>' +
-      '</div>' +
+      (n.link ? '<a class="btn sm" href="' + esc(n.link) + '" target="_blank" rel="noopener">🔗 Ver</a>' : '') +
     '</div>';
-  }).join('') : '<div class="alert">📄 No hay normativas cargadas en esta categoría.</div>';
-}
-var editNormFila = null;
-function abrirModalNormativa(fila) {
-  var n = fila !== undefined ? normativasData.filter(function(x){ return x._fila === fila; })[0] : null;
-  editNormFila = n ? fila : null;
-  document.getElementById('norm-modal-title').textContent = n ? 'Editar normativa' : 'Nueva normativa';
-  document.getElementById('btn-eliminar-norm').style.display = n ? '' : 'none';
-  document.getElementById('norm-categoria').value = n ? (n.categoria || normSubTab) : normSubTab;
-  document.getElementById('norm-fecha').value = n ? toInput(n.fecha) : '';
-  document.getElementById('norm-titulo').value = n ? (n.titulo || '') : '';
-  document.getElementById('norm-link').value = n ? (n.link || '') : '';
-  document.getElementById('norm-obs').value = n ? (n.obs || '') : '';
-  document.getElementById('overlay-normativa').classList.add('show');
-}
-function cerrarModalNormativa(){ document.getElementById('overlay-normativa').classList.remove('show'); editNormFila = null; }
-async function guardarNormativa() {
-  var categoria = document.getElementById('norm-categoria').value;
-  var titulo = document.getElementById('norm-titulo').value.trim();
-  if (!titulo) { toast('Ingresa el título de la normativa.', 'error'); return; }
-  var fechaVal = document.getElementById('norm-fecha').value;
-  var datos = {
-    categoria: categoria,
-    titulo: titulo,
-    fecha: fechaVal ? fmt(fechaVal) : '',
-    link: document.getElementById('norm-link').value.trim(),
-    obs: document.getElementById('norm-obs').value
-  };
-  var btn = document.getElementById('btn-guardar-norm'); btn.disabled = true; btn.textContent = 'Guardando...';
-  try {
-    if (editNormFila !== null) { datos._fila = editNormFila; await api({ accion:'editar', hoja:'normativas', datos:datos }); }
-    else await api({ accion:'agregar', hoja:'normativas', datos:datos });
-    normativasData = await api({ method:'GET', hoja:'normativas' });
-    normativasData = Array.isArray(normativasData) ? normativasData.filter(function(n){ return n.titulo; }) : [];
-    var eraEdicion = editNormFila !== null;
-    cerrarModalNormativa(); renderNormativas(); toast(eraEdicion ? 'Normativa actualizada' : 'Normativa guardada');
-  } catch (e) { toast('Error: ' + e.message, 'error'); }
-  btn.disabled = false; btn.textContent = 'Guardar';
-}
-async function eliminarNormativa(fila) {
-  if (!await confirmar('¿Eliminar esta normativa?', 'Eliminar')) return;
-  try { await api({ accion:'eliminar', hoja:'normativas', datos:{ _fila:fila } }); normativasData = normativasData.filter(function(n){ return n._fila !== fila; }); renderNormativas(); toast('Normativa eliminada'); } catch (e) { toast('Error: ' + e.message, 'error'); }
-}
-async function eliminarNormativaDesdeModal() {
-  if (editNormFila === null) return;
-  var filaBorrar = editNormFila;
-  await eliminarNormativa(filaBorrar);
-  if (!normativasData.some(function(n){ return n._fila === filaBorrar; })) cerrarModalNormativa();
+  }).join('') : '<div class="alert">📄 No hay archivos cargados en esta categoría todavía.</div>';
 }
 function switchInvTab(t) {
   invSubTab = t;
