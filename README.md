@@ -14,13 +14,13 @@ App de gestión de expedientes de la Dirección General de Asuntos Jurídicos. E
 | `inventario` | bienes de la oficina (columnas: `bien`, `categoria`, `cantidad`, `estado`, `ubicacion`, `obs`) |
 | `pedidos` | pedidos de insumos (columnas: `fecha`, `insumo`, `cantidad`, `solicitante`, `estado`, `obs`) |
 | `log` | auditoría/trazabilidad: una fila por cada alta/edición/baja (columnas: `fecha`, `accion`, `hoja`, `datos`). Solo lectura desde el frontend (botón "🕘 Ver historial" en Registro); la escribe el propio Apps Script en cada `doPost` exitoso. |
-| `normativas` | repositorio de normas, organizado en 4 sub-pestañas por la columna `categoria` (`Programas`, `Contrataciones`, `Dictámenes Fiscalía`, `Legal y Técnica`). Columnas: `categoria`, `titulo`, `fecha`, `link`, `obs`. |
+| `normativas` | **no es una hoja de Sheets**: `hoja=normativas` en el GET devuelve, del lado del Apps Script, el listado de archivos de una carpeta de Drive con una subcarpeta por categoría (`Programas`, `Contrataciones`, `Dictámenes Fiscalía`, `Legal y Técnica`). Solo lectura (igual que `dictamenes`): subir/editar/borrar un archivo se hace directo en Drive, no desde la app. |
 
 > **Para activar la pestaña Inventario**: crear en la planilla dos hojas nuevas llamadas exactamente `inventario` y `pedidos`, con los encabezados de la tabla de arriba en la fila 1 (en minúsculas). El Apps Script debe soportar las acciones `agregar`, `editar` y `eliminar` de forma genérica por nombre de hoja (igual que con las hojas existentes).
 
 > **Para activar el historial/trazabilidad**: crear una hoja `log` con los encabezados `fecha`, `accion`, `hoja`, `datos` (en minúsculas), y agregar al `doPost` del Apps Script una llamada a `registrarLog_(accion, hoja, datos)` que guarde una fila en esa hoja después de cada alta/edición/baja exitosa. Sin esa hoja, el botón de historial simplemente muestra "todavía no hay historial" (no rompe nada).
 
-> **Para activar la pestaña Normativas**: crear en la planilla una hoja nueva llamada exactamente `normativas`, con los encabezados `categoria`, `titulo`, `fecha`, `link`, `obs` en la fila 1 (en minúsculas). El valor de `categoria` tiene que ser exactamente uno de: `Programas`, `Contrataciones`, `Dictámenes Fiscalía`, `Legal y Técnica` (asi coincide con la sub-pestaña correspondiente).
+> **Para activar la pestaña Normativas**: en Drive, crear una carpeta contenedora y adentro 4 subcarpetas con el nombre **exacto** de cada categoría: `Programas`, `Contrataciones`, `Dictámenes Fiscalía`, `Legal y Técnica`. Los archivos que se suban a cada subcarpeta aparecen automáticamente en esa sub-pestaña de la app (nombre del archivo, fecha de última modificación y link para abrirlo) — no hace falta ni hoja de cálculo ni cargar nada desde la app. Hay que agregar al `doGet` del Apps Script el manejo de `hoja === 'normativas'` (mismo patrón que ya usa `dictamenes` para leer una carpeta de Drive), con el ID de la carpeta contenedora en una constante nueva (`CARPETA_NORMATIVAS`).
 
 ### Pestaña "Mi Panel" (rendimiento por agente)
 
@@ -29,9 +29,9 @@ Control personal de expedientes de cada agente: elige su nombre en un selector (
 - Encabezado con su nombre y estado (total, en la Dirección, resueltos).
 - Métricas de control: mis expedientes, en la Dirección, resueltos y cuántos llevan +90 días sin resolver.
 - Lista de sus expedientes con **buscador** (número, tema o iniciador) y filtros (Todos / En la Dirección / Resueltos), con acciones de consulta en el portal y ver dictámenes.
-- **Plazo para dictaminar**: cada expediente en la Dirección muestra su fecha de vencimiento y los días hábiles restantes (chip verde / ámbar "por vencer" / rojo "vencido"). Son 20 días hábiles contados desde el día siguiente al ingreso, excluyendo fines de semana y feriados nacionales + provinciales de Entre Ríos (usa el mismo `esFeriado()` que el módulo de Licencias; el plazo `DIAS_DICTAMEN` y los feriados se editan en el código). Las métricas incluyen "Dictamen por vencer" (≤5 días hábiles) y "Dictamen vencido".
+- **Vencimiento para dictaminar (opcional)**: no se calcula automáticamente. Cada agente puede cargar, si quiere, una fecha de vencimiento en cualquiera de sus expedientes en la Dirección (un selector de fecha al lado del expediente); a partir de ahí se muestran los días hábiles restantes (chip verde / ámbar "por vencer" / rojo "vencido"), excluyendo fines de semana y feriados nacionales + provinciales de Entre Ríos (usa el mismo `esFeriado()` que el módulo de Licencias). Un expediente sin vencimiento cargado no cuenta en las métricas "Dictamen por vencer" (≤5 días hábiles) ni "Dictamen vencido". Se guarda en la columna `vencimiento` de la hoja `expedientes`.
 
-**No requiere hojas ni cambios en el backend** (salvo la contraseña, ver abajo): todo se calcula en el navegador a partir de los datos ya cargados de `expedientes` y `agentes`.
+**Requiere agregar la columna `vencimiento`** a la hoja `expedientes` (el Apps Script ya soporta `editar` escribiendo solo las columnas enviadas, igual que con `cumple_mes`/`cumple_dia`). El resto de "Mi Panel" no requiere hojas ni cambios en el backend (salvo la contraseña, ver abajo): se calcula en el navegador a partir de los datos ya cargados de `expedientes` y `agentes`.
 
 ### Contraseña por agente y rol Director
 
