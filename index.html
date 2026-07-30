@@ -179,6 +179,7 @@ tbody tr:hover td{background:var(--green-50)}
     <button class="tab" onclick="switchTab('programas')">Programas</button>
     <button class="tab" onclick="switchTab('licencias')">Licencias</button>
     <button class="tab" onclick="switchTab('inventario')">Inventario</button>
+    <button class="tab" onclick="switchTab('normativas')">Normativas</button>
     <button class="tab" onclick="switchTab('config')">🔒 Agentes</button>
     <button class="tab" onclick="switchTab('historico')">Histórico</button>
   </div>
@@ -373,6 +374,21 @@ tbody tr:hover td{background:var(--green-50)}
       </div>
       <div id="ped-lista"></div>
     </div>
+  </div>
+
+  <div class="section" id="tab-normativas">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:15px;font-weight:600">Normativas</div>
+      <button class="btn primary" onclick="abrirModalNormativa()">+ Nueva normativa</button>
+    </div>
+    <div class="tabs" style="margin-bottom:16px" id="norm-subtabs">
+      <button class="tab active" onclick="switchNormTab('Programas')">Programas</button>
+      <button class="tab" onclick="switchNormTab('Contrataciones')">Contrataciones</button>
+      <button class="tab" onclick="switchNormTab('Dictámenes Fiscalía')">Dictámenes Fiscalía</button>
+      <button class="tab" onclick="switchNormTab('Legal y Técnica')">Legal y Técnica</button>
+    </div>
+    <input type="text" id="norm-buscar" placeholder="Buscar por título u observación..." oninput="renderNormativas()" style="width:100%;padding:8px 10px;font-size:14px;border:1px solid #d0d0c8;border-radius:8px;margin-bottom:16px">
+    <div id="norm-lista"></div>
   </div>
 
   <div class="section" id="tab-config">
@@ -608,6 +624,29 @@ tbody tr:hover td{background:var(--green-50)}
   </div>
 </div>
 
+<div class="overlay" id="overlay-normativa">
+  <div class="modal">
+    <h3 id="norm-modal-title">Nueva normativa</h3>
+    <div class="form-grid">
+      <div class="fg"><label>Categoría *</label><select id="norm-categoria">
+        <option value="Programas">Programas</option>
+        <option value="Contrataciones">Contrataciones</option>
+        <option value="Dictámenes Fiscalía">Dictámenes Fiscalía</option>
+        <option value="Legal y Técnica">Legal y Técnica</option>
+      </select></div>
+      <div class="fg"><label>Fecha</label><input type="date" id="norm-fecha"></div>
+      <div class="fg full"><label>Título *</label><input type="text" id="norm-titulo" placeholder="Ej: Decreto 1234/2024, Resolución 56/2023..."></div>
+      <div class="fg full"><label>Link (opcional)</label><input type="text" id="norm-link" placeholder="URL al PDF, Drive, boletín oficial..."></div>
+      <div class="fg full"><label>Observaciones</label><textarea id="norm-obs" placeholder="Opcional"></textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn danger" id="btn-eliminar-norm" onclick="eliminarNormativaDesdeModal()" style="display:none;margin-right:auto">Eliminar</button>
+      <button class="btn" onclick="cerrarModalNormativa()">Cancelar</button>
+      <button class="btn primary" id="btn-guardar-norm" onclick="guardarNormativa()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <datalist id="lista-insumos">
   <option value="Biromes azules"><option value="Biromes negras"><option value="Biromes rojas">
   <option value="Hojas A4"><option value="Hojas oficio"><option value="Folios A4">
@@ -661,6 +700,8 @@ var datosMapaActual = {};
 var paginaActual = 1, POR_PAGINA = 50;
 var historicoCache = {}, anioHistoricoActivo = '2025', historicoBuscarTimer = null;
 var inventarioData = [], pedidosData = [], inventarioCargado = false;
+var normativasData = [], normativasCargadas = false, normSubTab = 'Programas';
+var CATEGORIAS_NORMATIVAS = ['Programas', 'Contrataciones', 'Dictámenes Fiscalía', 'Legal y Técnica'];
 var licenciasCargadas = false;
 var logData = null; // null = todavia no se pidio; [] = pedido pero vacio (o no existe la hoja "log" en la planilla)
 var invSubTab = 'bienes', editBienIdx = null, editPedidoIdx = null;
@@ -1160,7 +1201,7 @@ async function confirmarClave() {
 function switchTab(t) {
   if (TABS_PROTEGIDAS.indexOf(t) >= 0 && !zonaDesbloqueada()) { abrirModalClave(t); return; }
   var tabsEls = document.querySelectorAll('.container > .tabs > .tab');
-  var orden = ['registro','panel','analisis','programas','licencias','inventario','config','historico'];
+  var orden = ['registro','panel','analisis','programas','licencias','inventario','normativas','config','historico'];
   tabsEls.forEach(function(el, i){ el.classList.toggle('active', orden[i] === t); });
   document.querySelectorAll('.section').forEach(function(el){ el.classList.remove('active'); });
   document.getElementById('tab-' + t).classList.add('active');
@@ -1171,6 +1212,7 @@ function switchTab(t) {
   if (t === 'licencias') initLicencias();
   if (t === 'historico') cargarHistorico(anioHistoricoActivo);
   if (t === 'inventario') initInventario();
+  if (t === 'normativas') initNormativas();
 }
 function switchAnioHistorico(anio) {
   anioHistoricoActivo = anio;
@@ -2352,6 +2394,92 @@ async function recargarInventario(hoja) {
   } catch (e) {
     if (hoja === 'inventario') inventarioData = []; else pedidosData = [];
   }
+}
+
+// ===== Normativas (Programas, Contrataciones, Dictamenes Fiscalia, Legal y Tecnica) =====
+async function initNormativas() {
+  if (normativasCargadas) { renderNormativas(); return; }
+  document.getElementById('norm-lista').innerHTML = SKELETON_HTML;
+  try {
+    var d = await api({ method:'GET', hoja:'normativas' });
+    normativasData = Array.isArray(d) ? d.filter(function(n){ return n.titulo; }) : [];
+  } catch (e) { normativasData = []; }
+  normativasCargadas = true;
+  renderNormativas();
+}
+function switchNormTab(cat) {
+  normSubTab = cat;
+  var els = document.querySelectorAll('#norm-subtabs .tab');
+  els.forEach(function(el, i){ el.classList.toggle('active', CATEGORIAS_NORMATIVAS[i] === cat); });
+  renderNormativas();
+}
+function renderNormativas() {
+  var buscar = (document.getElementById('norm-buscar').value || '').toLowerCase();
+  var filtrado = normativasData.filter(function(n){
+    if ((n.categoria || 'Legal y Técnica') !== normSubTab) return false;
+    if (!buscar) return true;
+    return ((n.titulo||'') + ' ' + (n.obs||'')).toLowerCase().indexOf(buscar) >= 0;
+  }).sort(function(a,b){ return (toInput(b.fecha)||'').localeCompare(toInput(a.fecha)||''); });
+  document.getElementById('norm-lista').innerHTML = filtrado.length ? filtrado.map(function(n){
+    return '<div class="agente-item" style="align-items:flex-start">' +
+      '<div style="flex:1;min-width:0;padding-right:10px">' +
+        '<div style="font-weight:600">' + esc(n.titulo || '-') + (n.fecha ? ' <span style="font-weight:400;color:#888;font-size:12px">(' + fmt(n.fecha) + ')</span>' : '') + '</div>' +
+        (n.obs ? '<div style="font-size:13px;color:#555;margin-top:4px">' + esc(n.obs) + '</div>' : '') +
+        (n.link ? '<div style="margin-top:4px"><a href="' + esc(n.link) + '" target="_blank" rel="noopener" style="font-size:12px">🔗 Ver documento</a></div>' : '') +
+      '</div>' +
+      '<div style="white-space:nowrap">' +
+        '<button class="btn sm icon" title="Editar" onclick="abrirModalNormativa(' + Number(n._fila) + ')">✏️</button> ' +
+        '<button class="btn sm icon danger" title="Eliminar" onclick="eliminarNormativa(' + Number(n._fila) + ')">🗑️</button>' +
+      '</div>' +
+    '</div>';
+  }).join('') : '<div class="alert">📄 No hay normativas cargadas en esta categoría.</div>';
+}
+var editNormFila = null;
+function abrirModalNormativa(fila) {
+  var n = fila !== undefined ? normativasData.filter(function(x){ return x._fila === fila; })[0] : null;
+  editNormFila = n ? fila : null;
+  document.getElementById('norm-modal-title').textContent = n ? 'Editar normativa' : 'Nueva normativa';
+  document.getElementById('btn-eliminar-norm').style.display = n ? '' : 'none';
+  document.getElementById('norm-categoria').value = n ? (n.categoria || normSubTab) : normSubTab;
+  document.getElementById('norm-fecha').value = n ? toInput(n.fecha) : '';
+  document.getElementById('norm-titulo').value = n ? (n.titulo || '') : '';
+  document.getElementById('norm-link').value = n ? (n.link || '') : '';
+  document.getElementById('norm-obs').value = n ? (n.obs || '') : '';
+  document.getElementById('overlay-normativa').classList.add('show');
+}
+function cerrarModalNormativa(){ document.getElementById('overlay-normativa').classList.remove('show'); editNormFila = null; }
+async function guardarNormativa() {
+  var categoria = document.getElementById('norm-categoria').value;
+  var titulo = document.getElementById('norm-titulo').value.trim();
+  if (!titulo) { toast('Ingresa el título de la normativa.', 'error'); return; }
+  var fechaVal = document.getElementById('norm-fecha').value;
+  var datos = {
+    categoria: categoria,
+    titulo: titulo,
+    fecha: fechaVal ? fmt(fechaVal) : '',
+    link: document.getElementById('norm-link').value.trim(),
+    obs: document.getElementById('norm-obs').value
+  };
+  var btn = document.getElementById('btn-guardar-norm'); btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    if (editNormFila !== null) { datos._fila = editNormFila; await api({ accion:'editar', hoja:'normativas', datos:datos }); }
+    else await api({ accion:'agregar', hoja:'normativas', datos:datos });
+    normativasData = await api({ method:'GET', hoja:'normativas' });
+    normativasData = Array.isArray(normativasData) ? normativasData.filter(function(n){ return n.titulo; }) : [];
+    var eraEdicion = editNormFila !== null;
+    cerrarModalNormativa(); renderNormativas(); toast(eraEdicion ? 'Normativa actualizada' : 'Normativa guardada');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Guardar';
+}
+async function eliminarNormativa(fila) {
+  if (!await confirmar('¿Eliminar esta normativa?', 'Eliminar')) return;
+  try { await api({ accion:'eliminar', hoja:'normativas', datos:{ _fila:fila } }); normativasData = normativasData.filter(function(n){ return n._fila !== fila; }); renderNormativas(); toast('Normativa eliminada'); } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+async function eliminarNormativaDesdeModal() {
+  if (editNormFila === null) return;
+  var filaBorrar = editNormFila;
+  await eliminarNormativa(filaBorrar);
+  if (!normativasData.some(function(n){ return n._fila === filaBorrar; })) cerrarModalNormativa();
 }
 function switchInvTab(t) {
   invSubTab = t;
