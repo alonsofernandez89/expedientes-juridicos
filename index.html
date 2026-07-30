@@ -144,6 +144,9 @@ tbody tr:hover td{background:var(--green-50)}
 #globos-cumple{position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden}
 .globo{position:absolute;top:-60px;left:0;animation:caerGlobo linear forwards}
 @keyframes caerGlobo{0%{transform:translateY(0) translateX(0) rotate(0deg);opacity:0}6%{opacity:1}100%{transform:translateY(110vh) translateX(var(--drift,0px)) rotate(var(--rot,20deg));opacity:.9}}
+.figura-historica{position:absolute;top:-60px;left:0;display:flex;flex-direction:column;align-items:center;gap:2px;animation:caerGlobo linear forwards}
+.figura-historica .fh-icono{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.figura-historica .fh-nombre{font-size:10px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);padding:1px 7px;border-radius:999px;white-space:nowrap}
 .cumple-banner{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#fde9c8;color:#92700c;padding:10px 22px;border-radius:999px;font-size:14px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.15);z-index:10000;animation:fadeIn .3s var(--ease)}
 .print-only{display:none}
 @media print{
@@ -777,11 +780,18 @@ function esCumpleEnFecha(nombre, fecha) {
   if (!md) return false;
   return md === (String(fecha.getMonth()+1).padStart(2,'0') + '-' + String(fecha.getDate()).padStart(2,'0'));
 }
+// Insignias ilustradas (icono + nombre), no fotos reales: para el cumpleaños de
+// Gabriela, ademas de los globos caen estas dos junto con el resto.
+var FIGURAS_HISTORICAS = [
+  { icono:'🎖️', nombre:'Perón', color:'#3f6fb0' },
+  { icono:'🌹', nombre:'Evita', color:'#b0447a' }
+];
 function celebrarCumpleanos() {
   if (document.getElementById('globos-cumple')) return;
   var hoy = new Date();
   var cumpleaneros = agentesInfo.filter(function(a){ return esCumpleEnFecha(a.nombre, hoy); }).map(function(a){ return a.nombre; });
   if (!cumpleaneros.length) return;
+  var esGabriela = cumpleaneros.some(function(n){ return normalizar(n).indexOf('GABRIELA') >= 0; });
   var cont = document.createElement('div');
   cont.id = 'globos-cumple';
   document.body.appendChild(cont);
@@ -796,6 +806,20 @@ function celebrarCumpleanos() {
     g.style.animationDuration = (5 + Math.random()*4) + 's';
     g.style.animationDelay = (Math.random()*4) + 's';
     cont.appendChild(g);
+  }
+  if (esGabriela) {
+    for (var j = 0; j < 16; j++) {
+      var fig = FIGURAS_HISTORICAS[j % FIGURAS_HISTORICAS.length];
+      var f = document.createElement('div');
+      f.className = 'figura-historica';
+      f.innerHTML = '<div class="fh-icono" style="background:' + fig.color + '">' + fig.icono + '</div><div class="fh-nombre">' + fig.nombre + '</div>';
+      f.style.left = (Math.random()*100) + 'vw';
+      f.style.setProperty('--drift', (Math.random()*160-80) + 'px');
+      f.style.setProperty('--rot', (Math.random()*40-20) + 'deg');
+      f.style.animationDuration = (6 + Math.random()*4) + 's';
+      f.style.animationDelay = (Math.random()*4) + 's';
+      cont.appendChild(f);
+    }
   }
   var banner = document.createElement('div');
   banner.className = 'cumple-banner';
