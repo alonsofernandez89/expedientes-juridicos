@@ -538,11 +538,11 @@ tbody tr:hover td{background:var(--green-50)}
 
 <div class="overlay" id="overlay-programa">
   <div class="modal">
-    <h3>Nuevo programa</h3>
-    <div class="fg" style="margin-bottom:12px"><label>Nombre del programa</label><input type="text" id="np-nombre" placeholder="Ej: Juventud Emprende"></div>
+    <h3 id="prog-modal-title">Nuevo programa</h3>
+    <div class="fg" style="margin-bottom:12px"><label>Nombre del programa</label><input type="text" id="np-nombre" placeholder="Ej: Juventud Emprende" onkeydown="if(event.key==='Enter'){event.preventDefault();guardarPrograma();}"></div>
     <div class="modal-actions">
       <button class="btn" onclick="document.getElementById('overlay-programa').classList.remove('show')">Cancelar</button>
-      <button class="btn primary" onclick="guardarPrograma()">Guardar</button>
+      <button class="btn primary" id="btn-guardar-prog" onclick="guardarPrograma()">Guardar</button>
     </div>
   </div>
 </div>
@@ -926,12 +926,47 @@ var LOCALIDADES_RE = (function() {
   });
 })();
 
+// Palabras clave por defecto de los 3 programas de fabrica (se usan solo mientras
+// nadie cargo palabras clave propias para ese programa desde la pestaña Programas).
+var PALABRAS_CLAVE_DEFAULT = {
+  'Juventud Emprende': ['emprende'],
+  'Juventud en el Centro': ['en el centro', 'en centro'],
+  'Juventud en la Comunidad': ['en la comunidad', 'en comunidad']
+};
+// Palabras clave configuradas para "prog" (tal como se cargaron, sin normalizar),
+// leidas del registro placeholder (programa, expte vacio) de la hoja "programas".
+function getPalabrasClaveRaw(prog) {
+  var fila = programasData.filter(function(p){ return p.programa === prog && p.palabras_clave; })[0];
+  if (fila) return String(fila.palabras_clave).split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+  return (PALABRAS_CLAVE_DEFAULT[prog] || []).slice();
+}
+function coincidePalabraClave(tema, prog) {
+  var t = normTexto(tema);
+  var claves = getPalabrasClaveRaw(prog).map(normTexto);
+  return claves.some(function(k){ return k && t.indexOf(k) >= 0; });
+}
+async function guardarPalabrasClave(prog, valor) {
+  var limpio = valor.split(',').map(function(s){ return s.trim(); }).filter(Boolean).join(', ');
+  var placeholder = programasData.filter(function(p){ return p.programa === prog && !p.expte; })[0];
+  try {
+    if (placeholder) {
+      if (placeholder._fila === undefined) { toast('Recargá la página antes de editar las palabras clave.', 'error'); return; }
+      await api({ accion:'editar', hoja:'programas', datos:{ _fila:placeholder._fila, palabras_clave:limpio } });
+      placeholder.palabras_clave = limpio;
+    } else {
+      await api({ accion:'agregar', hoja:'programas', datos:{ programa:prog, expte:'', palabras_clave:limpio } });
+      programasData.push({ programa:prog, expte:'', palabras_clave:limpio });
+    }
+    toast('Palabras clave guardadas');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
 function detectarProgramaYDepto(tema) {
   var t = normTexto(tema);
   var programa = null;
-  if (t.indexOf('emprende') >= 0) programa = 'Juventud Emprende';
-  else if (t.indexOf('en el centro') >= 0 || t.indexOf('en centro') >= 0) programa = 'Juventud en el Centro';
-  else if ((t.indexOf('comunidad') >= 0 && t.indexOf('juventud') >= 0) || t.indexOf('en comunidad') >= 0) programa = 'Juventud en la Comunidad';
+  var progs = getProgramas();
+  for (var i = 0; i < progs.length; i++) {
+    if (coincidePalabraClave(tema, progs[i])) { programa = progs[i]; break; }
+  }
 
   var departamento = null;
   for (var i = 0; i < LOCALIDADES_RE.length; i++) {
@@ -1923,7 +1958,13 @@ function renderPrograma(prog) {
     '<div><span style="font-size:14px;font-weight:600">' + esc(prog) + '</span><span style="font-size:12px;color:#888;margin-left:8px">' + contador + '</span></div>' +
     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' + selEstado +
     '<button class="btn sm primary" onclick="abrirModalAsignar(\'' + jsArg(prog) + '\')">+ Asignar expediente</button>' +
-    '<button class="btn sm danger" onclick="eliminarPrograma(\'' + jsArg(prog) + '\')">Eliminar programa</button></div></div>' + tabla + '</div>';
+    '<button class="btn sm" onclick="abrirModalRenombrar(\'' + jsArg(prog) + '\')">✏️ Renombrar</button>' +
+    '<button class="btn sm danger" onclick="eliminarPrograma(\'' + jsArg(prog) + '\')">Eliminar programa</button></div></div>' +
+    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px">' +
+      '<label style="font-size:12px;color:#888;white-space:nowrap">🔑 Palabras clave (asignan solas los expedientes nuevos que las mencionen en el tema):</label>' +
+      '<input type="text" id="prog-palabras-input" value="' + esc(getPalabrasClaveRaw(prog).join(', ')) + '" placeholder="Ej: emprende, taller de oficios" style="flex:1;min-width:220px;font-size:12px;padding:5px 9px;border:1px solid #d0d0c8;border-radius:6px" onchange="guardarPalabrasClave(\'' + jsArg(prog) + '\', this.value)">' +
+    '</div>' +
+    tabla + '</div>';
 }
 
 function renderSinAsignar() {
@@ -1963,10 +2004,46 @@ async function quitarDeSinAsignar(expte) {
   } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 
-function abrirModalPrograma(){ document.getElementById('np-nombre').value = ''; document.getElementById('overlay-programa').classList.add('show'); }
+var programaRenombrando = null;
+function abrirModalPrograma(){
+  programaRenombrando = null;
+  document.getElementById('prog-modal-title').textContent = 'Nuevo programa';
+  document.getElementById('np-nombre').value = '';
+  document.getElementById('overlay-programa').classList.add('show');
+}
+function abrirModalRenombrar(prog) {
+  programaRenombrando = prog;
+  document.getElementById('prog-modal-title').textContent = 'Renombrar programa';
+  document.getElementById('np-nombre').value = prog;
+  document.getElementById('overlay-programa').classList.add('show');
+  setTimeout(function(){ var inp = document.getElementById('np-nombre'); inp.focus(); inp.select(); }, 100);
+}
 async function guardarPrograma() {
   var nombre = document.getElementById('np-nombre').value.trim();
   if (!nombre) { toast('Ingresa un nombre.', 'error'); return; }
+  var btn = document.getElementById('btn-guardar-prog');
+  if (programaRenombrando) {
+    var viejo = programaRenombrando;
+    if (nombre === viejo) { document.getElementById('overlay-programa').classList.remove('show'); return; }
+    if (getProgramas().indexOf(nombre) >= 0) { toast('Ya existe un programa con ese nombre.', 'error'); return; }
+    var filas = programasData.filter(function(p){ return p.programa === viejo; });
+    if (filas.some(function(p){ return p._fila === undefined; })) { toast('Recargá la página antes de renombrar (hay cambios recientes sin sincronizar).', 'error'); return; }
+    btn.disabled = true; btn.textContent = 'Guardando...';
+    try {
+      if (!filas.length) {
+        // Programa de fabrica sin filas propias todavia: crear el placeholder directo con el nombre nuevo.
+        await api({ accion:'agregar', hoja:'programas', datos:{ programa:nombre, expte:'' } });
+        programasData.push({ programa:nombre, expte:'' });
+      } else {
+        await Promise.all(filas.map(function(p){ return api({ accion:'editar', hoja:'programas', datos:{ _fila:p._fila, programa:nombre } }); }));
+        filas.forEach(function(p){ p.programa = nombre; });
+      }
+      document.getElementById('overlay-programa').classList.remove('show');
+      programaActivo = nombre; renderProgramas(); toast('Programa renombrado');
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+    btn.disabled = false; btn.textContent = 'Guardar';
+    return;
+  }
   if (getProgramas().indexOf(nombre) >= 0) { toast('Ya existe ese programa.', 'error'); return; }
   await api({ accion:'agregar', hoja:'programas', datos:{ programa:nombre, expte:'' } });
   programasData.push({ programa:nombre, expte:'' });
