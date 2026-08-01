@@ -1187,6 +1187,7 @@ async function confirmarClave() {
   if (!(await verificarClave(intento))) { toast('Contraseña incorrecta', 'error'); return; }
   sessionStorage.setItem('zona-protegida-ok', '1');
   document.getElementById('overlay-clave').classList.remove('show');
+  renderTabla(); // habilita "Borrar" en Registro ahora que es el Director
   var t = tabPendienteClave; tabPendienteClave = null;
   if (t) switchTab(t);
 }
@@ -1328,6 +1329,10 @@ function renderTabla() {
     pagHtml = '<span style="font-size:13px;color:#888">' + totalFiltrado + ' expediente(s)</span>';
   }
   document.getElementById('paginacion').innerHTML = pagHtml;
+  var puedeBorrar = zonaDesbloqueada();
+  var btnBorrar = puedeBorrar
+    ? function(idx){ return '<button class="btn sm icon danger" title="Borrar" onclick="eliminar(' + idx + ')">🗑️</button> '; }
+    : function(){ return '<button class="btn sm icon danger" title="Solo el Director puede borrar expedientes (ingresá la clave maestra en Agentes)" disabled style="opacity:.35;cursor:not-allowed">🗑️</button> '; };
   var html = '';
   pagina.forEach(function(e){
     var egr = estaEgresado(e);
@@ -1342,7 +1347,7 @@ function renderTabla() {
       '<td style="white-space:nowrap">' + fmt(getSalio(e)) + '</td>' +
       '<td style="white-space:nowrap">' +
         '<button class="btn sm icon" title="Editar" onclick="abrirModal(' + e._idx + ')">✏️</button> ' +
-        '<button class="btn sm icon danger" title="Borrar" onclick="eliminar(' + e._idx + ')">🗑️</button> ' +
+        btnBorrar(e._idx) +
         '<button class="btn sm icon" title="Consultar en el portal" onclick="consultarExpte(\'' + jsArg(getExpte(e)) + '\')">🔗</button> ' +
         '<button class="btn sm icon" title="Ver dictamenes" onclick="verDictamenes(\'' + jsArg(getExpte(e)) + '\')">📄</button>' +
       '</td></tr>';
@@ -2854,6 +2859,7 @@ async function guardar() {
   btn.disabled = false; btn.textContent = 'Guardar';
 }
 async function eliminar(idx) {
+  if (!zonaDesbloqueada()) { toast('Solo el Director puede borrar expedientes.', 'error'); return; }
   if (!await confirmar('¿Eliminas este expediente? Esta accion no se puede deshacer.', 'Eliminar')) return;
   try { await api({ accion:'eliminar', hoja:'expedientes', datos:{ _fila:expedientes[idx]._fila } }); toast('Expediente eliminado'); await cargar(); } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
