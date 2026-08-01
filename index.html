@@ -275,7 +275,10 @@ tbody tr:hover td{background:var(--green-50)}
   <div class="section" id="tab-programas">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
       <div style="font-size:15px;font-weight:600">Programas</div>
-      <button class="btn primary" onclick="abrirModalPrograma()">+ Nuevo programa</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn" onclick="aplicarPalabrasClaveExistentes()" title="Revisa todos los expedientes ya cargados y los asigna a un programa si su tema menciona alguna palabra clave">🔍 Aplicar palabras clave</button>
+        <button class="btn primary" onclick="abrirModalPrograma()">+ Nuevo programa</button>
+      </div>
     </div>
     <div class="tabs" style="margin-bottom:16px" id="prog-subtabs">
       <button class="tab active" onclick="switchSubTab('lista')">Lista</button>
@@ -958,6 +961,37 @@ async function guardarPalabrasClave(prog, valor) {
       programasData.push({ programa:prog, expte:'', palabras_clave:limpio });
     }
     toast('Palabras clave guardadas');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+// Aplica las palabras clave de todos los programas a los expedientes ya cargados en
+// Registro (no solo a los que se registren de ahora en mas): a cada uno que todavia
+// no este asignado a un programa en particular, y cuyo tema mencione alguna de sus
+// palabras clave, lo asigna a ese programa. Respeta a los expedientes que ya se
+// marcaron explicitamente como "quitados" de la bandeja Sin asignar.
+async function aplicarPalabrasClaveExistentes() {
+  var progs = getProgramas();
+  var yaAsignado = {};
+  programasData.forEach(function(p){ if (p.programa !== PROG_OCULTO && p.expte) yaAsignado[p.programa + '|' + String(p.expte).trim()] = true; });
+  var ocultos = {};
+  programasData.forEach(function(p){ if (p.programa === PROG_OCULTO && p.expte) ocultos[String(p.expte).trim()] = true; });
+  var asignaciones = [];
+  expedientes.forEach(function(e){
+    var expte = String(getExpte(e) || '').trim();
+    if (!expte || ocultos[expte]) return;
+    var tema = getTema(e);
+    progs.forEach(function(prog){
+      var clave = prog + '|' + expte;
+      if (yaAsignado[clave]) return;
+      if (coincidePalabraClave(tema, prog)) { asignaciones.push({ programa:prog, expte:expte }); yaAsignado[clave] = true; }
+    });
+  });
+  if (!asignaciones.length) { toast('No se encontraron expedientes nuevos para asignar.'); return; }
+  if (!await confirmar('Se van a asignar ' + asignaciones.length + ' expediente(s) a un programa según sus palabras clave. ¿Continuar?', 'Aplicar')) return;
+  try {
+    await Promise.all(asignaciones.map(function(a){ return api({ accion:'agregar', hoja:'programas', datos:{ programa:a.programa, expte:a.expte } }); }));
+    asignaciones.forEach(function(a){ programasData.push({ programa:a.programa, expte:a.expte }); });
+    renderProgramas();
+    toast(asignaciones.length + ' expediente(s) asignado(s)');
   } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 function detectarProgramaYDepto(tema) {
