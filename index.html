@@ -648,16 +648,6 @@ tbody tr:hover td{background:var(--green-50)}
   </div>
 </div>
 
-<div class="overlay" id="overlay-historial" onclick="if(event.target===this)cerrarHistorial()">
-  <div class="modal" style="width:520px">
-    <h3>🕘 Historial del expediente <span id="hist-expte-titulo"></span></h3>
-    <div id="hist-contenido" style="font-size:13px;max-height:60vh;overflow-y:auto"></div>
-    <div class="modal-actions">
-      <button class="btn" onclick="cerrarHistorial()">Cerrar</button>
-    </div>
-  </div>
-</div>
-
 <div class="toast" id="toast"></div>
 
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG" crossorigin="anonymous"></script>
@@ -684,7 +674,6 @@ var inventarioData = [], pedidosData = [], inventarioCargado = false;
 var normativasData = [], normativasCargadas = false, normSubTab = 'Programas';
 var CATEGORIAS_NORMATIVAS = ['Programas', 'Contrataciones', 'Dictámenes Fiscalía', 'Legal y Técnica'];
 var licenciasCargadas = false;
-var logData = null; // null = todavia no se pidio; [] = pedido pero vacio (o no existe la hoja "log" en la planilla)
 var invSubTab = 'bienes', editBienIdx = null, editPedidoIdx = null;
 var ESTADO_CHIP = {
   'Bueno':['#EAF3DE','#3B6D11'],'Regular':['#FEF3C7','#854F0B'],'Malo':['#FEE2E2','#991B1B'],
@@ -1074,50 +1063,6 @@ async function initLicencias() {
   renderLicencias();
 }
 
-// ===== Historial / trazabilidad =====
-// Lee la hoja "log" (si existe) donde el Apps Script registra cada alta/edicion/baja,
-// y muestra las que correspondan al numero de expediente abierto.
-var ACCION_LABEL = { agregar: 'Alta', editar: 'Edición', eliminar: 'Baja' };
-function fmtFechaHora(d) {
-  var dt = new Date(d);
-  if (isNaN(dt)) return String(d || '-');
-  return String(dt.getDate()).padStart(2,'0') + '/' + String(dt.getMonth()+1).padStart(2,'0') + '/' + dt.getFullYear() + ' ' + String(dt.getHours()).padStart(2,'0') + ':' + String(dt.getMinutes()).padStart(2,'0');
-}
-async function verHistorial(expte) {
-  document.getElementById('hist-expte-titulo').textContent = expte;
-  document.getElementById('hist-contenido').innerHTML = '<div class="alert" style="margin:0">Cargando...</div>';
-  document.getElementById('overlay-historial').classList.add('show');
-  if (logData === null) {
-    try {
-      var d = await api({ method: 'GET', hoja: 'log' });
-      logData = Array.isArray(d) ? d : [];
-    } catch (le) { logData = []; }
-  }
-  renderHistorial(expte);
-}
-function cerrarHistorial() { document.getElementById('overlay-historial').classList.remove('show'); }
-function renderHistorial(expte) {
-  var eventos = logData.filter(function(l){
-    if (String(l.hoja || '').trim() !== 'expedientes') return false;
-    try {
-      var d = JSON.parse(l.datos);
-      return d && String(d.expte || '').trim() === String(expte).trim();
-    } catch (pe) { return false; }
-  }).sort(function(a,b){ return new Date(b.fecha) - new Date(a.fecha); });
-  if (!eventos.length) {
-    document.getElementById('hist-contenido').innerHTML = '<div class="alert" style="margin:0">📭 Todavía no hay historial registrado para este expediente. Los cambios que se hagan de ahora en más van a quedar guardados acá.</div>';
-    return;
-  }
-  document.getElementById('hist-contenido').innerHTML = eventos.map(function(l){
-    var d = {}; try { d = JSON.parse(l.datos); } catch (pe) {}
-    var detalle = Object.keys(d).filter(function(k){ return k !== '_fila' && k !== 'expte'; }).map(function(k){ return esc(k) + ': ' + esc(d[k]); }).join(' · ');
-    return '<div style="padding:10px 0;border-bottom:1px solid var(--line-soft)">' +
-      '<div style="display:flex;justify-content:space-between;gap:8px"><b>' + (ACCION_LABEL[l.accion] || esc(l.accion)) + '</b><span style="color:#888;white-space:nowrap">' + fmtFechaHora(l.fecha) + '</span></div>' +
-      (detalle ? '<div style="color:#666;margin-top:2px;font-size:12px">' + detalle + '</div>' : '') +
-    '</div>';
-  }).join('');
-}
-
 function fmt(d) {
   if (!d) return '-';
   try {
@@ -1399,8 +1344,7 @@ function renderTabla() {
         '<button class="btn sm icon" title="Editar" onclick="abrirModal(' + e._idx + ')">✏️</button> ' +
         '<button class="btn sm icon danger" title="Borrar" onclick="eliminar(' + e._idx + ')">🗑️</button> ' +
         '<button class="btn sm icon" title="Consultar en el portal" onclick="consultarExpte(\'' + jsArg(getExpte(e)) + '\')">🔗</button> ' +
-        '<button class="btn sm icon" title="Ver dictamenes" onclick="verDictamenes(\'' + jsArg(getExpte(e)) + '\')">📄</button> ' +
-        '<button class="btn sm icon" title="Ver historial" onclick="verHistorial(\'' + jsArg(getExpte(e)) + '\')">🕘</button>' +
+        '<button class="btn sm icon" title="Ver dictamenes" onclick="verDictamenes(\'' + jsArg(getExpte(e)) + '\')">📄</button>' +
       '</td></tr>';
   });
   document.getElementById('tabla-body').innerHTML = html;
