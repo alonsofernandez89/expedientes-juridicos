@@ -199,7 +199,6 @@ tbody tr:hover td{background:var(--green-50)}
     <button class="tab" onclick="switchTab('licencias')">Licencias</button>
     <button class="tab" onclick="switchTab('inventario')">Inventario</button>
     <button class="tab" onclick="switchTab('normativas')">Normativas</button>
-    <button class="tab" onclick="switchTab('config')">🔒 Agentes</button>
     <button class="tab" onclick="switchTab('historico')">Histórico</button>
   </div>
 
@@ -252,6 +251,7 @@ tbody tr:hover td{background:var(--green-50)}
       <label style="font-size:14px;font-weight:600">👤 Agente:</label>
       <select id="panel-sel" onchange="elegirPanelAgente(this.value)" style="flex:1;min-width:180px;padding:8px 10px;font-size:14px;border:1px solid var(--input-line);border-radius:var(--radius);background:var(--surface)"><option value="">Elegí tu nombre...</option></select>
       <span style="font-size:12px;color:var(--muted)">Se recuerda en este dispositivo</span>
+      <div id="panel-director-btn"></div>
     </div>
     <div id="panel-contenido"></div>
   </div>
@@ -415,6 +415,10 @@ tbody tr:hover td{background:var(--green-50)}
   </div>
 
   <div class="section" id="tab-config">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:15px;font-weight:700">🔒 Gestión de agentes (Director)</div>
+      <button class="btn sm" onclick="switchTab('panel')">← Volver a Mi Panel</button>
+    </div>
     <div class="card"><div class="section-title">Expedientes por agente</div><div class="chart-wrap"><canvas id="chart-agentes"></canvas></div></div>
     <div class="card"><div class="section-title">Carga de trabajo por agente</div><div id="agentes-lista"></div></div>
     <div class="card">
@@ -1207,6 +1211,7 @@ async function confirmarClave() {
   sessionStorage.setItem('zona-protegida-ok', '1');
   document.getElementById('overlay-clave').classList.remove('show');
   renderTabla(); // habilita "Borrar" en Registro ahora que es el Director
+  renderBotonDirector();
   var t = tabPendienteClave; tabPendienteClave = null;
   if (t) switchTab(t);
 }
@@ -1214,7 +1219,7 @@ async function confirmarClave() {
 function switchTab(t) {
   if (TABS_PROTEGIDAS.indexOf(t) >= 0 && !zonaDesbloqueada()) { abrirModalClave(t); return; }
   var tabsEls = document.querySelectorAll('.container > .tabs > .tab');
-  var orden = ['registro','panel','analisis','programas','licencias','inventario','normativas','config','historico'];
+  var orden = ['registro','panel','analisis','programas','licencias','inventario','normativas','historico'];
   tabsEls.forEach(function(el, i){ el.classList.toggle('active', orden[i] === t); });
   document.querySelectorAll('.section').forEach(function(el){ el.classList.remove('active'); });
   document.getElementById('tab-' + t).classList.add('active');
@@ -1468,7 +1473,17 @@ function initPanel() {
   var guardado = null; try { guardado = localStorage.getItem('panel-agente'); } catch (e) {}
   if (!panelAgente && guardado && agentes.indexOf(guardado) >= 0) panelAgente = guardado;
   sel.innerHTML = '<option value="">Elegí tu nombre...</option>' + agentes.map(function(a){ return '<option value="' + esc(a) + '"' + (a === panelAgente ? ' selected' : '') + '>' + esc(a) + '</option>'; }).join('');
+  renderBotonDirector();
   renderPanel();
+}
+// La pestaña "Agentes" ya no aparece en la barra de pestañas: solo el Director la
+// desbliquea desde este boton, con la clave maestra (misma que CLAVE_HASH).
+function renderBotonDirector() {
+  var cont = document.getElementById('panel-director-btn');
+  if (!cont) return;
+  cont.innerHTML = zonaDesbloqueada()
+    ? '<button class="btn sm" onclick="switchTab(\'config\')">🔒 Gestión de agentes</button>'
+    : '<button class="btn sm" onclick="abrirModalClave(\'config\')">🔒 Acceso Director</button>';
 }
 function elegirPanelAgente(v) {
   panelAgente = v || null;
@@ -1501,6 +1516,7 @@ async function confirmarClavePanel() {
   }
   document.getElementById('overlay-clave-panel').classList.remove('show');
   panelClavePendiente = null;
+  renderBotonDirector();
   renderPanel();
 }
 function renderPanel() {
