@@ -1344,11 +1344,8 @@ function filtrarPorAgente(nombre) {
 function mostrarListaAgentes() {
   var cont = document.getElementById('lista-agentes-cont');
   cont.innerHTML = agentes.map(function(a){
-    var mine = expedientes.filter(function(e){ return getRespAsig(e) === a; });
-    var enDir = mine.filter(function(e){ return !estaEgresado(e); }).length;
     return '<div class="agente-item" style="cursor:pointer" onclick="filtrarPorAgente(\'' + jsArg(a) + '\')">' +
       '<span>' + esc(a) + '</span>' +
-      '<span style="font-size:12px;color:var(--muted)">' + mine.length + ' expediente(s) &middot; ' + enDir + ' en la Dirección</span>' +
       '</div>';
   }).join('') || '<div class="alert">No hay agentes cargados.</div>';
   document.getElementById('overlay-lista-agentes').classList.add('show');
