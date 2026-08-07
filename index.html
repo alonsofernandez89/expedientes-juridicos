@@ -53,6 +53,9 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 .metric .lbl{font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:500;letter-spacing:.01em}
 .metric .val{font-size:26px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .metric .val.blue{color:var(--green-700)}.metric .val.green{color:var(--green-900)}.metric .val.amber{color:var(--amber-700)}
+.metric.clickable{cursor:pointer;transition:transform .1s var(--ease),border-color .15s var(--ease),box-shadow .15s var(--ease)}
+.metric.clickable:hover{border-color:var(--green-500);box-shadow:var(--shadow-lg)}
+.metric.clickable:active{transform:scale(.98)}
 .btn{padding:8px 16px;border-radius:var(--radius);border:1px solid var(--input-line);background:var(--surface);color:var(--ink);font-size:14px;font-weight:500;cursor:pointer;transition:background-color .15s var(--ease),border-color .15s var(--ease),transform .08s var(--ease)}
 .btn:hover{background:var(--line-soft)}
 .btn:active{transform:scale(.97)}
@@ -501,6 +504,16 @@ tbody tr:hover td{background:var(--green-50)}
     <div class="modal-actions">
       <button class="btn" onclick="cerrarModalAsignar()">Cancelar</button>
       <button class="btn primary" onclick="asignarExpediente()">Asignar seleccionado</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-lista-agentes">
+  <div class="modal" style="width:420px">
+    <h3>👤 Agentes</h3>
+    <div id="lista-agentes-cont" style="margin-bottom:8px"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="cerrarListaAgentes()">Cerrar</button>
     </div>
   </div>
 </div>
@@ -1302,11 +1315,45 @@ function renderMetrics(target) {
   var egresados = expedientes.filter(function(e){ return estaEgresado(e); }).length;
   var enDir = total - egresados;
   document.getElementById(target).innerHTML =
-    '<div class="metric"><div class="lbl">Total ingresados</div><div class="val">' + total + '</div></div>' +
-    '<div class="metric"><div class="lbl">En la Direccion</div><div class="val blue">' + enDir + '</div></div>' +
-    '<div class="metric"><div class="lbl">Egresados</div><div class="val green">' + egresados + '</div></div>' +
-    '<div class="metric"><div class="lbl">Agentes activos</div><div class="val amber">' + agentes.length + '</div></div>';
+    '<div class="metric clickable" onclick="filtrarPorEstado(\'\')"><div class="lbl">Total ingresados</div><div class="val">' + total + '</div></div>' +
+    '<div class="metric clickable" onclick="filtrarPorEstado(\'en_direccion\')"><div class="lbl">En la Direccion</div><div class="val blue">' + enDir + '</div></div>' +
+    '<div class="metric clickable" onclick="filtrarPorEstado(\'egresado\')"><div class="lbl">Egresados</div><div class="val green">' + egresados + '</div></div>' +
+    '<div class="metric clickable" onclick="mostrarListaAgentes()"><div class="lbl">Agentes activos</div><div class="val amber">' + agentes.length + '</div></div>';
 }
+// Al hacer clic en una de las 4 tarjetas de arriba se filtra/lista el Registro
+// correspondiente (o se abre el listado de agentes), en vez de ser solo lectura.
+function filtrarPorEstado(estado) {
+  document.getElementById('f-buscar').value = '';
+  document.getElementById('f-agente').value = '';
+  document.getElementById('f-estado').value = estado;
+  switchTab('registro');
+  filtrosCambiaron();
+  var tabla = document.getElementById('tabla');
+  if (tabla) tabla.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function filtrarPorAgente(nombre) {
+  cerrarListaAgentes();
+  document.getElementById('f-buscar').value = '';
+  document.getElementById('f-estado').value = '';
+  document.getElementById('f-agente').value = nombre;
+  switchTab('registro');
+  filtrosCambiaron();
+  var tabla = document.getElementById('tabla');
+  if (tabla) tabla.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function mostrarListaAgentes() {
+  var cont = document.getElementById('lista-agentes-cont');
+  cont.innerHTML = agentes.map(function(a){
+    var mine = expedientes.filter(function(e){ return getRespAsig(e) === a; });
+    var enDir = mine.filter(function(e){ return !estaEgresado(e); }).length;
+    return '<div class="agente-item" style="cursor:pointer" onclick="filtrarPorAgente(\'' + jsArg(a) + '\')">' +
+      '<span>' + esc(a) + '</span>' +
+      '<span style="font-size:12px;color:var(--muted)">' + mine.length + ' expediente(s) &middot; ' + enDir + ' en la Dirección</span>' +
+      '</div>';
+  }).join('') || '<div class="alert">No hay agentes cargados.</div>';
+  document.getElementById('overlay-lista-agentes').classList.add('show');
+}
+function cerrarListaAgentes() { document.getElementById('overlay-lista-agentes').classList.remove('show'); }
 
 function getValorOrden(e, col) {
   switch (col) {
