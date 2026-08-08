@@ -1133,7 +1133,27 @@ function normalizarExpediente(e, i) {
 }
 function getExpte(e){ return e.expte; }
 function estaEgresado(e){ return !!e.salio; }
-function getRespAsig(e){ return e.agente; }
+// Apodos/variantes que en realidad son la misma persona (cargadas asi en distintos
+// expedientes a lo largo del tiempo). Se unifican al nombre que efectivamente figura
+// en la hoja "agentes" (el que sea) para que las estadisticas, filtros y graficos por
+// agente no queden partidos en dos.
+var GRUPOS_ALIAS_AGENTE = [
+  ['Gabriela', 'Gaby'],
+  ['Natalia', 'Naty'],
+  ['Jorgelina', 'Lina'],
+  ['Cecilia', 'Ceci V.'],
+  ['Evangelina', 'Eva'],
+  ['Angie', 'Angy']
+];
+function nombreCanonico(nombre) {
+  if (!nombre) return nombre;
+  var norm = normTexto(nombre);
+  var grupo = GRUPOS_ALIAS_AGENTE.filter(function(g){ return g.some(function(n){ return normTexto(n) === norm; }); })[0];
+  if (!grupo) return nombre;
+  var enLista = grupo.filter(function(n){ return agentes.indexOf(n) >= 0; })[0];
+  return enLista || grupo[0];
+}
+function getRespAsig(e){ return nombreCanonico(e.agente); }
 function getTema(e){ return e.tema; }
 function getIniciador(e){ return e.iniciador; }
 function getReparto(e){ return e.reparto; }
