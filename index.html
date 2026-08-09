@@ -4,7 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Registro de Expedientes - DGAJ</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb" crossorigin="anonymous">
+<!-- El mapa (Programas > Mapa) esta oculto en la carga inicial, asi que este CSS no hace
+     falta para el primer pintado. Se pide igual enseguida (no bloquea) pero con el truco
+     de media=print no frena el arranque del resto de la app mientras se descarga: sin esto,
+     el script principal (mas abajo en el documento) queda obligado a esperar a que termine
+     de bajar este CSS antes de poder ejecutarse. -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb" crossorigin="anonymous" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb" crossorigin="anonymous"></noscript>
 <style>
 :root{
   --green-900:#3B6D11;--green-700:#5a9216;--green-600:#76aa30;--green-500:#8bc53f;
@@ -21,6 +27,7 @@
   --shadow-lg:0 16px 36px rgba(26,26,26,.16),0 2px 8px rgba(26,26,26,.06);
   --ease:cubic-bezier(.4,0,.2,1);
   --font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,"Helvetica Neue",Arial,sans-serif;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-7:32px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--font-ui);background:var(--bg);color:var(--ink);min-height:100vh;line-height:1.5;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
@@ -35,17 +42,20 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 .footer{text-align:center;padding:24px 16px;color:var(--muted-3);font-size:13px;border-top:1px solid var(--line);margin-top:32px}
 .footer a{color:var(--green-500);text-decoration:none;font-weight:500}
 .footer a:hover{text-decoration:underline}
-.container{max-width:1200px;margin:0 auto;padding:24px 16px}
+.container{max-width:1200px;margin:0 auto;padding:var(--space-6) var(--space-4)}
 .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:24px;flex-wrap:wrap}
 .tab{padding:9px 18px;font-size:14px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--muted);border-bottom:2px solid transparent;border-radius:var(--radius-sm) var(--radius-sm) 0 0;transition:color .15s var(--ease),background-color .15s var(--ease)}
 .tab:hover{color:var(--ink-soft);background:var(--green-50)}
 .tab.active{color:var(--ink);border-bottom:2px solid var(--green-500);font-weight:600;background:var(--green-50)}
 .section{display:none}.section.active{display:block}
-.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
-.metric{background:var(--surface);border-radius:var(--radius-lg);padding:16px 18px;border:1px solid var(--line);box-shadow:var(--shadow)}
+.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-3);margin-bottom:var(--space-6)}
+.metric{background:var(--surface);border-radius:var(--radius-lg);padding:var(--space-4) 18px;border:1px solid var(--line);box-shadow:var(--shadow)}
 .metric .lbl{font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:500;letter-spacing:.01em}
 .metric .val{font-size:26px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .metric .val.blue{color:var(--green-700)}.metric .val.green{color:var(--green-900)}.metric .val.amber{color:var(--amber-700)}
+.metric.clickable{cursor:pointer;transition:transform .1s var(--ease),border-color .15s var(--ease),box-shadow .15s var(--ease)}
+.metric.clickable:hover{border-color:var(--green-500);box-shadow:var(--shadow-lg)}
+.metric.clickable:active{transform:scale(.98)}
 .btn{padding:8px 16px;border-radius:var(--radius);border:1px solid var(--input-line);background:var(--surface);color:var(--ink);font-size:14px;font-weight:500;cursor:pointer;transition:background-color .15s var(--ease),border-color .15s var(--ease),transform .08s var(--ease)}
 .btn:hover{background:var(--line-soft)}
 .btn:active{transform:scale(.97)}
@@ -66,7 +76,7 @@ tr:last-child td{border-bottom:none}
 .badge.activo::before{background:var(--green-700)}
 .badge.egresado{background:var(--egresado-bg);color:var(--egresado-ink)}
 .badge.egresado::before{background:#8a8a86}
-.agent-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line-soft)}
+.agent-row{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) 0;border-bottom:1px solid var(--line-soft);flex-wrap:wrap}
 .agent-row:last-child{border-bottom:none}
 .avatar{width:38px;height:38px;border-radius:50%;background:var(--avatar-bg);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--green-700);flex-shrink:0}
 .bar-wrap{flex:1}
@@ -74,26 +84,26 @@ tr:last-child td{border-bottom:none}
 .bar-bg{background:var(--line-soft);border-radius:4px;height:8px;overflow:hidden}
 .bar-fill{height:8px;border-radius:4px;background:var(--green-500);transition:width .4s var(--ease)}
 .chart-wrap{position:relative;width:100%;height:220px}
-.section-title{font-size:15px;font-weight:700;letter-spacing:-.01em;margin-bottom:16px}
+.section-title{font-size:15px;font-weight:700;letter-spacing:-.01em;margin-bottom:var(--space-4)}
 .alert{background:var(--surface-muted);border-radius:var(--radius);padding:14px;font-size:13px;color:var(--muted);text-align:center;margin:16px 0;border:1px solid var(--line)}
-.card{background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--line);padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
+.card{background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--line);padding:var(--space-5);margin-bottom:var(--space-4);box-shadow:var(--shadow)}
 .overlay{display:none;position:fixed;inset:0;background:rgba(26,26,26,.45);backdrop-filter:blur(2px);z-index:100;align-items:center;justify-content:center}
 .overlay.show{display:flex}
-.modal{background:var(--surface);border-radius:var(--radius-xl);padding:24px;width:520px;max-width:95vw;border:1px solid var(--line);max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
-.modal h3{font-size:17px;font-weight:700;letter-spacing:-.01em;margin-bottom:16px}
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px}
+.modal{background:var(--surface);border-radius:var(--radius-xl);padding:var(--space-6);width:520px;max-width:95vw;border:1px solid var(--line);max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
+.modal h3{font-size:17px;font-weight:700;letter-spacing:-.01em;margin-bottom:var(--space-4)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin-bottom:var(--space-2)}
 .fg{display:flex;flex-direction:column;gap:5px}
 .fg label{font-size:12.5px;color:var(--ink-soft);font-weight:600}
 .fg input,.fg select,.fg textarea{padding:8px 10px;font-size:14px;border:1px solid var(--input-line);border-radius:var(--radius);background:var(--surface);color:var(--ink);transition:border-color .15s var(--ease),box-shadow .15s var(--ease)}
 .fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--green-500);box-shadow:0 0 0 3px var(--green-100)}
 .fg textarea{resize:vertical;min-height:60px}
 .fg.full{grid-column:1/-1}
-.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.modal-actions{display:flex;gap:var(--space-2);justify-content:flex-end;margin-top:var(--space-4)}
 .spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--green-500);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .toast{position:fixed;bottom:24px;right:24px;background:var(--ink);color:#fff;padding:11px 18px;border-radius:var(--radius);font-size:13px;font-weight:500;z-index:200;opacity:0;transform:translateY(8px);transition:opacity .25s var(--ease),transform .25s var(--ease);pointer-events:none;box-shadow:var(--shadow-lg)}
 .toast.show{opacity:1;transform:translateY(0)}
-.agente-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line-soft)}
+.agente-item{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) 0;border-bottom:1px solid var(--line-soft);gap:var(--space-3);flex-wrap:wrap}
 .agente-item:last-child{border-bottom:none}
 #mapa-leaflet{width:100%;height:480px;border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--line)}
 #mapa-leaflet path.leaflet-interactive:focus{outline:none}
@@ -105,6 +115,24 @@ tr:last-child td{border-bottom:none}
   .grid-2{grid-template-columns:1fr}
   .form-grid{grid-template-columns:1fr}
   .topbar{padding:12px 16px;gap:12px}
+  .container{padding:var(--space-4) var(--space-3)}
+  .card{padding:var(--space-4)}
+  .tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;margin-left:calc(-1 * var(--space-3));margin-right:calc(-1 * var(--space-3));padding-left:var(--space-3);padding-right:var(--space-3)}
+  .tabs::-webkit-scrollbar{height:4px}
+  .tab{white-space:nowrap;flex-shrink:0}
+}
+@media (max-width:520px){
+  .modal{padding:var(--space-4)}
+  .modal-actions{flex-direction:column-reverse}
+  .modal-actions .btn{width:100%}
+  .filters{flex-direction:column;align-items:stretch}
+  .filters input,.filters select{width:100%}
+  .panel-hero{padding:var(--space-4)}
+  table{font-size:12px}
+  th,td{padding:8px 9px}
+  .btn.icon{padding:6px 9px;min-width:32px;min-height:32px}
+  .form-grid{gap:var(--space-2)}
+  .metric-grid{gap:var(--space-2)}
 }
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
@@ -125,8 +153,31 @@ tbody tr:hover td{background:var(--green-50)}
 .section.active{animation:fadeIn .18s var(--ease)}
 .overlay.show{animation:fadeIn .15s var(--ease)}
 .overlay.show .modal{animation:modalIn .18s var(--ease)}
+.chip{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:500;white-space:nowrap}
+/* Mi Panel */
+.panel-hero{background:linear-gradient(135deg,var(--green-700),var(--green-500));color:#fff;border-radius:var(--radius-xl);padding:20px 24px;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:16px}
+.panel-hero .avatar{width:58px;height:58px;font-size:22px;background:rgba(255,255,255,.22);color:#fff}
+.hero-nombre{font-size:21px;font-weight:700;letter-spacing:-.02em}
+.hero-sub{font-size:13px;opacity:.92;font-variant-numeric:tabular-nums}
+.mini-exp{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:var(--space-2);background:var(--surface);flex-wrap:wrap}
+.mini-exp:hover{border-color:var(--green-500);background:var(--green-50)}
 .sk-row{height:13px;border-radius:var(--radius-sm);background:linear-gradient(90deg,#ececea 25%,#f8f8f6 50%,#ececea 75%);background-size:200% 100%;animation:shimmer 1.2s linear infinite;margin:14px 0}
 @keyframes shimmer{to{background-position:-200% 0}}
+#globos-cumple{position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden}
+.globo{position:absolute;top:-60px;left:0;animation:caerGlobo linear forwards}
+@keyframes caerGlobo{0%{transform:translateY(0) translateX(0) rotate(0deg);opacity:0}6%{opacity:1}100%{transform:translateY(110vh) translateX(var(--drift,0px)) rotate(var(--rot,20deg));opacity:.9}}
+.figura-historica{position:absolute;top:-60px;left:0;display:flex;flex-direction:column;align-items:center;gap:2px;animation:caerGlobo linear forwards}
+.figura-historica .fh-foto{width:40px;height:40px;border-radius:50%;object-fit:cover;box-shadow:0 2px 6px rgba(0,0,0,.35);border:2px solid #fff}
+.figura-historica .fh-nombre{font-size:10px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);padding:1px 7px;border-radius:999px;white-space:nowrap}
+.cumple-banner{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#fde9c8;color:#92700c;padding:10px 22px;border-radius:999px;font-size:14px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.15);z-index:10000;animation:fadeIn .3s var(--ease)}
+.print-only{display:none}
+@media print{
+  .no-print,.topbar,.container>.tabs{display:none !important}
+  .print-only{display:block !important}
+  body{background:#fff}
+  .card{box-shadow:none;border:1px solid #ccc;break-inside:avoid}
+  .chart-wrap{height:220px !important}
+}
 </style>
 </head>
 <body>
@@ -145,11 +196,12 @@ tbody tr:hover td{background:var(--green-50)}
 
   <div class="tabs">
     <button class="tab active" onclick="switchTab('registro')">Registro</button>
-    <button class="tab" onclick="switchTab('agentes')">Por agente</button>
+    <button class="tab" onclick="switchTab('panel')">⭐ Mi Panel</button>
     <button class="tab" onclick="switchTab('analisis')">Analisis</button>
     <button class="tab" onclick="switchTab('programas')">Programas</button>
     <button class="tab" onclick="switchTab('licencias')">Licencias</button>
-    <button class="tab" onclick="switchTab('config')">Agentes</button>
+    <button class="tab" onclick="switchTab('inventario')">Inventario</button>
+    <button class="tab" onclick="switchTab('normativas')">Normativas</button>
     <button class="tab" onclick="switchTab('historico')">Histórico</button>
   </div>
 
@@ -162,6 +214,11 @@ tbody tr:hover td{background:var(--green-50)}
         <option value="">Todos</option>
         <option value="en_direccion">En la Direccion</option>
         <option value="egresado">Egresados</option>
+      </select>
+      <select id="f-por-pagina" onchange="cambiarPorPagina()" title="Registros por pagina">
+        <option value="25">25 por pagina</option>
+        <option value="50" selected>50 por pagina</option>
+        <option value="100">100 por pagina</option>
       </select>
     </div>
     <div id="loading" class="card">
@@ -192,15 +249,33 @@ tbody tr:hover td{background:var(--green-50)}
     <div class="alert" id="no-results" style="display:none">🔍 No se encontraron expedientes con los filtros actuales.<br><button class="btn sm" style="margin-top:10px" onclick="limpiarFiltros()">Limpiar filtros</button></div>
   </div>
 
-  <div class="section" id="tab-agentes">
-    <div class="card"><div class="section-title">Carga de trabajo por agente</div><div id="agentes-lista"></div></div>
+  <div class="section" id="tab-panel">
+    <div class="card" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+      <label style="font-size:14px;font-weight:600">👤 Agente:</label>
+      <select id="panel-sel" onchange="elegirPanelAgente(this.value)" style="flex:1;min-width:180px;padding:8px 10px;font-size:14px;border:1px solid var(--input-line);border-radius:var(--radius);background:var(--surface)"><option value="">Elegí tu nombre...</option></select>
+      <span style="font-size:12px;color:var(--muted)">Se recuerda en este dispositivo</span>
+      <div id="panel-director-btn"></div>
+    </div>
+    <div id="panel-contenido"></div>
   </div>
 
   <div class="section" id="tab-analisis">
+    <div class="print-only" style="margin-bottom:16px">
+      <div style="font-size:18px;font-weight:700">Reporte de Análisis - Dirección General de Asuntos Jurídicos</div>
+      <div id="print-fecha" style="font-size:13px;color:#555"></div>
+    </div>
+    <div class="no-print" style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:12px">
+      <button class="btn sm" onclick="exportarCSV()">📊 Exportar CSV</button>
+      <button class="btn sm" onclick="exportarPDF()">📄 Exportar PDF</button>
+    </div>
     <div class="metric-grid" id="metrics-analisis"></div>
-    <div class="grid-2" style="margin-bottom:20px">
-      <div class="card"><div class="section-title">Expedientes por agente</div><div class="chart-wrap"><canvas id="chart-agentes"></canvas></div></div>
-      <div class="card"><div class="section-title">Ingresos por mes</div><div class="chart-wrap"><canvas id="chart-meses"></canvas></div></div>
+    <div class="card" style="margin-bottom:20px"><div class="section-title">Ingresos por mes</div><div class="chart-wrap"><canvas id="chart-meses"></canvas></div></div>
+    <div class="card" style="margin-bottom:20px">
+      <div class="section-title">Expedientes por organismo iniciador</div>
+      <div class="grid-2" style="align-items:center">
+        <div class="chart-wrap" style="height:280px"><canvas id="chart-organismos"></canvas></div>
+        <div id="organismos-lista" style="font-size:13px"></div>
+      </div>
     </div>
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
@@ -213,9 +288,8 @@ tbody tr:hover td{background:var(--green-50)}
         </div>
       </div>
       <div class="chart-wrap" style="height:260px"><canvas id="chart-diario"></canvas></div>
-      <div class="grid-2" style="margin-top:20px">
-        <div><div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#5a9216">Ingresos por dia</div><table><thead><tr><th>Fecha</th><th>Cantidad</th></tr></thead><tbody id="tbody-ingresos"></tbody></table></div>
-        <div><div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#854F0B">Egresos por dia</div><table><thead><tr><th>Fecha</th><th>Cantidad</th></tr></thead><tbody id="tbody-egresos"></tbody></table></div>
+      <div style="margin-top:20px">
+        <table><thead><tr><th>Fecha</th><th style="color:#5a9216">Ingresos</th><th style="color:#854F0B">Egresos</th></tr></thead><tbody id="tbody-diario"></tbody></table>
       </div>
     </div>
   </div>
@@ -223,7 +297,10 @@ tbody tr:hover td{background:var(--green-50)}
   <div class="section" id="tab-programas">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
       <div style="font-size:15px;font-weight:600">Programas</div>
-      <button class="btn primary" onclick="abrirModalPrograma()">+ Nuevo programa</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn" onclick="aplicarPalabrasClaveExistentes()" title="Revisa todos los expedientes ya cargados y los asigna a un programa si su tema menciona alguna palabra clave">🔍 Aplicar palabras clave</button>
+        <button class="btn primary" onclick="abrirModalPrograma()">+ Nuevo programa</button>
+      </div>
     </div>
     <div class="tabs" style="margin-bottom:16px" id="prog-subtabs">
       <button class="tab active" onclick="switchSubTab('lista')">Lista</button>
@@ -286,7 +363,77 @@ tbody tr:hover td{background:var(--green-50)}
     <div class="card"><div class="section-title">Resumen del mes</div><div id="resumen-licencias"></div></div>
   </div>
 
+  <div class="section" id="tab-inventario">
+    <div class="metric-grid" id="metrics-inventario"></div>
+    <div class="tabs" style="margin-bottom:16px" id="inv-subtabs">
+      <button class="tab active" onclick="switchInvTab('bienes')">Bienes</button>
+      <button class="tab" onclick="switchInvTab('pedidos')">Pedidos de insumos</button>
+    </div>
+    <div id="subinv-bienes">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div class="filters" style="margin:0;flex:1">
+          <input type="text" id="inv-buscar" placeholder="Buscar bien..." oninput="renderBienes()" style="flex:1;min-width:140px">
+          <select id="inv-categoria" onchange="renderBienes()">
+            <option value="">Todas las categorias</option>
+            <option>Mobiliario</option><option>Informatica</option><option>Libreria</option><option>Electrodomesticos</option><option>Otro</option>
+          </select>
+          <select id="inv-estado" onchange="renderBienes()">
+            <option value="">Todos los estados</option>
+            <option>Bueno</option><option>Regular</option><option>Malo</option><option>En reparacion</option><option>De baja</option>
+          </select>
+        </div>
+        <button class="btn primary" onclick="abrirModalBien()">+ Nuevo bien</button>
+      </div>
+      <div id="inv-lista"></div>
+    </div>
+    <div id="subinv-pedidos" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div class="filters" style="margin:0;flex:1">
+          <select id="ped-estado" onchange="renderPedidos()">
+            <option value="">Todos</option>
+            <option value="Pendiente">Pendientes</option>
+            <option value="Entregado">Entregados</option>
+          </select>
+        </div>
+        <button class="btn primary" onclick="abrirModalPedido()">+ Nuevo pedido</button>
+      </div>
+      <div id="ped-lista"></div>
+    </div>
+  </div>
+
+  <div class="section" id="tab-normativas">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:15px;font-weight:600">Normativas</div>
+      <button class="btn" onclick="initNormativas(true)">🔄 Actualizar</button>
+    </div>
+    <div class="tabs" style="margin-bottom:16px" id="norm-subtabs">
+      <button class="tab active" onclick="switchNormTab('Programas')">Programas</button>
+      <button class="tab" onclick="switchNormTab('Contrataciones')">Contrataciones</button>
+      <button class="tab" onclick="switchNormTab('Dictámenes Fiscalía')">Dictámenes Fiscalía</button>
+      <button class="tab" onclick="switchNormTab('Legal y Técnica')">Legal y Técnica</button>
+    </div>
+    <input type="text" id="norm-buscar" placeholder="Buscar por nombre de archivo..." oninput="renderNormativas()" style="width:100%;padding:8px 10px;font-size:14px;border:1px solid #d0d0c8;border-radius:8px;margin-bottom:16px">
+    <div style="font-size:12px;color:#888;margin-bottom:12px">📁 Los archivos se suben directamente a la carpeta de Drive de cada categoría; acá solo se listan (no se pueden agregar, editar ni borrar desde la app).</div>
+    <div id="norm-lista"></div>
+  </div>
+
   <div class="section" id="tab-config">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:15px;font-weight:700">🔒 Gestión de agentes (Director)</div>
+      <button class="btn sm" onclick="switchTab('panel')">← Volver a Mi Panel</button>
+    </div>
+    <div class="card"><div class="section-title">Expedientes por agente</div><div class="chart-wrap"><canvas id="chart-agentes"></canvas></div></div>
+    <div class="card"><div class="section-title">Carga de trabajo por agente</div><div id="agentes-lista"></div></div>
+    <div class="card">
+      <div class="section-title">Tiempo promedio de resolución por agente</div>
+      <div style="font-size:12px;color:#888;margin-top:-8px;margin-bottom:16px">Días hábiles entre el ingreso y la salida de los expedientes ya egresados.</div>
+      <div class="chart-wrap" style="height:240px"><canvas id="chart-tiempos-agente"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="section-title">Tiempo promedio de resolución por trámite</div>
+      <div style="font-size:12px;color:#888;margin-top:-8px;margin-bottom:16px">Días hábiles entre el ingreso y la salida de los expedientes ya egresados (trámites más frecuentes).</div>
+      <div id="tiempos-tema-lista" style="font-size:13px"></div>
+    </div>
     <div class="card">
       <div class="section-title">Gestion de agentes</div>
       <div style="display:flex;gap:8px;margin-bottom:16px">
@@ -361,13 +508,80 @@ tbody tr:hover td{background:var(--green-50)}
   </div>
 </div>
 
+<div class="overlay" id="overlay-lista-agentes">
+  <div class="modal" style="width:420px">
+    <h3>👤 Agentes</h3>
+    <div id="lista-agentes-cont" style="margin-bottom:8px"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="cerrarListaAgentes()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-clave">
+  <div class="modal" style="width:360px">
+    <h3>🔒 Acceso restringido</h3>
+    <div class="fg" style="margin-bottom:12px">
+      <label>Contraseña</label>
+      <input type="password" id="clave-input" placeholder="Ingresa la contraseña" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarClave();}">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="cerrarModalClave()">Cancelar</button>
+      <button class="btn primary" onclick="confirmarClave()">Ingresar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-clave-panel">
+  <div class="modal" style="width:360px">
+    <h3>🔒 Mi Panel</h3>
+    <div class="fg" style="margin-bottom:12px">
+      <label id="clave-panel-label">Contraseña</label>
+      <input type="password" id="clave-panel-input" placeholder="Tu contraseña" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarClavePanel();}">
+    </div>
+    <div style="font-size:12px;color:#888">Si no tenés contraseña, pedísela al Director.</div>
+    <div class="modal-actions">
+      <button class="btn" onclick="document.getElementById('overlay-clave-panel').classList.remove('show')">Cancelar</button>
+      <button class="btn primary" onclick="confirmarClavePanel()">Ingresar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-set-clave">
+  <div class="modal" style="width:400px">
+    <h3 id="set-clave-title">Contraseña del agente</h3>
+    <div class="fg" style="margin-bottom:10px"><label>Nueva contraseña</label><input type="password" id="set-clave-1" placeholder="Contraseña"></div>
+    <div class="fg" style="margin-bottom:10px"><label>Repetir contraseña</label><input type="password" id="set-clave-2" placeholder="Repetir contraseña" onkeydown="if(event.key==='Enter'){event.preventDefault();guardarClaveAgente();}"></div>
+    <div style="font-size:12px;color:#888">Se guarda encriptada (hash SHA-256); no queda en texto plano. El agente la usará para entrar a su panel.</div>
+    <div class="modal-actions">
+      <button class="btn danger" id="btn-quitar-clave" onclick="quitarClaveAgente()" style="margin-right:auto">Quitar contraseña</button>
+      <button class="btn" onclick="document.getElementById('overlay-set-clave').classList.remove('show')">Cancelar</button>
+      <button class="btn primary" id="btn-set-clave" onclick="guardarClaveAgente()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-mi-clave">
+  <div class="modal" style="width:400px">
+    <h3>🔑 Mi contraseña</h3>
+    <div class="fg" style="margin-bottom:10px"><label>Nueva contraseña</label><input type="password" id="mi-clave-1" placeholder="Contraseña"></div>
+    <div class="fg" style="margin-bottom:10px"><label>Repetir contraseña</label><input type="password" id="mi-clave-2" placeholder="Repetir contraseña" onkeydown="if(event.key==='Enter'){event.preventDefault();guardarMiClave();}"></div>
+    <div style="font-size:12px;color:#888">Se guarda encriptada (hash SHA-256); no queda en texto plano. Solo vos (con esta contraseña) y el Director (con la clave maestra) van a poder ver tu panel.</div>
+    <div class="modal-actions">
+      <button class="btn danger" id="btn-quitar-mi-clave" onclick="quitarMiClave()" style="margin-right:auto">Quitar mi contraseña</button>
+      <button class="btn" onclick="cerrarModalMiClave()">Cancelar</button>
+      <button class="btn primary" id="btn-guardar-mi-clave" onclick="guardarMiClave()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="overlay-programa">
   <div class="modal">
-    <h3>Nuevo programa</h3>
-    <div class="fg" style="margin-bottom:12px"><label>Nombre del programa</label><input type="text" id="np-nombre" placeholder="Ej: Juventud Emprende"></div>
+    <h3 id="prog-modal-title">Nuevo programa</h3>
+    <div class="fg" style="margin-bottom:12px"><label>Nombre del programa</label><input type="text" id="np-nombre" placeholder="Ej: Juventud Emprende" onkeydown="if(event.key==='Enter'){event.preventDefault();guardarPrograma();}"></div>
     <div class="modal-actions">
       <button class="btn" onclick="document.getElementById('overlay-programa').classList.remove('show')">Cancelar</button>
-      <button class="btn primary" onclick="guardarPrograma()">Guardar</button>
+      <button class="btn primary" id="btn-guardar-prog" onclick="guardarPrograma()">Guardar</button>
     </div>
   </div>
 </div>
@@ -385,10 +599,13 @@ tbody tr:hover td{background:var(--green-50)}
         <option value="Otro">Otro</option>
       </select></div>
       <div class="fg"><label>Observacion</label><input type="text" id="lic-obs" placeholder="Opcional"></div>
-      <div class="fg"><label>Fecha inicio *</label><input type="date" id="lic-desde"></div>
+      <div class="fg"><label>Fecha inicio *</label><input type="date" id="lic-desde" onchange="calcularHastaPorDias()"></div>
+      <div class="fg"><label>Cantidad de dias habiles</label><input type="number" id="lic-dias" min="1" placeholder="Opcional" oninput="calcularHastaPorDias()"></div>
       <div class="fg"><label>Fecha fin *</label><input type="date" id="lic-hasta"></div>
     </div>
+    <div style="font-size:12px;color:#888;margin:-4px 0 8px">Los fines de semana no se cuentan ni se marcan como licencia. Completa "Cantidad de dias habiles" para calcular la fecha fin automaticamente, o cargala vos misma/o.</div>
     <div class="modal-actions">
+      <button class="btn danger" id="btn-eliminar-lic" onclick="eliminarLicenciaDesdeModal()" style="display:none;margin-right:auto">Eliminar</button>
       <button class="btn" onclick="cerrarModalLicencia()">Cancelar</button>
       <button class="btn primary" id="btn-guardar-lic" onclick="guardarLicencia()">Guardar</button>
     </div>
@@ -405,6 +622,57 @@ tbody tr:hover td{background:var(--green-50)}
   </div>
 </div>
 
+<div class="overlay" id="overlay-bien">
+  <div class="modal">
+    <h3 id="bien-title">Nuevo bien</h3>
+    <div class="form-grid">
+      <div class="fg full"><label>Bien *</label><input type="text" id="b-bien" placeholder="Ej: Escritorio de madera, Impresora HP..."></div>
+      <div class="fg"><label>Categoria</label><select id="b-categoria">
+        <option>Mobiliario</option><option>Informatica</option><option>Libreria</option><option>Electrodomesticos</option><option>Otro</option>
+      </select></div>
+      <div class="fg"><label>Cantidad *</label><input type="number" id="b-cantidad" min="1" value="1"></div>
+      <div class="fg"><label>Estado</label><select id="b-estado">
+        <option>Bueno</option><option>Regular</option><option>Malo</option><option>En reparacion</option><option>De baja</option>
+      </select></div>
+      <div class="fg"><label>Ubicacion</label><input type="text" id="b-ubicacion" placeholder="Ej: Oficina principal"></div>
+      <div class="fg full"><label>Observaciones</label><textarea id="b-obs" placeholder="Opcional"></textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="document.getElementById('overlay-bien').classList.remove('show')">Cancelar</button>
+      <button class="btn primary" id="btn-guardar-bien" onclick="guardarBien()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-pedido">
+  <div class="modal">
+    <h3 id="pedido-title">Nuevo pedido de insumos</h3>
+    <div class="form-grid">
+      <div class="fg full"><label>Insumo *</label><input type="text" id="p-insumo" list="lista-insumos" placeholder="Ej: Biromes azules, Hojas A4..."></div>
+      <div class="fg"><label>Cantidad *</label><input type="number" id="p-cantidad" min="1" value="1"></div>
+      <div class="fg"><label>Fecha del pedido *</label><input type="date" id="p-fecha"></div>
+      <div class="fg"><label>Solicitante</label><select id="p-solicitante"><option value="">Seleccionar...</option></select></div>
+      <div class="fg"><label>Estado</label><select id="p-estado">
+        <option>Pendiente</option><option>Entregado</option>
+      </select></div>
+      <div class="fg full"><label>Observaciones</label><input type="text" id="p-obs" placeholder="Opcional"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="document.getElementById('overlay-pedido').classList.remove('show')">Cancelar</button>
+      <button class="btn primary" id="btn-guardar-pedido" onclick="guardarPedido()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<datalist id="lista-insumos">
+  <option value="Biromes azules"><option value="Biromes negras"><option value="Biromes rojas">
+  <option value="Hojas A4"><option value="Hojas oficio"><option value="Folios A4">
+  <option value="Carpetas"><option value="Sobres"><option value="Resaltadores">
+  <option value="Lapices"><option value="Clips"><option value="Broches para abrochadora">
+  <option value="Abrochadora"><option value="Corrector"><option value="Cinta adhesiva">
+  <option value="Notas adhesivas (Post-it)"><option value="Toner / cartucho de impresora">
+</datalist>
+
 <div class="overlay" id="overlay-confirm" onclick="if(event.target===this)resolverConfirm(false)">
   <div class="modal" style="width:400px">
     <h3>Confirmar accion</h3>
@@ -418,24 +686,36 @@ tbody tr:hover td{background:var(--green-50)}
 
 <div class="toast" id="toast"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO" crossorigin="anonymous"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG" crossorigin="anonymous"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO" crossorigin="anonymous"></script>
 <script>
 var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxqh_UKIESenujigna2_nh9v8tHlkWjHMDn7qAuSHgp6tra1sDy68AlXADnzAo8-sVo/exec';
 // Web App del Apps Script independiente que lee las planillas 2024/2025 (ver apps-script-historico.gs).
 // Completar con la URL que da Google al desplegar ese script ("Implementar > Nueva implementacion > Aplicacion web").
 var SCRIPT_URL_HISTORICO = 'https://script.google.com/macros/s/AKfycbzeVC3hSW3AZWjqw2WzbgvDzRhsvSrvfBcqT19yVtuiOu2A-GAfpD0lCaY06DQ8_EvGCA/exec';
 
-var expedientes = [], agentes = [], programasData = [], licenciasData = [];
+var expedientes = [], agentes = [], agentesInfo = [], programasData = [], licenciasData = [];
 var programaActivo = null, editIdx = null;
-var chartA = null, chartM = null, chartD = null;
-var sortCol = null, sortDir = 1;
+var chartA = null, chartM = null, chartD = null, chartO = null, chartT = null;
+// Orden por defecto en Registro: ultimos ingresados primero (se puede cambiar clickeando
+// cualquier encabezado de columna, como ya permitia ordenarPor()).
+var sortCol = 'ingreso', sortDir = -1;
 var leafletMap = null, geojsonLayer = null, geoCache = null, capaSeleccionada = null;
 var mesActual = new Date().getMonth(), anioActual = new Date().getFullYear();
 var progAsignar = null, asignarLista = [], asignarSeleccionado = null, dragExpteId = null;
 var datosMapaActual = {};
 var paginaActual = 1, POR_PAGINA = 50;
 var historicoCache = {}, anioHistoricoActivo = '2025', historicoBuscarTimer = null;
+var inventarioData = [], pedidosData = [], inventarioCargado = false;
+var normativasData = [], normativasCargadas = false, normSubTab = 'Programas';
+var CATEGORIAS_NORMATIVAS = ['Programas', 'Contrataciones', 'Dictámenes Fiscalía', 'Legal y Técnica'];
+var licenciasCargadas = false;
+var invSubTab = 'bienes', editBienIdx = null, editPedidoIdx = null;
+var ESTADO_CHIP = {
+  'Bueno':['#EAF3DE','#3B6D11'],'Regular':['#FEF3C7','#854F0B'],'Malo':['#FEE2E2','#991B1B'],
+  'En reparacion':['#DBEAFE','#1E40AF'],'De baja':['#F1EFE8','#5F5E5A'],
+  'Pendiente':['#FEF3C7','#854F0B'],'Entregado':['#EAF3DE','#3B6D11']
+};
 
 var PROGRAMAS_DEFAULT = ['Juventud Emprende','Juventud en el Centro','Juventud en la Comunidad'];
 var PROG_OCULTO = '__oculto__'; // marca interna: expediente quitado de la bandeja Sin asignar (no es un programa real)
@@ -446,6 +726,158 @@ var TIPOS_LIC = {
   'Maternidad/Paternidad':{color:'#fce7f3',texto:'#9d174d',icono:'P'},
   'Otro':{color:'#f3f4f6',texto:'#374151',icono:'O'}
 };
+
+// ===== Feriados nacionales y provinciales (Entre Rios) =====
+// Los feriados con formula fija por ley (Pascua y sus derivados, San Martin,
+// Guemes, Diversidad Cultural, Soberania Nacional, etc.) se calculan solos
+// para cualquier año. Verificado contra el calendario oficial 2026
+// (entrerios.gov.ar/dgrrhh/inicio/calendario.pdf y argentina.gob.ar/jefatura).
+//
+// Los feriados "puente" (dias no laborables con fines turisticos) y los
+// corrimientos puntuales por decreto (ej. Dia del Trabajador Estatal) cambian
+// cada año por resolucion/decreto y NO se pueden calcular con una formula.
+// Hay que actualizar FERIADOS_EXTRA_POR_ANIO con el calendario oficial de
+// cada año (mismas fuentes de arriba).
+function fechaPascua(anio) {
+  var a = anio % 19, b = Math.floor(anio / 100), c = anio % 100;
+  var d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+  var g = Math.floor((b - f + 1) / 3), h = (19*a + b - d - g + 15) % 30;
+  var i = Math.floor(c / 4), k = c % 4, l = (32 + 2*e + 2*i - h - k) % 7;
+  var m = Math.floor((a + 11*h + 22*l) / 451);
+  var mes = Math.floor((h + l - 7*m + 114) / 31);
+  var dia = ((h + l - 7*m + 114) % 31) + 1;
+  return new Date(anio, mes - 1, dia);
+}
+function sumarDiasFecha(fecha, dias) { var f = new Date(fecha); f.setDate(f.getDate() + dias); return f; }
+function claveFechaFeriado(f) { return f.getFullYear() + '-' + String(f.getMonth()+1).padStart(2,'0') + '-' + String(f.getDate()).padStart(2,'0'); }
+// Regla oficial de traslado: si cae martes o miercoles, se mueve al lunes
+// anterior; si cae jueves o viernes, al lunes siguiente. Lunes/sabado/domingo no se mueven.
+function trasladarALunes(fecha) {
+  var dow = fecha.getDay();
+  if (dow === 2 || dow === 3) return sumarDiasFecha(fecha, -(dow - 1));
+  if (dow === 4 || dow === 5) return sumarDiasFecha(fecha, 8 - dow);
+  return fecha;
+}
+function tercerLunes(anio, mesIdx) {
+  var f = new Date(anio, mesIdx, 1);
+  var offset = (8 - f.getDay()) % 7;
+  return sumarDiasFecha(f, offset + 14);
+}
+var FERIADOS_EXTRA_POR_ANIO = {
+  2026: [
+    { mes:3, dia:23, nombre:'Dia no laboral con fines turisticos' },
+    { mes:6, dia:26, nombre:'Dia del Trabajador Estatal (feriado provincial, Decreto 1793/2026)' },
+    { mes:7, dia:10, nombre:'Dia no laboral con fines turisticos' },
+    { mes:12, dia:7, nombre:'Dia no laboral con fines turisticos' }
+  ]
+};
+function feriadosDelAnio(anio) {
+  var pascua = fechaPascua(anio);
+  var feriados = {};
+  function agregar(fecha, nombre) {
+    var clave = claveFechaFeriado(fecha);
+    feriados[clave] = feriados[clave] ? feriados[clave] + ' / ' + nombre : nombre;
+  }
+  agregar(new Date(anio, 0, 1), 'Año Nuevo');
+  agregar(sumarDiasFecha(pascua, -48), 'Carnaval');
+  agregar(sumarDiasFecha(pascua, -47), 'Carnaval');
+  agregar(new Date(anio, 2, 24), 'Día Nacional de la Memoria por la Verdad y la Justicia');
+  agregar(new Date(anio, 3, 2), 'Día del Veterano y de los Caídos en la Guerra de Malvinas');
+  agregar(sumarDiasFecha(pascua, -3), 'Jueves Santo');
+  agregar(sumarDiasFecha(pascua, -2), 'Viernes Santo');
+  agregar(new Date(anio, 4, 1), 'Día del Trabajador');
+  agregar(new Date(anio, 4, 25), 'Día de la Revolución de Mayo');
+  agregar(new Date(anio, 5, 20), 'Paso a la Inmortalidad del Gral. Belgrano');
+  agregar(new Date(anio, 6, 9), 'Día de la Independencia');
+  agregar(tercerLunes(anio, 7), 'Paso a la Inmortalidad del Gral. San Martín');
+  agregar(new Date(anio, 11, 8), 'Inmaculada Concepción de María');
+  agregar(new Date(anio, 11, 25), 'Navidad');
+  agregar(trasladarALunes(new Date(anio, 5, 17)), 'Paso a la Inmortalidad del Gral. Güemes');
+  agregar(trasladarALunes(new Date(anio, 9, 12)), 'Día del Respeto a la Diversidad Cultural');
+  agregar(trasladarALunes(new Date(anio, 10, 20)), 'Día de la Soberanía Nacional');
+  agregar(new Date(anio, 1, 3), 'Batalla de Caseros (feriado provincial ER)');
+  agregar(new Date(anio, 8, 29), 'San Miguel Arcángel (feriado provincial ER)');
+  (FERIADOS_EXTRA_POR_ANIO[anio] || []).forEach(function(x){ agregar(new Date(anio, x.mes - 1, x.dia), x.nombre); });
+  return feriados;
+}
+var feriadosCache = {};
+function esFeriado(fecha) {
+  var anio = fecha.getFullYear();
+  if (!feriadosCache[anio]) feriadosCache[anio] = feriadosDelAnio(anio);
+  return feriadosCache[anio][claveFechaFeriado(fecha)] || null;
+}
+
+// ===== Cumpleanos de agentes =====
+// Mes y dia se guardan en dos columnas numericas separadas (cumple_mes, cumple_dia)
+// en vez de un solo texto tipo "05-03": un valor con guion o barra lo reconoce Google
+// Sheets como fecha y lo reinterpreta segun el idioma/config regional de la planilla
+// (invirtiendo dia y mes en muchos casos). Un numero simple (1-12, 1-31) en su propia
+// columna nunca se confunde con una fecha.
+function cumpleMesDia(nombre) {
+  var info = agentesInfo.filter(function(a){ return a.nombre === nombre; })[0];
+  if (!info) return null;
+  var mes = parseInt(info.cumple_mes, 10), dia = parseInt(info.cumple_dia, 10);
+  // Ignora valores corruptos: si alguna celda quedo con formato Fecha, el backend
+  // devuelve algo como "1900-01-04..." y parseInt da 1900. Solo aceptamos rangos validos.
+  if (!(mes >= 1 && mes <= 12) || !(dia >= 1 && dia <= 31)) return null;
+  return String(mes).padStart(2,'0') + '-' + String(dia).padStart(2,'0');
+}
+function esCumpleEnFecha(nombre, fecha) {
+  var md = cumpleMesDia(nombre);
+  if (!md) return false;
+  return md === (String(fecha.getMonth()+1).padStart(2,'0') + '-' + String(fecha.getDate()).padStart(2,'0'));
+}
+// Fotos de dominio publico (Wikimedia Commons, licencia PD-AR-Photo, sin restriccion
+// de derechos): retrato de Peron (1948, recorte de cara) y retrato de estudio de Eva
+// Peron (c. 1946-1952). Para el cumpleaños de Gabriela, ademas de los globos caen
+// estas dos junto con el resto.
+var FOTO_PERON = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5Ojf/2wBDAQoKCg0MDRoPDxo3JR8lNzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzf/wAARCABgAGADASIAAhEBAxEB/8QAGwAAAgMBAQEAAAAAAAAAAAAABQYAAQQCBwP/xAA1EAACAQMCBAMHAwIHAAAAAAABAgMABBEFIQYSMUFRYXETFCKBkaGxMkLRFSMzcqKyweHw/8QAFwEBAQEBAAAAAAAAAAAAAAAAAAECA//EABkRAQEAAwEAAAAAAAAAAAAAAAABAhEhUf/aAAwDAQACEQMRAD8AbSKrFdHeqxXJpzUxkgAb1dLfEt7LOzadazGFBtcSr+o5/Yp9NyfMDxol4513i+002QwWiLdzjZjz4RD4ZHU+n1pYueNdalOYpYoF8IoV/LZNbbDh605syl5B4ZxR620fTQARZxnAxgrmtTUZ7SfHxTxATkahKfWNCP8AbRG14z1e3Ue8x2l0nckcjfVf4p4trGBFAW1jwBgfAM0M1nhq2nhea0QW86gkgA4by2pueGqmi8V6dqjrC3Na3DbCOYjDHwVuhPkcGj+K8lktw2WVfi6NzAYb0Pf7U4cF61JdK2nXnP7aJcxM5yWUdR6j8elSzxZkaqgFSrqNKNV3qz2qsUHxvJxa2k05GRGhbHie33pUghLygytlicux7sdz96Y9c30uZfHlH+oUCgUmTqQB1IolFbS1UIWB698Vtt4kU8xJP81mjPNbrykhW75rR7za2ajnkBbHRQWP2oCcChjgIc1raDERPiN6F2Or2s7YiB22+I70cQiSHvvRp5Jqdi1teyRqTGvOWUjYH/3Ss2lGSz1+yZM49oqHJ6htj38D9qbOJ9OkiuzIq7MNnUbkd/XtSoFaO6WNuQtzqUYY3wQau3OzVek4q+9Q9TUFRtRqYqyKlAO14H+k3BUkFQG28iKRLib3NgX1CRX6+zUZOPPevQdWAOnzA9CAPvSNNpsLPOxXmErZIIByR08/pVjOQ7wfdPqMzRFzImxJZcUT4oEenRA2tszKc85UZA8M1n4Hs1gEsuwYHFMeo2Ed3AyyFgTgqcdDUWThM0XUbpr9reTTWLKgbMWMkHsNhk+WT6HpTzpkvOoBWRT3Vxgg+FBbC0WzmwyKN9mG5NHrb+6+eQKO23QUXGPlrdus9lIrKDjcUmw6NcXcuYIlZg+CxOAuDn5/90+z4VsHofKhupXtpp9kpnjkWJ5eUGFdlfqCfmKFj4qwcEgMNyCGUqQfAggGuq6kZZJnljx7ORUcEdyRv/xXNBZFQCuiKqiserKx0+bl6hc/Q0pyZ5+y9tu9O0ic6MhGQwIpMni+I5PT4T50Zo1wtfWiCSFSWdAedQd8+Q60QfUUvbeZ9OuJZZoW3ieFomXyIIBwRS1psXPcyMCI3EZ9mTgHbwp2s7xJ0jVp4fa8o5kEoJB77ZosZtOnF5GDycp6nPUUXiTkA5TWAwexujLEOXJyy46+dEkKsgOMUWKcc7bY3rLcWQv7WS0l5BFJkOSMsPAr2znxrYXxnrQ64mmS4VkkAQruhXIJz1orP7ulpFHbRcxWJQoLHc+ZqVbszsWY5J61VEdmqFRt6goJSpqsZiu51x+7I9DvTXQfiO1LQC5Qbps/p4/X80Sk82Ykvee5fnDHb4iMfIUy6Lp+nSllki5mbb41PN8ic0JgQNLGHQEFhmmrTWiGI2RcD9OwozI2w6dDbNzWYZD+7MjNzfU/iiat8IwD0rMrIvVh0q47lWYr+KOjQ7kLt1PXasFz/jDPhW0AySBEBLHoAK6v7JLWwlubmREZMEszYVFz4/PrRKGCpV1VEdtUFQ1VFQ1GUOpVlDKRgg9CKup2NAp6vpEtl/fgZjb8wAbuhPY/zWa1uLkOSpGScnO1POkT2WqWdykTpcwe0MUhXdWOASAe+M9R3pd1HR5bW6aJVJXqj4/UP58aM2NFlNI8OWYFvSjWj2/vM+ApCD9RH4oPoWnzXVyYS3KAMsfAU9WsEdtEscS4Ufeix9oYo4V5YkCjyHWg/GWpQaZw/dyTqrmVDDHGwyHZhjp4Dc/KjYrxnj/XxrGsGK3fNna5SLHRj+5vn0HkKpldPvwtxFBHDFp16xjK/DFMx+EjspPbyPT0puO3XrXjzEb0X0TiS60lfZFfeLbOBE7kcn+U9vTpSxiZev/Z';
+var FOTO_EVITA = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5Ojf/2wBDAQoKCg0MDRoPDxo3JR8lNzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzf/wAARCABgAGADASIAAhEBAxEB/8QAHAAAAQQDAQAAAAAAAAAAAAAABQAEBgcBAgMI/8QANhAAAgEDAgQEBQIDCQAAAAAAAQIDAAQRBSEGEjFBE1FhcQcUIkKBkbEVMmIjM0NScoKh0fD/xAAUAQEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AuelWN6WaBGsVnPnQLWtZEbm0tWAf75Af5fQetATudQtbYlXfmcfYgyaaHWoycRwP/vIFALd1BySAfM96IRLzg9NuoIoC0GoeKcNGBnyanYYN/KaCxcwOOXIHcU+tzyrzscexoH4FZxTeC8ilk8IOC/lTntQYpUqVBisUqQNAz1m4a00m8uEOGjhZh74qv7EErzsc7Z3PWpZxy7roEnIcBpYw3qM9P2qK2g5IsnIHY9QaAjbxl2BHKADjl70Zs4CR1x6A0CS4bZVXoN8HajWmS/Qu2CetASjhVOmd66+ErJgjasKwYVtzUHCa3QAOoAdNww60URuaNW8wDQ522NONOfntF/pJX9DQOjjG1Y6UqXWg0bpSX1rNYx2HU0Ea+Ikwh4dJOeVp0U4/P/VRDheG8u7O4vOZBZklVQglmI77dBS13X11e6ubW9klFozuqIGwoVTscdz60/8AhxcxtpVxp8cwd7Wd1DDqyseZfzuR+KDSFViYcwYMWxjOdqldoqrCvIMZFDzZxOsUnNluXc43PvRKBhgCg3mmkSIiIxq/ZpOg/FDrTUbia45Ib6xugpxIEUgj2wTv70SlgjmGJUVx5MMj9Kaadpdpp6COzgjijXPKFXGMnJ360G+t6h/DrF5uaFTjZ535Y19WPlv23NduEfmm0szXV7HdrO/iRPHFyAAjcDzGemd65ataRX9obaeNJImIDIwyDvkf8gUY0xBHYQRgAci8uwwNtqBzSpUj0oNOlazKZInVTgspUHyJHWticis9qDz1rWn32nAyS5jeG4+XkDOMhs9h3yDn2orxjqOl6FKIbSee3umtRDL8ug5HIKlST1H3bjcZot8ZOHbs3C67ax+JbFQtyoX+7IGA59DsM+1VPYgXmu2UF+fGt3uEV8scEEjvQXXwrqEtxplkk6SiTwAxeSXxC6lmwefvtj13qQIxV80Pt9ItdORTYW0cCb8yRLgH8U/hKtgZ3oCKNlc1zZnIYp27edaLkbA00up9St2Jt7e0eHs0krKR7gCg7vdhJVt5IJkeU4Q4yPckbLj1o3YDltk/qy36movoN1qGq6u8F1FbJbwJzOYXLFmJwAT22BqYAYIoM0j0pHrS7UGlLOOtYchFLuQqgZJJwAKq7j/jVpY3stMci16SuNjL6DyX96Dh8T+NoLpJuH9PkVo3wJpwc82+6j0zjfvVRXEWBzqzKR37g5rrqs5kuku49hnt2rrOyzgMu6yDJA7UF1fD/iBOIuH4Xdh83ABFcrnfmA2b2I3/AForfQXEJ8azUOw6xk45vY+dUVwdr0/DGtx3ihntn+i4jH3p5j1HUV6EimiuII5oXDxSKGRh0YHoaANbcSWLTi3vPEsrkf4dyhXPseh/WjqPDLHzBlZT3DbUE4nNsuj3Ut1GsiQxNJgjOMDO1UAgvHEshnkDOS7BXIG9B6Gh4u4c0jUrixnu1im+ksUjLLk9iV71I9P1fTtTJ+QvoLgr1Eb5I/FeaNMRQASRuR0qRo0umtBfWMzwyIwKkHcf+8qD0ETSztTDRNQGqaTbXgAVpU+tR9rDYj9RT2gq/wCI/FEtzBJYae5W2+916y+n+n96qm5e5kAVyxBPSpVey/MSssg5TnBBPSmhsUCnBDDtgd6CNnTpJ4WjUY8s9BXDTEkHPE64ePOQak8cCscEDmwe/Smuq2Bs3i1GBSyggSqe/vQBWtmYHkTBx0qyfhRrsjRPoN6cPFl7Qk/b3T8dR+aj72VtLax3FsxKyAsAOvtTGNLiwvIbuyLJcQyB4z6igu+9sFu7G5gYA+LC6Y91IqjLe3VfDBGxBRvcVe+h6jDq+m297AMCRfqT/Iw6qfY1Tl7B4F5cI+P7KZ1J8sEigEWcYW5MWPpyD+Klk8In0tlVFBC7Dzx3qPiPMscoHMRkfnqKk+nJJJZEP1I6jtQTr4bSuNJmtHyRDIGU+jDP7g1Lqr74fXJh1BoXJAuI8Adsrv8AtmrDxtQf/9k=';
+var FIGURAS_HISTORICAS = [
+  { foto: FOTO_PERON, nombre:'Perón' },
+  { foto: FOTO_EVITA, nombre:'Evita' }
+];
+function celebrarCumpleanos() {
+  if (document.getElementById('globos-cumple')) return;
+  var hoy = new Date();
+  var cumpleaneros = agentesInfo.filter(function(a){ return esCumpleEnFecha(a.nombre, hoy); }).map(function(a){ return a.nombre; });
+  if (!cumpleaneros.length) return;
+  var esGabriela = cumpleaneros.some(function(n){ return normalizar(n).indexOf('GABRIELA') >= 0; });
+  var cont = document.createElement('div');
+  cont.id = 'globos-cumple';
+  document.body.appendChild(cont);
+  for (var i = 0; i < 40; i++) {
+    var g = document.createElement('div');
+    g.className = 'globo';
+    g.textContent = '🎈';
+    g.style.left = (Math.random()*100) + 'vw';
+    g.style.fontSize = (22 + Math.random()*20) + 'px';
+    g.style.setProperty('--drift', (Math.random()*160-80) + 'px');
+    g.style.setProperty('--rot', (Math.random()*60-30) + 'deg');
+    g.style.animationDuration = (5 + Math.random()*4) + 's';
+    g.style.animationDelay = (Math.random()*4) + 's';
+    cont.appendChild(g);
+  }
+  if (esGabriela) {
+    for (var j = 0; j < 16; j++) {
+      var fig = FIGURAS_HISTORICAS[j % FIGURAS_HISTORICAS.length];
+      var f = document.createElement('div');
+      f.className = 'figura-historica';
+      f.innerHTML = '<img class="fh-foto" src="' + fig.foto + '" alt="' + fig.nombre + '"><div class="fh-nombre">' + fig.nombre + '</div>';
+      f.style.left = (Math.random()*100) + 'vw';
+      f.style.setProperty('--drift', (Math.random()*160-80) + 'px');
+      f.style.setProperty('--rot', (Math.random()*40-20) + 'deg');
+      f.style.animationDuration = (6 + Math.random()*4) + 's';
+      f.style.animationDelay = (Math.random()*4) + 's';
+      cont.appendChild(f);
+    }
+  }
+  var banner = document.createElement('div');
+  banner.className = 'cumple-banner';
+  banner.textContent = '🎉 ¡Feliz cumpleaños ' + cumpleaneros.join(' y ') + '! 🎂';
+  document.body.appendChild(banner);
+  setTimeout(function(){ cont.remove(); banner.remove(); }, 10000);
+}
 
 var LOCALIDAD_DEPTO = {
   "parana":"Parana","oro verde":"Parana","san benito":"Parana","viale":"Parana","crespo":"Parana","segui":"Parana","hasenkamp":"Parana","maria grande":"Parana","cerrito":"Parana","tabossi":"Parana","hernandarias":"Parana","villa urquiza":"Parana","colonia avellaneda":"Parana","sauce montrull":"Parana","el pingo":"Parana","las tunas":"Parana","pueblo brugo":"Parana","la picada":"Parana","aldea brasilera":"Parana","aldea san juan":"Parana",
@@ -488,6 +920,7 @@ var buscarTimer = null;
 function buscarDebounced() { clearTimeout(buscarTimer); buscarTimer = setTimeout(function(){ paginaActual = 1; renderTabla(); }, 250); }
 function filtrosCambiaron() { paginaActual = 1; renderTabla(); }
 function cambiarPagina(dir) { paginaActual += dir; renderTabla(); var w = document.querySelector('.tabla-scroll'); if (w) w.scrollTop = 0; }
+function cambiarPorPagina() { POR_PAGINA = parseInt(document.getElementById('f-por-pagina').value, 10) || 50; paginaActual = 1; renderTabla(); }
 function limpiarFiltros() {
   document.getElementById('f-buscar').value = '';
   document.getElementById('f-agente').value = '';
@@ -521,12 +954,78 @@ var LOCALIDADES_RE = (function() {
   });
 })();
 
+// Palabras clave por defecto de los 3 programas de fabrica (se usan solo mientras
+// nadie cargo palabras clave propias para ese programa desde la pestaña Programas).
+var PALABRAS_CLAVE_DEFAULT = {
+  'Juventud Emprende': ['emprende'],
+  'Juventud en el Centro': ['en el centro', 'en centro'],
+  'Juventud en la Comunidad': ['en la comunidad', 'en comunidad']
+};
+// Palabras clave configuradas para "prog" (tal como se cargaron, sin normalizar),
+// leidas del registro placeholder (programa, expte vacio) de la hoja "programas".
+function getPalabrasClaveRaw(prog) {
+  var fila = programasData.filter(function(p){ return p.programa === prog && p.palabras_clave; })[0];
+  if (fila) return String(fila.palabras_clave).split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+  return (PALABRAS_CLAVE_DEFAULT[prog] || []).slice();
+}
+function coincidePalabraClave(tema, prog) {
+  var t = normTexto(tema);
+  var claves = getPalabrasClaveRaw(prog).map(normTexto);
+  return claves.some(function(k){ return k && t.indexOf(k) >= 0; });
+}
+async function guardarPalabrasClave(prog, valor) {
+  var limpio = valor.split(',').map(function(s){ return s.trim(); }).filter(Boolean).join(', ');
+  var placeholder = programasData.filter(function(p){ return p.programa === prog && !p.expte; })[0];
+  try {
+    if (placeholder) {
+      if (placeholder._fila === undefined) { toast('Recargá la página antes de editar las palabras clave.', 'error'); return; }
+      await api({ accion:'editar', hoja:'programas', datos:{ _fila:placeholder._fila, palabras_clave:limpio } });
+      placeholder.palabras_clave = limpio;
+    } else {
+      await api({ accion:'agregar', hoja:'programas', datos:{ programa:prog, expte:'', palabras_clave:limpio } });
+      programasData.push({ programa:prog, expte:'', palabras_clave:limpio });
+    }
+    toast('Palabras clave guardadas');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+// Aplica las palabras clave de todos los programas a los expedientes ya cargados en
+// Registro (no solo a los que se registren de ahora en mas): a cada uno que todavia
+// no este asignado a un programa en particular, y cuyo tema mencione alguna de sus
+// palabras clave, lo asigna a ese programa. Respeta a los expedientes que ya se
+// marcaron explicitamente como "quitados" de la bandeja Sin asignar.
+async function aplicarPalabrasClaveExistentes() {
+  var progs = getProgramas();
+  var yaAsignado = {};
+  programasData.forEach(function(p){ if (p.programa !== PROG_OCULTO && p.expte) yaAsignado[p.programa + '|' + String(p.expte).trim()] = true; });
+  var ocultos = {};
+  programasData.forEach(function(p){ if (p.programa === PROG_OCULTO && p.expte) ocultos[String(p.expte).trim()] = true; });
+  var asignaciones = [];
+  expedientes.forEach(function(e){
+    var expte = String(getExpte(e) || '').trim();
+    if (!expte || ocultos[expte]) return;
+    var tema = getTema(e);
+    progs.forEach(function(prog){
+      var clave = prog + '|' + expte;
+      if (yaAsignado[clave]) return;
+      if (coincidePalabraClave(tema, prog)) { asignaciones.push({ programa:prog, expte:expte }); yaAsignado[clave] = true; }
+    });
+  });
+  if (!asignaciones.length) { toast('No se encontraron expedientes nuevos para asignar.'); return; }
+  if (!await confirmar('Se van a asignar ' + asignaciones.length + ' expediente(s) a un programa según sus palabras clave. ¿Continuar?', 'Aplicar')) return;
+  try {
+    await Promise.all(asignaciones.map(function(a){ return api({ accion:'agregar', hoja:'programas', datos:{ programa:a.programa, expte:a.expte } }); }));
+    asignaciones.forEach(function(a){ programasData.push({ programa:a.programa, expte:a.expte }); });
+    renderProgramas();
+    toast(asignaciones.length + ' expediente(s) asignado(s)');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
 function detectarProgramaYDepto(tema) {
   var t = normTexto(tema);
   var programa = null;
-  if (t.indexOf('emprende') >= 0) programa = 'Juventud Emprende';
-  else if (t.indexOf('en el centro') >= 0 || t.indexOf('en centro') >= 0) programa = 'Juventud en el Centro';
-  else if ((t.indexOf('comunidad') >= 0 && t.indexOf('juventud') >= 0) || t.indexOf('en comunidad') >= 0) programa = 'Juventud en la Comunidad';
+  var progs = getProgramas();
+  for (var i = 0; i < progs.length; i++) {
+    if (coincidePalabraClave(tema, progs[i])) { programa = progs[i]; break; }
+  }
 
   var departamento = null;
   for (var i = 0; i < LOCALIDADES_RE.length; i++) {
@@ -548,7 +1047,14 @@ function api(params, reintentos) {
         }
         if (!r.ok) throw new Error('HTTP ' + r.status);
         var text = await r.text();
-        try { return JSON.parse(text); } catch (pe) { return params.method === 'GET' ? [] : {}; }
+        var parsed;
+        try { parsed = JSON.parse(text); } catch (pe) { return params.method === 'GET' ? [] : {}; }
+        // El Apps Script del backend siempre responde HTTP 200 aunque haya fallado
+        // internamente (ej: "hoja no existe"), y en ese caso devuelve {error:"..."}.
+        // Sin este chequeo, ese error se leia como una respuesta valida y la app
+        // mostraba "Guardado" aunque en realidad no se hubiera escrito nada.
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.error) throw new Error(parsed.error);
+        return parsed;
       } catch (e) {
         if (i < reintentos - 1) { await new Promise(function(res){ setTimeout(res, 400 * (i + 1)); }); }
         else { throw e; }
@@ -564,19 +1070,33 @@ async function cargar() {
   document.getElementById('tabla').style.display = 'none';
   document.getElementById('paginacion').innerHTML = '';
   try {
-    expedientes = await api({ method: 'GET', hoja: 'expedientes' });
-    expedientes = (Array.isArray(expedientes) ? expedientes : []).map(normalizarExpediente);
-    agentes = await api({ method: 'GET', hoja: 'agentes' });
-    programasData = await api({ method: 'GET', hoja: 'programas' });
-    agentes = agentes.map(function(a){ return a.nombre; }).filter(Boolean);
-    try {
-      licenciasData = await api({ method: 'GET', hoja: 'licencias' });
-      licenciasData = Array.isArray(licenciasData) ? licenciasData.filter(function(l){ return l.agente; }) : [];
-    } catch (le) { licenciasData = []; }
+    // Las tres hojas necesarias para la pantalla inicial se piden en paralelo (antes se
+    // pedian una por una en serie, lo que multiplicaba por cuatro la espera al backend).
+    // Licencias no hace falta para la carga inicial: se pide recien al abrir esa pestaña.
+    var res = await Promise.all([
+      api({ method: 'GET', hoja: 'expedientes' }),
+      api({ method: 'GET', hoja: 'agentes' }),
+      api({ method: 'GET', hoja: 'programas' })
+    ]);
+    expedientes = (Array.isArray(res[0]) ? res[0] : []).map(normalizarExpediente);
+    var agentesRaw = res[1];
+    programasData = res[2];
+    agentesInfo = (Array.isArray(agentesRaw) ? agentesRaw : []).filter(function(a){ return a && a.nombre; });
+    agentes = agentesInfo.map(function(a){ return a.nombre; });
     renderAll();
+    celebrarCumpleanos();
   } catch (e) {
     document.getElementById('loading').innerHTML = '<div class="alert" style="margin:0;border:none">⚠️ Error al conectar. Recarga con Ctrl+F5.</div>';
   }
+}
+async function initLicencias() {
+  if (licenciasCargadas) { renderLicencias(); return; }
+  try {
+    licenciasData = await api({ method: 'GET', hoja: 'licencias' });
+    licenciasData = Array.isArray(licenciasData) ? licenciasData.filter(function(l){ return l.agente; }) : [];
+  } catch (le) { licenciasData = []; }
+  licenciasCargadas = true;
+  renderLicencias();
 }
 
 function fmt(d) {
@@ -606,33 +1126,144 @@ function normalizarExpediente(e, i) {
     agente: e['resp. asig'] || e['resp.asig'] || e['resp asig'] || e['Resp. Asig'] || e['Resp. Asig.'] || '',
     tema: e['tema'] || e['Tema'] || '',
     salio: salio,
+    vencimiento: e['vencimiento'] || e['Vencimiento'] || '',
     _fila: e._fila,
     _idx: i
   };
 }
 function getExpte(e){ return e.expte; }
 function estaEgresado(e){ return !!e.salio; }
-function getRespAsig(e){ return e.agente; }
+// Apodos/variantes que en realidad son la misma persona (cargadas asi en distintos
+// expedientes a lo largo del tiempo). Se unifican al nombre que efectivamente figura
+// en la hoja "agentes" (el que sea) para que las estadisticas, filtros y graficos por
+// agente no queden partidos en dos.
+var GRUPOS_ALIAS_AGENTE = [
+  ['Gabriela', 'Gaby'],
+  ['Natalia', 'Naty'],
+  ['Jorgelina', 'Lina'],
+  ['Cecilia', 'Ceci V.'],
+  ['Evangelina', 'Eva'],
+  ['Angie', 'Angy']
+];
+function nombreCanonico(nombre) {
+  if (!nombre) return nombre;
+  var norm = normTexto(nombre);
+  var grupo = GRUPOS_ALIAS_AGENTE.filter(function(g){ return g.some(function(n){ return normTexto(n) === norm; }); })[0];
+  if (!grupo) return nombre;
+  var enLista = grupo.filter(function(n){ return agentes.indexOf(n) >= 0; })[0];
+  return enLista || grupo[0];
+}
+function getRespAsig(e){ return nombreCanonico(e.agente); }
 function getTema(e){ return e.tema; }
 function getIniciador(e){ return e.iniciador; }
 function getReparto(e){ return e.reparto; }
 function getSalio(e){ return e.salio; }
 function normalizar(s){ return (s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }
 function initials(s){ return (s||'?').slice(0,2).toUpperCase(); }
+
+// Unifica distintas formas de escribir el mismo organismo (abreviaturas, acentos, mayusculas)
+// para que "Dir. De Comedores" y "Direccion de Comedores" cuenten como uno solo.
+var ABREV_ORGANISMO = [
+  [/\bDIRECC\b/g, 'DIRECCION'], [/\bDIREC\b/g, 'DIRECCION'], [/\bDIR\b/g, 'DIRECCION'],
+  [/\bSUBSEC\b/g, 'SUBSECRETARIA'], [/\bSEC\b/g, 'SECRETARIA'],
+  [/\bGRAL\b/g, 'GENERAL'], [/\bPROV\b/g, 'PROVINCIAL'],
+  [/\bMUNIC\b/g, 'MUNICIPALIDAD'], [/\bMUNI\b/g, 'MUNICIPALIDAD'],
+  [/\bJUZG\b/g, 'JUZGADO'], [/\bJDO\b/g, 'JUZGADO'],
+  [/\bDPTO\b/g, 'DEPARTAMENTO'], [/\bDEPTO\b/g, 'DEPARTAMENTO'],
+  [/\bMIN\b/g, 'MINISTERIO'], [/\bORG\b/g, 'ORGANIZACIONES'],
+  [/\bFORTALEC\b/g, 'FORTALECIMIENTO'], [/\bADM\b/g, 'ADMINISTRATIVO'],
+  [/\bPOLIT\b/g, 'POLITICAS'], [/\bALIMENT\b/g, 'ALIMENTARIA']
+];
+function normalizarOrganismo(s) {
+  var t = normalizar(s).replace(/[.,]/g, '').replace(/\s+/g, ' ').trim();
+  if (!t) return '';
+  ABREV_ORGANISMO.forEach(function(par){ t = t.replace(par[0], par[1]); });
+  return t.replace(/\s+/g, ' ').trim();
+}
+function tituloCase(s) { return s.toLowerCase().replace(/\b\w/g, function(c){ return c.toUpperCase(); }); }
+
+// Clave de agrupamiento: mas agresiva que normalizarOrganismo(). Saca conectores
+// ("de", "del", "la"...) y singulariza palabras (comedores/comedor, adultos/adulto)
+// para que variantes con o sin esas palabras cuenten como el mismo organismo.
+// El nombre que se muestra siempre es la forma completa mas larga entre las variantes.
+var CONECTORES_ORGANISMO = ['DE', 'DEL', 'LA', 'LAS', 'LOS', 'EN', 'Y'];
+function claveComparacionOrganismo(normalizado) {
+  var palabras = normalizado.split(' ').filter(function(w){ return w && CONECTORES_ORGANISMO.indexOf(w) < 0; });
+  palabras = palabras.map(function(w){ return (w.length > 3 && w.slice(-1) === 'S') ? w.slice(0, -1) : w; });
+  return palabras.join(' ');
+}
+function agruparPorOrganismo(maxCategorias) {
+  var conteo = {}, mejorForma = {};
+  expedientes.forEach(function(e){
+    var raw = getIniciador(e);
+    var completo = normalizarOrganismo(raw);
+    var vacio = !completo;
+    var key = vacio ? 'SIN ESPECIFICAR' : claveComparacionOrganismo(completo);
+    conteo[key] = (conteo[key] || 0) + 1;
+    if (vacio) mejorForma[key] = 'SIN ESPECIFICAR';
+    else if (!mejorForma[key] || completo.length > mejorForma[key].length) mejorForma[key] = completo;
+  });
+  var pares = Object.keys(conteo).map(function(k){ return { key:k, nombre: k === 'SIN ESPECIFICAR' ? 'Sin especificar' : tituloCase(mejorForma[k]), total:conteo[k] }; });
+  pares.sort(function(a,b){ return b.total - a.total; });
+  if (pares.length > maxCategorias) {
+    var top = pares.slice(0, maxCategorias - 1);
+    var restoTotal = pares.slice(maxCategorias - 1).reduce(function(s,p){ return s + p.total; }, 0);
+    top.push({ key:'__otros__', nombre:'Otros', total:restoTotal });
+    return top;
+  }
+  return pares;
+}
 function toast(msg, tipo){ var t = document.getElementById('toast'); t.textContent = msg; t.classList.toggle('error', tipo === 'error'); t.classList.add('show'); setTimeout(function(){ t.classList.remove('show'); }, 2600); }
 
+var TABS_PROTEGIDAS = ['config'];
+var CLAVE_HASH = 'a181eb72cec525f96f8f9e27201eb05d073b80ccd41d36440397e5b1b0b3699a';
+var tabPendienteClave = null;
+
+function zonaDesbloqueada() { return sessionStorage.getItem('zona-protegida-ok') === '1'; }
+async function sha256Hex(texto) {
+  var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto));
+  return Array.prototype.map.call(new Uint8Array(buf), function(b){ return b.toString(16).padStart(2, '0'); }).join('');
+}
+async function verificarClave(intento) {
+  if (!intento) return false;
+  return (await sha256Hex(intento)) === CLAVE_HASH;
+}
+function abrirModalClave(t) {
+  tabPendienteClave = t;
+  document.getElementById('clave-input').value = '';
+  document.getElementById('overlay-clave').classList.add('show');
+  setTimeout(function(){ document.getElementById('clave-input').focus(); }, 100);
+}
+function cerrarModalClave() {
+  document.getElementById('overlay-clave').classList.remove('show');
+  tabPendienteClave = null;
+}
+async function confirmarClave() {
+  var intento = document.getElementById('clave-input').value;
+  if (!(await verificarClave(intento))) { toast('Contraseña incorrecta', 'error'); return; }
+  sessionStorage.setItem('zona-protegida-ok', '1');
+  document.getElementById('overlay-clave').classList.remove('show');
+  renderTabla(); // habilita "Borrar" en Registro ahora que es el Director
+  renderBotonDirector();
+  var t = tabPendienteClave; tabPendienteClave = null;
+  if (t) switchTab(t);
+}
+
 function switchTab(t) {
+  if (TABS_PROTEGIDAS.indexOf(t) >= 0 && !zonaDesbloqueada()) { abrirModalClave(t); return; }
   var tabsEls = document.querySelectorAll('.container > .tabs > .tab');
-  var orden = ['registro','agentes','analisis','programas','licencias','config','historico'];
+  var orden = ['registro','panel','analisis','programas','licencias','inventario','normativas','historico'];
   tabsEls.forEach(function(el, i){ el.classList.toggle('active', orden[i] === t); });
   document.querySelectorAll('.section').forEach(function(el){ el.classList.remove('active'); });
   document.getElementById('tab-' + t).classList.add('active');
-  if (t === 'analisis') { setTimeout(renderCharts, 50); setTimeout(renderDiario, 80); }
-  if (t === 'agentes') renderPorAgente();
-  if (t === 'config') renderConfigAgentes();
+  if (t === 'panel') initPanel();
+  if (t === 'analisis') { setTimeout(renderChartMeses, 50); setTimeout(renderChartOrganismos, 60); setTimeout(renderDiario, 80); }
+  if (t === 'config') { renderConfigAgentes(); renderPorAgente(); setTimeout(renderChartAgentes, 50); setTimeout(renderTiempoPorAgente, 60); setTimeout(renderTiempoPorTema, 70); }
   if (t === 'programas') renderProgramas();
-  if (t === 'licencias') renderLicencias();
+  if (t === 'licencias') initLicencias();
   if (t === 'historico') cargarHistorico(anioHistoricoActivo);
+  if (t === 'inventario') initInventario();
+  if (t === 'normativas') initNormativas();
 }
 function switchAnioHistorico(anio) {
   anioHistoricoActivo = anio;
@@ -704,11 +1335,42 @@ function renderMetrics(target) {
   var egresados = expedientes.filter(function(e){ return estaEgresado(e); }).length;
   var enDir = total - egresados;
   document.getElementById(target).innerHTML =
-    '<div class="metric"><div class="lbl">Total ingresados</div><div class="val">' + total + '</div></div>' +
-    '<div class="metric"><div class="lbl">En la Direccion</div><div class="val blue">' + enDir + '</div></div>' +
-    '<div class="metric"><div class="lbl">Egresados</div><div class="val green">' + egresados + '</div></div>' +
-    '<div class="metric"><div class="lbl">Agentes activos</div><div class="val amber">' + agentes.length + '</div></div>';
+    '<div class="metric clickable" onclick="filtrarPorEstado(\'\')"><div class="lbl">Total ingresados</div><div class="val">' + total + '</div></div>' +
+    '<div class="metric clickable" onclick="filtrarPorEstado(\'en_direccion\')"><div class="lbl">En la Direccion</div><div class="val blue">' + enDir + '</div></div>' +
+    '<div class="metric clickable" onclick="filtrarPorEstado(\'egresado\')"><div class="lbl">Egresados</div><div class="val green">' + egresados + '</div></div>' +
+    '<div class="metric clickable" onclick="mostrarListaAgentes()"><div class="lbl">Agentes activos</div><div class="val amber">' + agentes.length + '</div></div>';
 }
+// Al hacer clic en una de las 4 tarjetas de arriba se filtra/lista el Registro
+// correspondiente (o se abre el listado de agentes), en vez de ser solo lectura.
+function filtrarPorEstado(estado) {
+  document.getElementById('f-buscar').value = '';
+  document.getElementById('f-agente').value = '';
+  document.getElementById('f-estado').value = estado;
+  switchTab('registro');
+  filtrosCambiaron();
+  var tabla = document.getElementById('tabla');
+  if (tabla) tabla.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function filtrarPorAgente(nombre) {
+  cerrarListaAgentes();
+  document.getElementById('f-buscar').value = '';
+  document.getElementById('f-estado').value = '';
+  document.getElementById('f-agente').value = nombre;
+  switchTab('registro');
+  filtrosCambiaron();
+  var tabla = document.getElementById('tabla');
+  if (tabla) tabla.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function mostrarListaAgentes() {
+  var cont = document.getElementById('lista-agentes-cont');
+  cont.innerHTML = agentes.map(function(a){
+    return '<div class="agente-item" style="cursor:pointer" onclick="filtrarPorAgente(\'' + jsArg(a) + '\')">' +
+      '<span>' + esc(a) + '</span>' +
+      '</div>';
+  }).join('') || '<div class="alert">No hay agentes cargados.</div>';
+  document.getElementById('overlay-lista-agentes').classList.add('show');
+}
+function cerrarListaAgentes() { document.getElementById('overlay-lista-agentes').classList.remove('show'); }
 
 function getValorOrden(e, col) {
   switch (col) {
@@ -755,6 +1417,10 @@ function renderTabla() {
     pagHtml = '<span style="font-size:13px;color:#888">' + totalFiltrado + ' expediente(s)</span>';
   }
   document.getElementById('paginacion').innerHTML = pagHtml;
+  var puedeBorrar = zonaDesbloqueada();
+  var btnBorrar = puedeBorrar
+    ? function(idx){ return '<button class="btn sm icon danger" title="Borrar" onclick="eliminar(' + idx + ')">🗑️</button> '; }
+    : function(){ return '<button class="btn sm icon danger" title="Solo el Director puede borrar expedientes (ingresá la clave maestra en Agentes)" disabled style="opacity:.35;cursor:not-allowed">🗑️</button> '; };
   var html = '';
   pagina.forEach(function(e){
     var egr = estaEgresado(e);
@@ -769,7 +1435,7 @@ function renderTabla() {
       '<td style="white-space:nowrap">' + fmt(getSalio(e)) + '</td>' +
       '<td style="white-space:nowrap">' +
         '<button class="btn sm icon" title="Editar" onclick="abrirModal(' + e._idx + ')">✏️</button> ' +
-        '<button class="btn sm icon danger" title="Borrar" onclick="eliminar(' + e._idx + ')">🗑️</button> ' +
+        btnBorrar(e._idx) +
         '<button class="btn sm icon" title="Consultar en el portal" onclick="consultarExpte(\'' + jsArg(getExpte(e)) + '\')">🔗</button> ' +
         '<button class="btn sm icon" title="Ver dictamenes" onclick="verDictamenes(\'' + jsArg(getExpte(e)) + '\')">📄</button>' +
       '</td></tr>';
@@ -809,6 +1475,215 @@ async function verDictamenes(nro) {
   }
 }
 
+// ===== Mi Panel (control personal de expedientes por agente) =====
+var panelAgente = null, panelFiltro = '', panelBuscar = '';
+// El Director accede a todos los paneles y pestañas usando la clave maestra
+// (la misma que desbloquea la pestaña Agentes). Cada agente tiene su propia
+// contraseña, guardada como hash en la columna clave_hash de la hoja "agentes",
+// asignada por el Director desde la pestaña Agentes.
+var DIRECTOR = 'Alonso';
+function claveHashDe(nombre) { var info = agentesInfo.filter(function(a){ return a.nombre === nombre; })[0]; return info && info.clave_hash ? String(info.clave_hash).trim() : ''; }
+function panelDesbloqueado(nombre) { try { return sessionStorage.getItem('panel-ok-' + nombre) === '1'; } catch (e) { return false; } }
+function puedeVerPanel(nombre) {
+  if (zonaDesbloqueada()) return true;        // el Director (clave maestra) ve todos los paneles
+  if (panelDesbloqueado(nombre)) return true; // este agente ya ingresó su clave en esta sesión
+  return !claveHashDe(nombre);                // sin clave asignada todavía => panel abierto
+}
+// Vencimiento para dictaminar: NO se calcula automaticamente. Es opcional y cada
+// agente lo carga si quiere, expediente por expediente, desde su panel (columna
+// "vencimiento" de la hoja expedientes). Reutiliza esFeriado() del modulo de
+// licencias: excluye sabados, domingos y feriados nacionales + provinciales de ER.
+function esDiaHabil(d) { return d.getDay() !== 0 && d.getDay() !== 6 && !esFeriado(d); }
+// Dias habiles desde hoy hasta la fecha de vencimiento (0 = vence hoy, negativo = vencido).
+function diasHabilesRestantes(venc) {
+  var hoy = new Date(); hoy.setHours(0,0,0,0);
+  var v = new Date(venc.getTime()); v.setHours(0,0,0,0);
+  if (v.getTime() === hoy.getTime()) return 0;
+  var futuro = v.getTime() > hoy.getTime();
+  var a = new Date((futuro ? hoy : v).getTime()), fin = (futuro ? v : hoy).getTime(), c = 0;
+  while (a.getTime() < fin) { a.setDate(a.getDate() + 1); if (esDiaHabil(a)) c++; }
+  return futuro ? c : -c;
+}
+function plazoDictamen(e) {
+  var iso = toInput(e.vencimiento);
+  if (!iso) return null;
+  var venc = new Date(iso + 'T00:00:00');
+  if (isNaN(venc.getTime())) return null;
+  return { venc: venc, restantes: diasHabilesRestantes(venc) };
+}
+async function actualizarVencimiento(fila, valor) {
+  try {
+    await api({ accion:'editar', hoja:'expedientes', datos:{ _fila:fila, vencimiento: valor ? fmt(valor) : '' } });
+    var exp = expedientes.filter(function(e){ return e._fila === fila; })[0];
+    if (exp) exp.vencimiento = valor;
+    renderMisExpedientes();
+    actualizarMetricasPanel();
+    toast(valor ? 'Vencimiento guardado' : 'Vencimiento quitado');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+function statsAgente(nombre) {
+  var mine = expedientes.filter(function(e){ return getRespAsig(e) === nombre; });
+  var resueltos = mine.filter(function(e){ return estaEgresado(e); }).length;
+  var vencidos = 0, porVencer = 0;
+  mine.forEach(function(e){
+    if (estaEgresado(e)) return;
+    var p = plazoDictamen(e); if (!p) return;
+    if (p.restantes < 0) vencidos++; else if (p.restantes <= 5) porVencer++;
+  });
+  return { nombre:nombre, total:mine.length, enDir:mine.length - resueltos, resueltos:resueltos, vencidos:vencidos, porVencer:porVencer, mine:mine };
+}
+function initPanel() {
+  var sel = document.getElementById('panel-sel');
+  var guardado = null; try { guardado = localStorage.getItem('panel-agente'); } catch (e) {}
+  if (!panelAgente && guardado && agentes.indexOf(guardado) >= 0) panelAgente = guardado;
+  sel.innerHTML = '<option value="">Elegí tu nombre...</option>' + agentes.map(function(a){ return '<option value="' + esc(a) + '"' + (a === panelAgente ? ' selected' : '') + '>' + esc(a) + '</option>'; }).join('');
+  renderBotonDirector();
+  renderPanel();
+}
+// La pestaña "Agentes" ya no aparece en la barra de pestañas: solo el Director la
+// desbliquea desde este boton, con la clave maestra (misma que CLAVE_HASH).
+function renderBotonDirector() {
+  var cont = document.getElementById('panel-director-btn');
+  if (!cont) return;
+  cont.innerHTML = zonaDesbloqueada()
+    ? '<button class="btn sm" onclick="switchTab(\'config\')">🔒 Gestión de agentes</button>'
+    : '<button class="btn sm" onclick="abrirModalClave(\'config\')">🔒 Acceso Director</button>';
+}
+function elegirPanelAgente(v) {
+  panelAgente = v || null;
+  try { if (v) localStorage.setItem('panel-agente', v); else localStorage.removeItem('panel-agente'); } catch (e) {}
+  panelFiltro = ''; panelBuscar = '';
+  if (v && !puedeVerPanel(v)) { abrirModalClavePanel(v); return; }
+  renderPanel();
+}
+function filtrarPanel(v){ panelFiltro = v; renderMisExpedientes(); document.querySelectorAll('#panel-filtros .btn').forEach(function(b){ b.classList.toggle('primary', b.getAttribute('data-f') === v); }); }
+function buscarPanel(v){ panelBuscar = v; renderMisExpedientes(); }
+var panelClavePendiente = null;
+function abrirModalClavePanel(nombre) {
+  panelClavePendiente = nombre;
+  document.getElementById('clave-panel-label').textContent = 'Contraseña de ' + nombre;
+  document.getElementById('clave-panel-input').value = '';
+  document.getElementById('overlay-clave-panel').classList.add('show');
+  setTimeout(function(){ document.getElementById('clave-panel-input').focus(); }, 100);
+}
+async function confirmarClavePanel() {
+  var nombre = panelClavePendiente;
+  var intento = document.getElementById('clave-panel-input').value;
+  if (!intento) { toast('Ingresá la contraseña', 'error'); return; }
+  var h = await sha256Hex(intento);
+  if (h === CLAVE_HASH) {                       // clave maestra del Director
+    sessionStorage.setItem('zona-protegida-ok', '1');
+  } else {
+    var agHash = claveHashDe(nombre);
+    if (!agHash || h !== agHash) { toast('Contraseña incorrecta', 'error'); return; }
+    try { sessionStorage.setItem('panel-ok-' + nombre, '1'); } catch (e) {}
+  }
+  document.getElementById('overlay-clave-panel').classList.remove('show');
+  panelClavePendiente = null;
+  renderBotonDirector();
+  renderPanel();
+}
+function renderPanel() {
+  var cont = document.getElementById('panel-contenido');
+  if (!panelAgente) { cont.innerHTML = '<div class="alert">👋 Elegí tu nombre en el selector de arriba para ver y controlar tus expedientes.</div>'; return; }
+  if (!puedeVerPanel(panelAgente)) {
+    cont.innerHTML = '<div class="card" style="text-align:center;padding:32px 20px">' +
+      '<div style="font-size:34px">🔒</div>' +
+      '<div style="font-weight:700;margin:10px 0 4px">Panel de ' + esc(panelAgente) + ' protegido</div>' +
+      '<div style="font-size:13px;color:var(--muted);margin-bottom:18px">Ingresá tu contraseña para ver y controlar tus expedientes.</div>' +
+      '<button class="btn primary" onclick="abrirModalClavePanel(\'' + jsArg(panelAgente) + '\')">Ingresar contraseña</button>' +
+      '</div>';
+    return;
+  }
+  var s = statsAgente(panelAgente);
+
+  // Encabezado personal (identidad + estado, sin gamificación)
+  var tieneMiClave = !!claveHashDe(panelAgente);
+  var hero = '<div class="panel-hero">' +
+    '<div class="avatar">' + esc(initials(panelAgente)) + '</div>' +
+    '<div style="flex:1;min-width:200px">' +
+      '<div class="hero-nombre">' + esc(panelAgente) + '</div>' +
+      '<div class="hero-sub">' + s.total + ' expediente(s) &middot; ' + s.enDir + ' en la Dirección &middot; ' + s.resueltos + ' resuelto(s)</div>' +
+    '</div>' +
+    '<button class="btn sm" onclick="abrirModalMiClave()" style="background:rgba(255,255,255,.18);color:#fff;border-color:rgba(255,255,255,.4)">🔑 ' + (tieneMiClave ? 'Cambiar mi contraseña' : 'Fijar mi contraseña') + '</button>' +
+    '</div>';
+
+  // Mis expedientes (centro del panel): buscador + filtros
+  var lista = '<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">' +
+    '<div class="section-title" style="margin:0">📁 Mis expedientes</div>' +
+    '<div id="panel-filtros" style="display:flex;gap:6px">' +
+      '<button class="btn sm primary" data-f="" onclick="filtrarPanel(\'\')">Todos</button>' +
+      '<button class="btn sm" data-f="en_direccion" onclick="filtrarPanel(\'en_direccion\')">En la Dirección</button>' +
+      '<button class="btn sm" data-f="egresado" onclick="filtrarPanel(\'egresado\')">Resueltos</button>' +
+    '</div></div>' +
+    '<input type="text" id="panel-buscar" placeholder="Buscar por número, tema o iniciador..." oninput="buscarPanel(this.value)" value="' + esc(panelBuscar) + '" style="width:100%;padding:8px 10px;font-size:14px;border:1px solid var(--input-line);border-radius:var(--radius);margin-bottom:8px">' +
+    '<div style="font-size:11px;color:var(--muted);margin-bottom:12px">📅 El vencimiento para dictaminar es opcional: cargalo en el expediente que quieras para hacer tu propio seguimiento de plazos.</div>' +
+    '<div id="panel-exp-lista"></div></div>';
+
+  cont.innerHTML = hero + '<div class="metric-grid"></div>' + lista;
+  actualizarMetricasPanel();
+  renderMisExpedientes();
+}
+function actualizarMetricasPanel() {
+  var grid = document.querySelector('#panel-contenido .metric-grid');
+  if (!grid || !panelAgente) return;
+  var s = statsAgente(panelAgente);
+  grid.innerHTML =
+    '<div class="metric"><div class="lbl">En la Dirección</div><div class="val blue">' + s.enDir + '</div></div>' +
+    '<div class="metric"><div class="lbl">Dictamen por vencer <span style="font-weight:400;color:var(--muted)">(≤5 días háb.)</span></div><div class="val' + (s.porVencer > 0 ? ' amber' : '') + '">' + s.porVencer + '</div></div>' +
+    '<div class="metric"><div class="lbl">Dictamen vencido</div><div class="val" style="' + (s.vencidos > 0 ? 'color:var(--danger)' : '') + '">' + s.vencidos + '</div></div>' +
+    '<div class="metric"><div class="lbl">Resueltos</div><div class="val green">' + s.resueltos + '</div></div>';
+}
+function renderMisExpedientes() {
+  var cont = document.getElementById('panel-exp-lista');
+  if (!cont || !panelAgente) return;
+  var q = (panelBuscar || '').toLowerCase();
+  var mine = expedientes.filter(function(e){ return getRespAsig(e) === panelAgente; });
+  var fil = mine.filter(function(e){
+    if (panelFiltro === 'egresado' && !estaEgresado(e)) return false;
+    if (panelFiltro === 'en_direccion' && estaEgresado(e)) return false;
+    if (q && (getExpte(e) + ' ' + getTema(e) + ' ' + getIniciador(e)).toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  });
+  // en dirección primero, y dentro los más antiguos arriba (los que necesitan atención)
+  fil.sort(function(a,b){
+    var ea = estaEgresado(a) ? 1 : 0, eb = estaEgresado(b) ? 1 : 0;
+    if (ea !== eb) return ea - eb;
+    return (toInput(a.ingreso) || '').localeCompare(toInput(b.ingreso) || '');
+  });
+  if (!fil.length) { cont.innerHTML = '<div class="alert">📭 ' + (q || panelFiltro ? 'Ningún expediente coincide con la búsqueda o el filtro.' : 'No tenés expedientes asignados.') + '</div>'; return; }
+  cont.setAttribute('data-count', fil.length);
+  cont.innerHTML = fil.map(function(e){
+    var egr = estaEgresado(e);
+    var chipPlazo = '';
+    if (!egr) {
+      var p = plazoDictamen(e);
+      var inputVenc = '<input type="date" title="Fijar vencimiento (opcional)" value="' + esc(toInput(e.vencimiento)) + '" onchange="actualizarVencimiento(' + Number(e._fila) + ',this.value)" style="font-size:11px;padding:2px 5px;border:1px solid var(--input-line);border-radius:6px">';
+      if (p) {
+        var vf = fmt(p.venc), col, txt;
+        if (p.restantes > 5) { col = 'background:var(--green-100);color:var(--green-900)'; txt = '📅 Vence ' + vf + ' · ' + p.restantes + ' días háb.'; }
+        else if (p.restantes > 0) { col = 'background:#FEF3C7;color:var(--amber-700)'; txt = '⏳ Vence ' + vf + ' · ' + p.restantes + ' día(s) háb.'; }
+        else if (p.restantes === 0) { col = 'background:#FEE2E2;color:var(--danger)'; txt = '⚠️ Vence HOY (' + vf + ')'; }
+        else { col = 'background:#FEE2E2;color:var(--danger)'; txt = '🚫 Vencido hace ' + (-p.restantes) + ' día(s) háb. (' + vf + ')'; }
+        chipPlazo = '<div style="margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="chip" style="' + col + '">' + txt + '</span>' + inputVenc + '</div>';
+      } else {
+        chipPlazo = '<div style="margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:11px;color:var(--muted)">Sin vencimiento cargado (opcional)</span>' + inputVenc + '</div>';
+      }
+    }
+    return '<div class="mini-exp">' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-weight:600;font-size:13px">' + esc(getExpte(e) || '(sin nro)') + '</div>' +
+        '<div style="font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(getTema(e) || 'Sin tema') + '</div>' +
+        chipPlazo +
+      '</div>' +
+      '<span class="badge ' + (egr ? 'egresado' : 'activo') + '">' + (egr ? 'Resuelto' : 'En Dir.') + '</span>' +
+      '<div style="white-space:nowrap;margin-left:4px">' +
+        '<button class="btn sm icon" title="Consultar en el portal" onclick="consultarExpte(\'' + jsArg(getExpte(e)) + '\')">🔗</button> ' +
+        '<button class="btn sm icon" title="Ver dictamenes" onclick="verDictamenes(\'' + jsArg(getExpte(e)) + '\')">📄</button>' +
+      '</div></div>';
+  }).join('');
+}
+
 function renderPorAgente() {
   var max = 1;
   agentes.forEach(function(a){ var c = expedientes.filter(function(e){ return getRespAsig(e) === a; }).length; if (c > max) max = c; });
@@ -824,20 +1699,243 @@ function renderPorAgente() {
   document.getElementById('agentes-lista').innerHTML = html || '<div class="alert">👥 No hay agentes configurados.</div>';
 }
 
-function renderCharts() {
+function renderChartAgentes() {
   var counts = agentes.map(function(a){ return expedientes.filter(function(e){ return getRespAsig(e) === a; }).length; });
   var enDir = agentes.map(function(a){ return expedientes.filter(function(e){ return getRespAsig(e) === a && !estaEgresado(e); }).length; });
-  var meses = {};
-  expedientes.forEach(function(e){ var raw = toInput(e.ingreso); if (raw) { var m = raw.slice(0,7); meses[m] = (meses[m]||0)+1; } });
-  var mK = Object.keys(meses).sort();
+  if (chartA) chartA.destroy();
+  chartA = new Chart(document.getElementById('chart-agentes'), { type:'bar', data:{ labels: agentes.map(function(a){ return a.split(',')[0]; }), datasets:[ {label:'En Dir.',data:enDir,backgroundColor:'#8bc53f'}, {label:'Egres.',data:counts.map(function(t,i){ return t-enDir[i]; }),backgroundColor:'#B4B2A9'} ] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{font:{size:11}}},y:{stacked:true,beginAtZero:true,ticks:{stepSize:1}}}} });
+}
+// Dibuja, para cada mes, la cantidad de ingresos en una etiqueta verde oscuro
+// traslucida centrada sobre ese mes y fija en la base del grafico (banda 0-30),
+// sin importar la altura real de la linea (asi el mes en curso, con la cuenta
+// parcial de lo que va ingresando, se lee igual de claro que los meses cerrados).
+// Dibuja, para cada mes, un par de etiquetas centradas entre ese mes y el siguiente:
+// la de ingresos (verde, dataset 0) y la de egresos (roja, dataset 1 - oculto, solo se
+// usa para tener el dato disponible aca, no dibuja su propia linea en el grafico).
+function dibujarBadgeMes(ctx, x, yCenter, texto, colorFondo, colorTexto) {
+  var w = ctx.measureText(texto).width;
+  var boxW = w + 16, boxH = 20, bx = x - boxW/2, by = yCenter - boxH/2, r = 8;
+  ctx.beginPath();
+  ctx.moveTo(bx+r, by);
+  ctx.arcTo(bx+boxW, by, bx+boxW, by+boxH, r);
+  ctx.arcTo(bx+boxW, by+boxH, bx, by+boxH, r);
+  ctx.arcTo(bx, by+boxH, bx, by, r);
+  ctx.arcTo(bx, by, bx+boxW, by, r);
+  ctx.closePath();
+  ctx.fillStyle = colorFondo;
+  ctx.fill();
+  ctx.fillStyle = colorTexto;
+  ctx.fillText(texto, x, by + boxH/2 + 1);
+  return boxW;
+}
+var pluginBadgeIngresosMes = {
+  id: 'badgeIngresosMes',
+  afterDatasetsDraw: function(chart) {
+    var ctx = chart.ctx, xScale = chart.scales.x;
+    var ingresos = chart.data.datasets[0].data;
+    var egresos = chart.data.datasets[1] ? chart.data.datasets[1].data : [];
+    // Los dos numeros de cada mes quedan apilados justo arriba del nombre del mes:
+    // el de ingresos primero, el de egresos debajo, ambos centrados sobre ese mes.
+    var boxH = 20, gapVertical = 3;
+    var yEgr = chart.chartArea.bottom - boxH/2 - 2;
+    var yIng = yEgr - boxH - gapVertical;
+    ctx.save();
+    ctx.font = '700 12px system-ui, -apple-system, "Segoe UI", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ingresos.forEach(function(val, i){
+      var x = xScale.getPixelForValue(i);
+      dibujarBadgeMes(ctx, x, yIng, String(val), 'rgba(63,107,15,0.16)', '#3f6b0f');
+      dibujarBadgeMes(ctx, x, yEgr, String(egresos[i] || 0), 'rgba(163,45,45,0.16)', '#A32D2D');
+    });
+    ctx.restore();
+  }
+};
+function renderChartMeses() {
+  var ing = {}, egr = {};
+  expedientes.forEach(function(e){
+    var i = toInput(e.ingreso); if (i) { var mi = i.slice(0,7); ing[mi] = (ing[mi]||0)+1; }
+    var s = toInput(getSalio(e)); if (s && s.length === 10) { var ms = s.slice(0,7); egr[ms] = (egr[ms]||0)+1; }
+  });
+  // Union de meses con ingresos o egresos, para que un mes con solo egresos tambien aparezca.
+  var mK = Object.keys(ing).concat(Object.keys(egr)).filter(function(v,i,arr){ return arr.indexOf(v)===i; }).sort();
   var nombresMes = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   var mL = mK.map(function(k){ var p = k.split('-'); return nombresMes[+p[1]-1] + ' ' + p[0].slice(2); });
-  if (chartA) chartA.destroy();
   if (chartM) chartM.destroy();
-  chartA = new Chart(document.getElementById('chart-agentes'), { type:'bar', data:{ labels: agentes.map(function(a){ return a.split(',')[0]; }), datasets:[ {label:'En Dir.',data:enDir,backgroundColor:'#8bc53f'}, {label:'Egres.',data:counts.map(function(t,i){ return t-enDir[i]; }),backgroundColor:'#B4B2A9'} ] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{font:{size:11}}},y:{stacked:true,beginAtZero:true,ticks:{stepSize:1}}}} });
-  chartM = new Chart(document.getElementById('chart-meses'), { type:'line', data:{ labels:mL, datasets:[{label:'Ingresos',data:mK.map(function(k){ return meses[k]; }),borderColor:'#5a9216',backgroundColor:'rgba(139,197,63,0.15)',fill:true,tension:.3,pointRadius:4}] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:11},maxRotation:45,autoSkip:false}},y:{beginAtZero:true,ticks:{stepSize:1}}}} });
+  chartM = new Chart(document.getElementById('chart-meses'), { type:'line', data:{ labels:mL, datasets:[
+    {label:'Ingresos',data:mK.map(function(k){ return ing[k]||0; }),borderColor:'#5a9216',backgroundColor:'rgba(139,197,63,0.15)',fill:true,tension:.3,pointRadius:4},
+    {label:'Egresos',data:mK.map(function(k){ return egr[k]||0; }),hidden:true}
+  ] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:11},maxRotation:45,autoSkip:false}},y:{beginAtZero:true,suggestedMax:30,ticks:{stepSize:1}}}}, plugins:[pluginBadgeIngresosMes] });
 }
 
+// Paleta categorica validada (8 tonos, orden fijo - ver skill de dataviz): CVD-safe, nunca se ciclan ni se reordenan por valor.
+var PALETA_ORGANISMOS = ['#2a78d6','#008300','#e87ba4','#eda100','#1baf7a','#eb6834','#4a3aa7','#e34948'];
+function renderChartOrganismos() {
+  var grupos = agruparPorOrganismo(8);
+  var total = grupos.reduce(function(s,g){ return s + g.total; }, 0) || 1;
+  if (chartO) chartO.destroy();
+  chartO = new Chart(document.getElementById('chart-organismos'), {
+    type: 'pie',
+    data: {
+      labels: grupos.map(function(g){ return g.nombre; }),
+      datasets: [{
+        data: grupos.map(function(g){ return g.total; }),
+        backgroundColor: grupos.map(function(g,i){ return g.key === '__otros__' ? '#B4B2A9' : PALETA_ORGANISMOS[i % PALETA_ORGANISMOS.length]; }),
+        borderColor: '#fff',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: function(ctx){ var pct = Math.round(ctx.parsed / total * 100); return ' ' + ctx.label + ': ' + ctx.parsed + ' (' + pct + '%)'; } } }
+      }
+    }
+  });
+  document.getElementById('organismos-lista').innerHTML = grupos.map(function(g, i){
+    var color = g.key === '__otros__' ? '#B4B2A9' : PALETA_ORGANISMOS[i % PALETA_ORGANISMOS.length];
+    var pct = Math.round(g.total / total * 100);
+    return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line-soft)">' +
+      '<span style="width:10px;height:10px;border-radius:50%;background:' + color + ';flex-shrink:0"></span>' +
+      '<span style="flex:1;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(g.nombre) + '">' + esc(g.nombre) + '</span>' +
+      '<span style="color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums">' + g.total + ' (' + pct + '%)</span></div>';
+  }).join('');
+}
+
+// Cuenta dias habiles entre dos fechas (excluye fines de semana y feriados), para medir
+// cuanto tardo en resolverse un expediente desde que ingreso hasta que salio.
+function diasHabilesEntre(desdeStr, hastaStr) {
+  var d = new Date(desdeStr + 'T00:00:00'), h = new Date(hastaStr + 'T00:00:00');
+  if (isNaN(d) || isNaN(h) || h < d) return null;
+  var contador = 0, f = new Date(d);
+  while (f < h) {
+    f.setDate(f.getDate() + 1);
+    if (f.getDay() !== 0 && f.getDay() !== 6 && !esFeriado(f)) contador++;
+  }
+  return contador;
+}
+function calcularTiemposResolucion() {
+  var porAgente = {}, porTema = {};
+  expedientes.forEach(function(e){
+    if (!estaEgresado(e)) return;
+    var ing = toInput(e.ingreso), sal = toInput(getSalio(e));
+    if (!ing || !sal) return;
+    var dias = diasHabilesEntre(ing, sal);
+    if (dias === null) return;
+    var ag = getRespAsig(e) || 'Sin asignar';
+    if (!porAgente[ag]) porAgente[ag] = { total:0, cant:0 };
+    porAgente[ag].total += dias; porAgente[ag].cant++;
+    var tmRaw = (getTema(e) || '').trim();
+    var tmKey = normalizar(tmRaw) || 'SIN ESPECIFICAR';
+    if (!porTema[tmKey]) porTema[tmKey] = { total:0, cant:0, muestra: tmRaw || 'Sin especificar' };
+    porTema[tmKey].total += dias; porTema[tmKey].cant++;
+    if (tmRaw.length > porTema[tmKey].muestra.length) porTema[tmKey].muestra = tmRaw;
+  });
+  return { porAgente: porAgente, porTema: porTema };
+}
+function renderTiempoPorAgente() {
+  var datos = calcularTiemposResolucion();
+  var agentesOrden = Object.keys(datos.porAgente).map(function(ag){
+    return { nombre: ag, promedio: datos.porAgente[ag].total / datos.porAgente[ag].cant, cant: datos.porAgente[ag].cant };
+  }).sort(function(a,b){ return a.promedio - b.promedio; });
+  if (chartT) chartT.destroy();
+  chartT = new Chart(document.getElementById('chart-tiempos-agente'), {
+    type: 'bar',
+    data: {
+      labels: agentesOrden.map(function(a){ return a.nombre.split(',')[0]; }),
+      datasets: [{ label:'Días hábiles promedio', data: agentesOrden.map(function(a){ return Math.round(a.promedio*10)/10; }), backgroundColor:'#2a78d6' }]
+    },
+    options: {
+      indexAxis: 'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:function(ctx){ var a = agentesOrden[ctx.dataIndex]; return ' ' + ctx.parsed.x + ' días hábiles promedio (' + a.cant + ' expediente' + (a.cant===1?'':'s') + ')'; } } } },
+      scales:{ x:{ beginAtZero:true, ticks:{ font:{size:11} } }, y:{ ticks:{ font:{size:11} } } }
+    }
+  });
+}
+function renderTiempoPorTema() {
+  var datos = calcularTiemposResolucion();
+  var temasOrden = Object.keys(datos.porTema).map(function(k){
+    var t = datos.porTema[k];
+    return { nombre: t.muestra, promedio: t.total / t.cant, cant: t.cant };
+  }).sort(function(a,b){ return b.cant - a.cant; }).slice(0, 12);
+  document.getElementById('tiempos-tema-lista').innerHTML = temasOrden.length ? ('<table><thead><tr><th>Trámite</th><th style="text-align:right">Cant.</th><th style="text-align:right">Prom. días</th></tr></thead><tbody>' +
+    temasOrden.map(function(t){ return '<tr><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(t.nombre) + '">' + esc(t.nombre) + '</td><td style="text-align:right">' + t.cant + '</td><td style="text-align:right;font-weight:600">' + (Math.round(t.promedio*10)/10) + '</td></tr>'; }).join('') +
+    '</tbody></table>') : '<div class="alert" style="margin:0">Todavía no hay expedientes egresados para calcular tiempos.</div>';
+}
+
+function exportarPDF() {
+  document.getElementById('print-fecha').textContent = 'Generado el ' + fmt(new Date());
+  window.print();
+}
+function csvEscape(v) {
+  var s = String(v === null || v === undefined ? '' : v);
+  if (/[",\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+function filaCSV(arr) { return arr.map(csvEscape).join(','); }
+function exportarCSV() {
+  var lineas = [];
+  lineas.push('Reporte de Análisis - Dirección General de Asuntos Jurídicos');
+  lineas.push('Generado el ' + fmt(new Date()));
+  lineas.push('');
+
+  lineas.push('Resumen general');
+  var egresados = expedientes.filter(estaEgresado).length;
+  lineas.push(filaCSV(['Total ingresados', expedientes.length]));
+  lineas.push(filaCSV(['En la Dirección', expedientes.length - egresados]));
+  lineas.push(filaCSV(['Egresados', egresados]));
+  lineas.push(filaCSV(['Agentes activos', agentes.length]));
+  lineas.push('');
+
+  lineas.push('Ingresos y egresos por mes');
+  lineas.push(filaCSV(['Mes', 'Ingresos', 'Egresos']));
+  var ing = {}, egr = {};
+  expedientes.forEach(function(e){
+    var i = toInput(e.ingreso); if (i) { var mi = i.slice(0,7); ing[mi] = (ing[mi]||0)+1; }
+    var s = toInput(getSalio(e)); if (s && s.length === 10) { var ms = s.slice(0,7); egr[ms] = (egr[ms]||0)+1; }
+  });
+  Object.keys(ing).concat(Object.keys(egr)).filter(function(v,i,arr){ return arr.indexOf(v)===i; }).sort().forEach(function(k){
+    lineas.push(filaCSV([k, ing[k]||0, egr[k]||0]));
+  });
+  lineas.push('');
+
+  lineas.push('Expedientes por organismo iniciador');
+  lineas.push(filaCSV(['Organismo', 'Cantidad']));
+  agruparPorOrganismo(9999).forEach(function(g){ lineas.push(filaCSV([g.nombre, g.total])); });
+  lineas.push('');
+
+  var datosT = calcularTiemposResolucion();
+  lineas.push('Tiempo promedio de resolución por agente (días hábiles)');
+  lineas.push(filaCSV(['Agente', 'Expedientes resueltos', 'Promedio días hábiles']));
+  Object.keys(datosT.porAgente).sort().forEach(function(ag){
+    var t = datosT.porAgente[ag];
+    lineas.push(filaCSV([ag, t.cant, Math.round(t.total / t.cant * 10) / 10]));
+  });
+  lineas.push('');
+
+  lineas.push('Tiempo promedio de resolución por trámite (días hábiles)');
+  lineas.push(filaCSV(['Trámite', 'Expedientes resueltos', 'Promedio días hábiles']));
+  Object.keys(datosT.porTema).map(function(k){ return datosT.porTema[k]; }).sort(function(a,b){ return b.cant - a.cant; }).forEach(function(t){
+    lineas.push(filaCSV([t.muestra, t.cant, Math.round(t.total / t.cant * 10) / 10]));
+  });
+
+  var csv = '\uFEFF' + lineas.join('\r\n');
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'reporte-analisis-' + fechaAInputStr(new Date()) + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+
+// Dia a destacar en "Movimiento diario": hoy, o el ultimo dia habil anterior
+// si hoy es fin de semana o feriado (para que siempre haya un dia real para comparar).
+function ultimoDiaHabil() {
+  var f = new Date();
+  while (f.getDay() === 0 || f.getDay() === 6 || esFeriado(f)) { f.setDate(f.getDate() - 1); }
+  return fechaAInputStr(f);
+}
 function renderDiario() {
   var desde = document.getElementById('f-desde').value;
   var hasta = document.getElementById('f-hasta').value;
@@ -847,18 +1945,29 @@ function renderDiario() {
     if (i && (!desde || i >= desde) && (!hasta || i <= hasta)) ing[i] = (ing[i]||0)+1;
     if (s && s.length === 10 && (!desde || s >= desde) && (!hasta || s <= hasta)) egr[s] = (egr[s]||0)+1;
   });
-  var todas = Object.keys(ing).concat(Object.keys(egr)).filter(function(v,i,arr){ return arr.indexOf(v)===i; }).sort();
+  // Union de fechas con movimiento: asi un dia con solo egresos (o solo ingresos)
+  // queda nivelado con "0" del otro lado en vez de faltar directamente esa fecha.
+  var todas = Object.keys(ing).concat(Object.keys(egr)).filter(function(v,i,arr){ return arr.indexOf(v)===i; });
+  var destacado = ultimoDiaHabil();
+  if ((!desde || destacado >= desde) && (!hasta || destacado <= hasta) && todas.indexOf(destacado) < 0) todas.push(destacado);
+  todas.sort();
   if (!todas.length) {
-    document.getElementById('tbody-ingresos').innerHTML = '<tr><td colspan="2" style="text-align:center;color:#888">Sin datos.</td></tr>';
-    document.getElementById('tbody-egresos').innerHTML = '<tr><td colspan="2" style="text-align:center;color:#888">Sin datos.</td></tr>';
+    document.getElementById('tbody-diario').innerHTML = '<tr><td colspan="3" style="text-align:center;color:#888">Sin datos.</td></tr>';
     if (chartD) { chartD.destroy(); chartD = null; }
     return;
   }
+  var idxDestacado = todas.indexOf(destacado);
+  var esHoy = destacado === fechaAInputStr(new Date());
   if (chartD) chartD.destroy();
-  chartD = new Chart(document.getElementById('chart-diario'), { type:'bar', data:{ labels: todas.map(function(f){ return fmt(f); }), datasets:[ {label:'Ingresos',data:todas.map(function(f){ return ing[f]||0; }),backgroundColor:'#8bc53f'}, {label:'Egresos',data:todas.map(function(f){ return egr[f]||0; }),backgroundColor:'#F0A045'} ] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top'}},scales:{x:{ticks:{font:{size:11},maxRotation:45,autoSkip:true}},y:{beginAtZero:true,ticks:{stepSize:1}}}} });
-  var iF = Object.keys(ing).sort(), eF = Object.keys(egr).sort();
-  document.getElementById('tbody-ingresos').innerHTML = iF.length ? iF.map(function(f){ return '<tr><td style="white-space:nowrap">' + fmt(f) + '</td><td style="color:#5a9216;font-weight:600">' + ing[f] + '</td></tr>'; }).join('') : '<tr><td colspan="2" style="text-align:center;color:#888">Sin ingresos.</td></tr>';
-  document.getElementById('tbody-egresos').innerHTML = eF.length ? eF.map(function(f){ return '<tr><td style="white-space:nowrap">' + fmt(f) + '</td><td style="color:#854F0B;font-weight:600">' + egr[f] + '</td></tr>'; }).join('') : '<tr><td colspan="2" style="text-align:center;color:#888">Sin egresos.</td></tr>';
+  chartD = new Chart(document.getElementById('chart-diario'), { type:'bar', data:{ labels: todas.map(function(f){ return fmt(f); }), datasets:[
+    {label:'Ingresos',data:todas.map(function(f){ return ing[f]||0; }),backgroundColor:'#8bc53f',borderColor:todas.map(function(f,i){ return i===idxDestacado ? '#3f6b0f' : '#8bc53f'; }),borderWidth:todas.map(function(f,i){ return i===idxDestacado ? 2 : 0; })},
+    {label:'Egresos',data:todas.map(function(f){ return egr[f]||0; }),backgroundColor:'#F0A045',borderColor:todas.map(function(f,i){ return i===idxDestacado ? '#8a4a10' : '#F0A045'; }),borderWidth:todas.map(function(f,i){ return i===idxDestacado ? 2 : 0; })}
+  ] }, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top'}},scales:{x:{ticks:{font:function(ctx){ return { size:11, weight: ctx.index===idxDestacado ? '700' : '400' }; },color:function(ctx){ return ctx.index===idxDestacado ? '#222' : '#888'; },maxRotation:45,autoSkip:true}},y:{beginAtZero:true,ticks:{stepSize:1}}}} });
+  document.getElementById('tbody-diario').innerHTML = todas.map(function(f,i){
+    var destacar = i === idxDestacado;
+    var etiqueta = destacar ? ' <span style="font-size:10px;background:#8bc53f;color:#fff;padding:1px 6px;border-radius:999px;margin-left:6px">' + (esHoy ? 'HOY' : 'ÚLTIMO HÁBIL') + '</span>' : '';
+    return '<tr style="' + (destacar ? 'background:#f0f7e6' : '') + '"><td style="white-space:nowrap;font-weight:' + (destacar ? '600' : '400') + '">' + fmt(f) + etiqueta + '</td><td style="color:#5a9216;font-weight:600">' + (ing[f]||0) + '</td><td style="color:#854F0B;font-weight:600">' + (egr[f]||0) + '</td></tr>';
+  }).join('');
 }
 
 function getProgramas() {
@@ -892,8 +2001,16 @@ function renderProgramas() {
 }
 function switchPrograma(p){ programaActivo = p; renderProgramas(); }
 
+var progFiltroEstado = '';
+function filtrarProgEstado(v) { progFiltroEstado = v; renderPrograma(programaActivo); }
+
 function renderPrograma(prog) {
-  var exps = getExptesDeProg(prog);
+  var todos = getExptesDeProg(prog);
+  var exps = todos.filter(function(e){
+    if (progFiltroEstado === 'egresado') return estaEgresado(e);
+    if (progFiltroEstado === 'en_direccion') return !estaEgresado(e);
+    return true;
+  });
   var filas = exps.map(function(e){
     return '<tr>' +
       '<td style="font-weight:500">' + esc(getExpte(e)||'-') + '</td>' +
@@ -902,15 +2019,34 @@ function renderPrograma(prog) {
       '<td>' + esc(getRespAsig(e)||'-') + '</td>' +
       '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(getTema(e)) + '">' + esc(getTema(e)||'-') + '</td>' +
       '<td><span class="badge ' + (estaEgresado(e)?'egresado':'activo') + '">' + (estaEgresado(e)?'Egresado':'En Dir.') + '</span></td>' +
-      '<td><button class="btn sm danger" onclick="desasignar(\'' + jsArg(prog) + '\',\'' + jsArg(getExpte(e)) + '\')">X</button></td>' +
-      '</tr>';
+      '<td style="white-space:nowrap">' +
+        '<button class="btn sm icon" title="Consultar en el portal" onclick="consultarExpte(\'' + jsArg(getExpte(e)) + '\')">🔗</button> ' +
+        '<button class="btn sm icon" title="Ver dictamenes" onclick="verDictamenes(\'' + jsArg(getExpte(e)) + '\')">📄</button> ' +
+        '<button class="btn sm icon danger" title="Quitar del programa" onclick="desasignar(\'' + jsArg(prog) + '\',\'' + jsArg(getExpte(e)) + '\')">✖</button>' +
+      '</td></tr>';
   }).join('');
-  var tabla = exps.length ? '<div style="overflow-x:auto"><table><thead><tr><th>Expte.</th><th>Iniciador</th><th>Ingreso</th><th>Resp. Asig.</th><th>Tema</th><th>Estado</th><th></th></tr></thead><tbody>' + filas + '</tbody></table></div>' : '<div class="alert">📂 No hay expedientes asignados todavia.</div>';
+  var vacio = todos.length
+    ? '<div class="alert">📂 Ningun expediente de este programa coincide con el filtro.</div>'
+    : '<div class="alert">📂 No hay expedientes asignados todavia.</div>';
+  var tabla = exps.length ? '<div style="overflow-x:auto"><table><thead><tr><th>Expte.</th><th>Iniciador</th><th>Ingreso</th><th>Resp. Asig.</th><th>Tema</th><th>Estado</th><th></th></tr></thead><tbody>' + filas + '</tbody></table></div>' : vacio;
+  var contador = progFiltroEstado ? exps.length + ' de ' + todos.length + ' expediente(s)' : todos.length + ' expediente(s)';
+  var selEstado = '<select onchange="filtrarProgEstado(this.value)" style="font-size:13px;padding:6px 10px;border:1px solid #d0d0c8;border-radius:8px;background:#fff">' +
+    '<option value=""' + (!progFiltroEstado ? ' selected' : '') + '>Todos</option>' +
+    '<option value="en_direccion"' + (progFiltroEstado === 'en_direccion' ? ' selected' : '') + '>En la Direccion</option>' +
+    '<option value="egresado"' + (progFiltroEstado === 'egresado' ? ' selected' : '') + '>Egresados</option>' +
+    '</select>';
   document.getElementById('prog-contenido').innerHTML =
-    '<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">' +
-    '<div><span style="font-size:14px;font-weight:600">' + esc(prog) + '</span><span style="font-size:12px;color:#888;margin-left:8px">' + exps.length + ' expediente(s)</span></div>' +
-    '<div style="display:flex;gap:8px"><button class="btn sm primary" onclick="abrirModalAsignar(\'' + jsArg(prog) + '\')">+ Asignar expediente</button>' +
-    '<button class="btn sm danger" onclick="eliminarPrograma(\'' + jsArg(prog) + '\')">Eliminar programa</button></div></div>' + tabla + '</div>';
+    '<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">' +
+    '<div><span style="font-size:14px;font-weight:600">' + esc(prog) + '</span><span style="font-size:12px;color:#888;margin-left:8px">' + contador + '</span></div>' +
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' + selEstado +
+    '<button class="btn sm primary" onclick="abrirModalAsignar(\'' + jsArg(prog) + '\')">+ Asignar expediente</button>' +
+    '<button class="btn sm" onclick="abrirModalRenombrar(\'' + jsArg(prog) + '\')">✏️ Renombrar</button>' +
+    '<button class="btn sm danger" onclick="eliminarPrograma(\'' + jsArg(prog) + '\')">Eliminar programa</button></div></div>' +
+    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px">' +
+      '<label style="font-size:12px;color:#888;white-space:nowrap">🔑 Palabras clave (asignan solas los expedientes nuevos que las mencionen en el tema):</label>' +
+      '<input type="text" id="prog-palabras-input" value="' + esc(getPalabrasClaveRaw(prog).join(', ')) + '" placeholder="Ej: emprende, taller de oficios" style="flex:1;min-width:220px;font-size:12px;padding:5px 9px;border:1px solid #d0d0c8;border-radius:6px" onchange="guardarPalabrasClave(\'' + jsArg(prog) + '\', this.value)">' +
+    '</div>' +
+    tabla + '</div>';
 }
 
 function renderSinAsignar() {
@@ -950,10 +2086,46 @@ async function quitarDeSinAsignar(expte) {
   } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 
-function abrirModalPrograma(){ document.getElementById('np-nombre').value = ''; document.getElementById('overlay-programa').classList.add('show'); }
+var programaRenombrando = null;
+function abrirModalPrograma(){
+  programaRenombrando = null;
+  document.getElementById('prog-modal-title').textContent = 'Nuevo programa';
+  document.getElementById('np-nombre').value = '';
+  document.getElementById('overlay-programa').classList.add('show');
+}
+function abrirModalRenombrar(prog) {
+  programaRenombrando = prog;
+  document.getElementById('prog-modal-title').textContent = 'Renombrar programa';
+  document.getElementById('np-nombre').value = prog;
+  document.getElementById('overlay-programa').classList.add('show');
+  setTimeout(function(){ var inp = document.getElementById('np-nombre'); inp.focus(); inp.select(); }, 100);
+}
 async function guardarPrograma() {
   var nombre = document.getElementById('np-nombre').value.trim();
   if (!nombre) { toast('Ingresa un nombre.', 'error'); return; }
+  var btn = document.getElementById('btn-guardar-prog');
+  if (programaRenombrando) {
+    var viejo = programaRenombrando;
+    if (nombre === viejo) { document.getElementById('overlay-programa').classList.remove('show'); return; }
+    if (getProgramas().indexOf(nombre) >= 0) { toast('Ya existe un programa con ese nombre.', 'error'); return; }
+    var filas = programasData.filter(function(p){ return p.programa === viejo; });
+    if (filas.some(function(p){ return p._fila === undefined; })) { toast('Recargá la página antes de renombrar (hay cambios recientes sin sincronizar).', 'error'); return; }
+    btn.disabled = true; btn.textContent = 'Guardando...';
+    try {
+      if (!filas.length) {
+        // Programa de fabrica sin filas propias todavia: crear el placeholder directo con el nombre nuevo.
+        await api({ accion:'agregar', hoja:'programas', datos:{ programa:nombre, expte:'' } });
+        programasData.push({ programa:nombre, expte:'' });
+      } else {
+        await Promise.all(filas.map(function(p){ return api({ accion:'editar', hoja:'programas', datos:{ _fila:p._fila, programa:nombre } }); }));
+        filas.forEach(function(p){ p.programa = nombre; });
+      }
+      document.getElementById('overlay-programa').classList.remove('show');
+      programaActivo = nombre; renderProgramas(); toast('Programa renombrado');
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+    btn.disabled = false; btn.textContent = 'Guardar';
+    return;
+  }
   if (getProgramas().indexOf(nombre) >= 0) { toast('Ya existe ese programa.', 'error'); return; }
   await api({ accion:'agregar', hoja:'programas', datos:{ programa:nombre, expte:'' } });
   programasData.push({ programa:nombre, expte:'' });
@@ -1253,37 +2425,70 @@ function renderLicencias() {
   function getLic(ag, dia){ var f = new Date(anioActual, mesActual, dia); for (var i = 0; i < licMes.length; i++) { var l = licMes[i]; if (l.agente !== ag) continue; var d = new Date(toInput(l.desde)), h = new Date(toInput(l.hasta)); if (f >= d && f <= h) return l; } return null; }
   var hoy = new Date();
   var thDias = '';
-  for (var d = 1; d <= totalDias; d++) { var f = new Date(anioActual, mesActual, d); var finde = f.getDay() === 0 || f.getDay() === 6; var esHoy = f.toDateString() === hoy.toDateString(); thDias += '<th style="width:34px;text-align:center;padding:4px 2px;' + (finde ? 'background:#f0f0ee;' : '') + (esHoy ? 'background:#d9edb8;' : '') + '"><div style="font-size:9px;color:#aaa">' + diasSem[f.getDay()] + '</div><div>' + d + '</div></th>'; }
+  for (var d = 1; d <= totalDias; d++) { var f = new Date(anioActual, mesActual, d); var finde = f.getDay() === 0 || f.getDay() === 6; var feriado = esFeriado(f); var esHoy = f.toDateString() === hoy.toDateString(); thDias += '<th style="width:34px;text-align:center;padding:4px 2px;' + ((finde || feriado) ? 'background:#f0f0ee;' : '') + (esHoy ? 'background:#d9edb8;' : '') + '" title="' + (feriado ? esc(feriado) : '') + '"><div style="font-size:9px;color:#aaa">' + diasSem[f.getDay()] + '</div><div>' + d + '</div></th>'; }
   var filas = '';
   agentes.forEach(function(ag){
     var celdas = '';
     for (var d = 1; d <= totalDias; d++) {
       var f = new Date(anioActual, mesActual, d);
       var finde = f.getDay() === 0 || f.getDay() === 6;
+      var feriado = esFeriado(f);
       var lic = getLic(ag, d);
-      var tipo = lic ? (TIPOS_LIC[lic.tipo] || TIPOS_LIC['Otro']) : null;
-      celdas += '<td style="text-align:center;padding:2px;' + (finde ? 'background:#f9f9f7;' : '') + (tipo ? 'background:' + tipo.color + ';color:' + tipo.texto + ';font-weight:700;' : '') + 'cursor:' + (tipo ? 'pointer' : 'default') + '" title="' + (tipo ? esc(lic.tipo + (lic.obs ? ' - ' + lic.obs : '')) : '') + '" ' + (tipo ? 'onclick="eliminarLicencia(' + Number(lic._fila) + ',\'' + jsArg(ag) + '\')"' : '') + '>' + (tipo ? tipo.icono : '') + '</td>';
+      var tipo = (lic && !finde && !feriado) ? (TIPOS_LIC[lic.tipo] || TIPOS_LIC['Otro']) : null;
+      var cumple = esCumpleEnFecha(ag, f);
+      var titulo = tipo ? (lic.tipo + (lic.obs ? ' - ' + lic.obs : '') + ' (clic para editar)') : (feriado || '');
+      if (cumple) titulo = '🎂 Cumpleaños de ' + ag + (titulo ? ' · ' + titulo : '');
+      var estilo = cumple ? 'background:#fde9c8;color:#92700c;font-weight:700;' : (tipo ? 'background:' + tipo.color + ';color:' + tipo.texto + ';font-weight:700;' : (((finde || feriado)) ? 'background:#f9f9f7;' + (feriado ? 'color:#8f8f86;font-weight:700;' : '') : ''));
+      var icono = cumple ? '🎂' : (tipo ? tipo.icono : (feriado ? 'F' : ''));
+      celdas += '<td style="text-align:center;padding:2px;' + estilo + 'cursor:' + (tipo ? 'pointer' : 'default') + '" title="' + esc(titulo) + '" ' + (tipo ? 'onclick="abrirModalLicencia(' + Number(lic._fila) + ')"' : '') + '>' + icono + '</td>';
     }
     filas += '<tr><td style="font-weight:500;position:sticky;left:0;background:#fff;z-index:1;border-right:1px solid #e0e0d8">' + esc(ag) + '</td>' + celdas + '</tr>';
   });
-  var leyenda = Object.keys(TIPOS_LIC).map(function(t){ var v = TIPOS_LIC[t]; return '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:12px;background:' + v.color + ';color:' + v.texto + ';margin:3px"><b>' + v.icono + '</b> ' + t + '</span>'; }).join('');
+  var leyenda = Object.keys(TIPOS_LIC).map(function(t){ var v = TIPOS_LIC[t]; return '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:12px;background:' + v.color + ';color:' + v.texto + ';margin:3px"><b>' + v.icono + '</b> ' + t + '</span>'; }).join('') + '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:12px;background:#f9f9f7;color:#8f8f86;margin:3px"><b>F</b> Feriado</span>' + '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:12px;background:#fde9c8;color:#92700c;margin:3px"><b>🎂</b> Cumpleaños</span>';
   var cal = agentes.length ? '<div style="overflow-x:auto"><table style="min-width:' + (100 + totalDias*34) + 'px;font-size:12px"><thead><tr><th style="min-width:110px;position:sticky;left:0;background:#fafaf8;z-index:2">Agente</th>' + thDias + '</tr></thead><tbody>' + filas + '</tbody></table></div><div style="margin-top:12px">' + leyenda + '</div>' : '<div class="alert">👥 No hay agentes configurados.</div>';
   document.getElementById('calendario-licencias').innerHTML = cal;
   var resumen = agentes.map(function(ag){
     var lics = licMes.filter(function(l){ return l.agente === ag; });
-    var enHoy = hoy.getMonth() === mesActual && hoy.getFullYear() === anioActual && getLic(ag, hoy.getDate());
+    var hoyFinde = hoy.getDay() === 0 || hoy.getDay() === 6;
+    var enHoy = !hoyFinde && !esFeriado(hoy) && hoy.getMonth() === mesActual && hoy.getFullYear() === anioActual && getLic(ag, hoy.getDate());
     var detalle = lics.length ? lics.map(function(l){ return '<div style="font-size:11px;color:#555;margin-top:4px">' + (TIPOS_LIC[l.tipo] ? TIPOS_LIC[l.tipo].icono : 'O') + ' ' + esc(l.tipo) + ': ' + fmt(l.desde) + ' - ' + fmt(l.hasta) + '</div>'; }).join('') : '<div style="font-size:11px;color:#aaa">Sin licencias este mes</div>';
     return '<div style="padding:12px;border-radius:8px;border:1px solid ' + (enHoy ? '#8bc53f' : '#e0e0d8') + ';background:' + (enHoy ? '#f0f7e6' : '#fff') + '"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div class="avatar" style="width:28px;height:28px;font-size:11px">' + esc(initials(ag)) + '</div><span style="font-size:13px;font-weight:500">' + esc(ag) + '</span>' + (enHoy ? '<span style="font-size:10px;background:#8bc53f;color:#fff;padding:1px 6px;border-radius:999px">HOY</span>' : '') + '</div>' + detalle + '</div>';
   }).join('');
   document.getElementById('resumen-licencias').innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">' + resumen + '</div>';
 }
-function abrirModalLicencia() {
-  document.getElementById('lic-modal-title').textContent = 'Nueva licencia';
+var editLicFila = null;
+function abrirModalLicencia(fila) {
+  var lic = fila !== undefined ? licenciasData.filter(function(l){ return l._fila === fila; })[0] : null;
+  editLicFila = lic ? fila : null;
+  document.getElementById('lic-modal-title').textContent = lic ? 'Editar licencia' : 'Nueva licencia';
+  document.getElementById('btn-eliminar-lic').style.display = lic ? '' : 'none';
   document.getElementById('lic-agente').innerHTML = '<option value="">Seleccionar...</option>' + agentes.map(function(a){ return '<option value="' + esc(a) + '">' + esc(a) + '</option>'; }).join('');
-  document.getElementById('lic-agente').value = ''; document.getElementById('lic-tipo').value = 'Vacaciones'; document.getElementById('lic-obs').value = ''; document.getElementById('lic-desde').value = ''; document.getElementById('lic-hasta').value = '';
+  document.getElementById('lic-agente').value = lic ? lic.agente : '';
+  document.getElementById('lic-tipo').value = lic ? lic.tipo : 'Vacaciones';
+  document.getElementById('lic-obs').value = lic ? (lic.obs || '') : '';
+  document.getElementById('lic-desde').value = lic ? toInput(lic.desde) : '';
+  document.getElementById('lic-dias').value = '';
+  document.getElementById('lic-hasta').value = lic ? toInput(lic.hasta) : '';
   document.getElementById('overlay-licencia').classList.add('show');
 }
-function cerrarModalLicencia(){ document.getElementById('overlay-licencia').classList.remove('show'); }
+function fechaAInputStr(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function sumarDiasHabiles(desdeStr, dias) {
+  var f = new Date(desdeStr + 'T00:00:00');
+  var contados = 0;
+  while (contados < dias) {
+    var finde = f.getDay() === 0 || f.getDay() === 6;
+    if (!finde && !esFeriado(f)) contados++;
+    if (contados < dias) f.setDate(f.getDate() + 1);
+  }
+  return f;
+}
+function calcularHastaPorDias() {
+  var desde = document.getElementById('lic-desde').value;
+  var dias = parseInt(document.getElementById('lic-dias').value, 10);
+  if (!desde || !dias || dias < 1) return;
+  document.getElementById('lic-hasta').value = fechaAInputStr(sumarDiasHabiles(desde, dias));
+}
+function cerrarModalLicencia(){ document.getElementById('overlay-licencia').classList.remove('show'); editLicFila = null; }
 async function guardarLicencia() {
   var agente = document.getElementById('lic-agente').value, tipo = document.getElementById('lic-tipo').value, desde = document.getElementById('lic-desde').value, hasta = document.getElementById('lic-hasta').value;
   if (!agente || !desde || !hasta) { toast('Completa agente, fecha inicio y fecha fin.', 'error'); return; }
@@ -1291,10 +2496,11 @@ async function guardarLicencia() {
   var datos = { agente:agente, tipo:tipo, desde:fmt(desde), hasta:fmt(hasta), obs:document.getElementById('lic-obs').value };
   var btn = document.getElementById('btn-guardar-lic'); btn.disabled = true; btn.textContent = 'Guardando...';
   try {
-    await api({ accion:'agregar', hoja:'licencias', datos:datos });
+    if (editLicFila !== null) { datos._fila = editLicFila; await api({ accion:'editar', hoja:'licencias', datos:datos }); }
+    else await api({ accion:'agregar', hoja:'licencias', datos:datos });
     licenciasData = await api({ method:'GET', hoja:'licencias' });
     licenciasData = Array.isArray(licenciasData) ? licenciasData.filter(function(l){ return l.agente; }) : [];
-    cerrarModalLicencia(); renderLicencias(); toast('Licencia guardada');
+    cerrarModalLicencia(); renderLicencias(); toast(editLicFila !== null ? 'Licencia actualizada' : 'Licencia guardada');
   } catch (e) { toast('Error: ' + e.message, 'error'); }
   btn.disabled = false; btn.textContent = 'Guardar';
 }
@@ -1302,17 +2508,410 @@ async function eliminarLicencia(fila, agente) {
   if (!await confirmar('¿Eliminas esta licencia de ' + agente + '?', 'Eliminar')) return;
   try { await api({ accion:'eliminar', hoja:'licencias', datos:{ _fila:fila } }); licenciasData = licenciasData.filter(function(l){ return l._fila !== fila; }); renderLicencias(); toast('Licencia eliminada'); } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
+async function eliminarLicenciaDesdeModal() {
+  if (editLicFila === null) return;
+  var lic = licenciasData.filter(function(l){ return l._fila === editLicFila; })[0];
+  await eliminarLicencia(editLicFila, lic ? lic.agente : '');
+  if (!licenciasData.some(function(l){ return l._fila === editLicFila; })) cerrarModalLicencia();
+}
+
+function chipEstado(est) {
+  var c = ESTADO_CHIP[est] || ['#F1EFE8','#5F5E5A'];
+  return '<span class="chip" style="background:' + c[0] + ';color:' + c[1] + '">' + esc(est || '-') + '</span>';
+}
+
+async function initInventario() {
+  if (inventarioCargado) { renderInventario(); return; }
+  document.getElementById('inv-lista').innerHTML = SKELETON_HTML;
+  document.getElementById('ped-lista').innerHTML = SKELETON_HTML;
+  await recargarInventario('inventario');
+  await recargarInventario('pedidos');
+  inventarioCargado = true;
+  renderInventario();
+}
+async function recargarInventario(hoja) {
+  try {
+    var d = await api({ method:'GET', hoja:hoja });
+    d = Array.isArray(d) ? d : [];
+    if (hoja === 'inventario') inventarioData = d.filter(function(b){ return b.bien; }).map(function(b,i){ b._i = i; return b; });
+    else pedidosData = d.filter(function(p){ return p.insumo; }).map(function(p,i){ p._i = i; return p; });
+  } catch (e) {
+    if (hoja === 'inventario') inventarioData = []; else pedidosData = [];
+  }
+}
+
+// ===== Normativas (Programas, Contrataciones, Dictamenes Fiscalia, Legal y Tecnica) =====
+// Solo lectura: lista archivos de una carpeta de Drive con una subcarpeta por
+// categoria (ver README). Cargar/editar/borrar se hace en Drive, no en la app.
+async function initNormativas(forzar) {
+  if (normativasCargadas && !forzar) { renderNormativas(); return; }
+  document.getElementById('norm-lista').innerHTML = SKELETON_HTML;
+  try {
+    var d = await api({ method:'GET', hoja:'normativas' });
+    normativasData = Array.isArray(d) ? d.filter(function(n){ return n.titulo; }) : [];
+  } catch (e) { normativasData = []; }
+  normativasCargadas = true;
+  renderNormativas();
+}
+function switchNormTab(cat) {
+  normSubTab = cat;
+  var els = document.querySelectorAll('#norm-subtabs .tab');
+  els.forEach(function(el, i){ el.classList.toggle('active', CATEGORIAS_NORMATIVAS[i] === cat); });
+  renderNormativas();
+}
+function renderNormativas() {
+  var buscar = (document.getElementById('norm-buscar').value || '').toLowerCase();
+  var filtrado = normativasData.filter(function(n){
+    if ((n.categoria || '') !== normSubTab) return false;
+    if (!buscar) return true;
+    return (n.titulo||'').toLowerCase().indexOf(buscar) >= 0;
+  }).sort(function(a,b){ return (toInput(b.fecha)||'').localeCompare(toInput(a.fecha)||'') || (a.titulo||'').localeCompare(b.titulo||''); });
+  document.getElementById('norm-lista').innerHTML = filtrado.length ? filtrado.map(function(n){
+    return '<div class="agente-item">' +
+      '<div style="flex:1;min-width:0;padding-right:10px">' +
+        '<div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(n.titulo || '-') + '</div>' +
+        (n.fecha ? '<div style="font-size:12px;color:#888">' + fmt(n.fecha) + '</div>' : '') +
+      '</div>' +
+      (n.link ? '<a class="btn sm" href="' + esc(n.link) + '" target="_blank" rel="noopener">🔗 Ver</a>' : '') +
+    '</div>';
+  }).join('') : '<div class="alert">📄 No hay archivos cargados en esta categoría todavía.</div>';
+}
+function switchInvTab(t) {
+  invSubTab = t;
+  var els = document.querySelectorAll('#inv-subtabs .tab');
+  var orden = ['bienes','pedidos'];
+  els.forEach(function(el, i){ el.classList.toggle('active', orden[i] === t); });
+  document.getElementById('subinv-bienes').style.display = t === 'bienes' ? 'block' : 'none';
+  document.getElementById('subinv-pedidos').style.display = t === 'pedidos' ? 'block' : 'none';
+}
+function renderInventario() {
+  var unidades = inventarioData.reduce(function(s, b){ return s + (parseInt(b.cantidad, 10) || 0); }, 0);
+  var pend = pedidosData.filter(function(p){ return (p.estado || 'Pendiente') !== 'Entregado'; }).length;
+  document.getElementById('metrics-inventario').innerHTML =
+    '<div class="metric"><div class="lbl">Bienes registrados</div><div class="val">' + inventarioData.length + '</div></div>' +
+    '<div class="metric"><div class="lbl">Unidades totales</div><div class="val blue">' + unidades + '</div></div>' +
+    '<div class="metric"><div class="lbl">Pedidos pendientes</div><div class="val amber">' + pend + '</div></div>' +
+    '<div class="metric"><div class="lbl">Pedidos entregados</div><div class="val green">' + (pedidosData.length - pend) + '</div></div>';
+  renderBienes();
+  renderPedidos();
+}
+function renderBienes() {
+  var buscar = document.getElementById('inv-buscar').value.toLowerCase();
+  var cat = document.getElementById('inv-categoria').value;
+  var est = document.getElementById('inv-estado').value;
+  var fil = inventarioData.filter(function(b){
+    var mC = !cat || (b.categoria || '') === cat;
+    var mE = !est || (b.estado || '') === est;
+    var mB = !buscar || Object.values(b).join(' ').toLowerCase().indexOf(buscar) >= 0;
+    return mC && mE && mB;
+  });
+  if (!fil.length) {
+    document.getElementById('inv-lista').innerHTML = '<div class="alert">📦 No hay bienes cargados' + (inventarioData.length ? ' con esos filtros' : '') + '.' +
+      (inventarioData.length ? '' : '<br><span style="font-size:12px">Si la lista no carga, verifica que en la planilla exista una hoja llamada <b>inventario</b> con las columnas: bien, categoria, cantidad, estado, ubicacion, obs.</span>') + '</div>';
+    return;
+  }
+  var filas = fil.map(function(b){
+    return '<tr>' +
+      '<td style="font-weight:500">' + esc(b.bien) + '</td>' +
+      '<td>' + esc(b.categoria || '-') + '</td>' +
+      '<td style="font-variant-numeric:tabular-nums">' + esc(b.cantidad || '-') + '</td>' +
+      '<td>' + chipEstado(b.estado) + '</td>' +
+      '<td>' + esc(b.ubicacion || '-') + '</td>' +
+      '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(b.obs || '') + '">' + esc(b.obs || '-') + '</td>' +
+      '<td style="white-space:nowrap">' +
+        '<button class="btn sm icon" title="Editar" onclick="abrirModalBien(' + b._i + ')">✏️</button> ' +
+        '<button class="btn sm icon danger" title="Eliminar" onclick="eliminarBien(' + b._i + ')">🗑️</button>' +
+      '</td></tr>';
+  }).join('');
+  document.getElementById('inv-lista').innerHTML = '<div style="overflow-x:auto"><table><thead><tr><th>Bien</th><th>Categoria</th><th>Cant.</th><th>Estado</th><th>Ubicacion</th><th>Obs.</th><th></th></tr></thead><tbody>' + filas + '</tbody></table></div>';
+}
+function renderPedidos() {
+  var est = document.getElementById('ped-estado').value;
+  var fil = pedidosData.filter(function(p){
+    var pe = p.estado || 'Pendiente';
+    return !est || (est === 'Entregado' ? pe === 'Entregado' : pe !== 'Entregado');
+  });
+  fil = fil.slice().sort(function(a, b){ return (toInput(b.fecha) || '').localeCompare(toInput(a.fecha) || ''); });
+  if (!fil.length) {
+    document.getElementById('ped-lista').innerHTML = '<div class="alert">🛒 No hay pedidos registrados' + (pedidosData.length ? ' con ese filtro' : '') + '.' +
+      (pedidosData.length ? '' : '<br><span style="font-size:12px">Si la lista no carga, verifica que en la planilla exista una hoja llamada <b>pedidos</b> con las columnas: fecha, insumo, cantidad, solicitante, estado, obs.</span>') + '</div>';
+    return;
+  }
+  var filas = fil.map(function(p){
+    var pendiente = (p.estado || 'Pendiente') !== 'Entregado';
+    return '<tr>' +
+      '<td style="white-space:nowrap">' + fmt(p.fecha) + '</td>' +
+      '<td style="font-weight:500">' + esc(p.insumo) + '</td>' +
+      '<td style="font-variant-numeric:tabular-nums">' + esc(p.cantidad || '-') + '</td>' +
+      '<td>' + esc(p.solicitante || '-') + '</td>' +
+      '<td>' + chipEstado(p.estado || 'Pendiente') + '</td>' +
+      '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(p.obs || '') + '">' + esc(p.obs || '-') + '</td>' +
+      '<td style="white-space:nowrap">' +
+        (pendiente ? '<button class="btn sm icon" title="Marcar como entregado" style="color:#3B6D11;border-color:#8bc53f" onclick="marcarEntregado(' + p._i + ')">✔️</button> ' : '') +
+        '<button class="btn sm icon" title="Editar" onclick="abrirModalPedido(' + p._i + ')">✏️</button> ' +
+        '<button class="btn sm icon danger" title="Eliminar" onclick="eliminarPedido(' + p._i + ')">🗑️</button>' +
+      '</td></tr>';
+  }).join('');
+  document.getElementById('ped-lista').innerHTML = '<div style="overflow-x:auto"><table><thead><tr><th>Fecha</th><th>Insumo</th><th>Cant.</th><th>Solicitante</th><th>Estado</th><th>Obs.</th><th></th></tr></thead><tbody>' + filas + '</tbody></table></div>';
+}
+function abrirModalBien(i) {
+  if (i === undefined) i = null;
+  editBienIdx = i;
+  document.getElementById('bien-title').textContent = i !== null ? 'Editar bien' : 'Nuevo bien';
+  if (i !== null) {
+    var b = inventarioData[i];
+    document.getElementById('b-bien').value = b.bien || '';
+    document.getElementById('b-categoria').value = b.categoria || 'Otro';
+    document.getElementById('b-cantidad').value = parseInt(b.cantidad, 10) || 1;
+    document.getElementById('b-estado').value = b.estado || 'Bueno';
+    document.getElementById('b-ubicacion').value = b.ubicacion || '';
+    document.getElementById('b-obs').value = b.obs || '';
+  } else {
+    document.getElementById('b-bien').value = '';
+    document.getElementById('b-categoria').value = 'Mobiliario';
+    document.getElementById('b-cantidad').value = 1;
+    document.getElementById('b-estado').value = 'Bueno';
+    document.getElementById('b-ubicacion').value = '';
+    document.getElementById('b-obs').value = '';
+  }
+  document.getElementById('overlay-bien').classList.add('show');
+}
+async function guardarBien() {
+  var bien = document.getElementById('b-bien').value.trim();
+  var cant = parseInt(document.getElementById('b-cantidad').value, 10);
+  if (!bien) { toast('Ingresa el nombre del bien.', 'error'); return; }
+  if (!cant || cant < 1) { toast('La cantidad debe ser 1 o mas.', 'error'); return; }
+  var datos = {
+    bien: bien,
+    categoria: document.getElementById('b-categoria').value,
+    cantidad: cant,
+    estado: document.getElementById('b-estado').value,
+    ubicacion: document.getElementById('b-ubicacion').value,
+    obs: document.getElementById('b-obs').value
+  };
+  var btn = document.getElementById('btn-guardar-bien'); btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    if (editBienIdx !== null) { datos._fila = inventarioData[editBienIdx]._fila; await api({ accion:'editar', hoja:'inventario', datos:datos }); }
+    else await api({ accion:'agregar', hoja:'inventario', datos:datos });
+    await recargarInventario('inventario');
+    document.getElementById('overlay-bien').classList.remove('show');
+    renderInventario(); toast('Bien guardado');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Guardar';
+}
+async function eliminarBien(i) {
+  if (!await confirmar('¿Eliminas "' + (inventarioData[i].bien || '') + '" del inventario?', 'Eliminar')) return;
+  try {
+    await api({ accion:'eliminar', hoja:'inventario', datos:{ _fila: inventarioData[i]._fila } });
+    await recargarInventario('inventario');
+    renderInventario(); toast('Bien eliminado');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+function abrirModalPedido(i) {
+  if (i === undefined) i = null;
+  editPedidoIdx = i;
+  document.getElementById('pedido-title').textContent = i !== null ? 'Editar pedido' : 'Nuevo pedido de insumos';
+  document.getElementById('p-solicitante').innerHTML = '<option value="">Seleccionar...</option>' + agentes.map(function(a){ return '<option value="' + esc(a) + '">' + esc(a) + '</option>'; }).join('');
+  if (i !== null) {
+    var p = pedidosData[i];
+    document.getElementById('p-insumo').value = p.insumo || '';
+    document.getElementById('p-cantidad').value = parseInt(p.cantidad, 10) || 1;
+    document.getElementById('p-fecha').value = toInput(p.fecha);
+    document.getElementById('p-solicitante').value = p.solicitante || '';
+    document.getElementById('p-estado').value = (p.estado === 'Entregado') ? 'Entregado' : 'Pendiente';
+    document.getElementById('p-obs').value = p.obs || '';
+  } else {
+    document.getElementById('p-insumo').value = '';
+    document.getElementById('p-cantidad').value = 1;
+    document.getElementById('p-fecha').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('p-solicitante').value = '';
+    document.getElementById('p-estado').value = 'Pendiente';
+    document.getElementById('p-obs').value = '';
+  }
+  document.getElementById('overlay-pedido').classList.add('show');
+}
+async function guardarPedido() {
+  var insumo = document.getElementById('p-insumo').value.trim();
+  var cant = parseInt(document.getElementById('p-cantidad').value, 10);
+  var fecha = document.getElementById('p-fecha').value;
+  if (!insumo) { toast('Ingresa el insumo pedido.', 'error'); return; }
+  if (!cant || cant < 1) { toast('La cantidad debe ser 1 o mas.', 'error'); return; }
+  if (!fecha) { toast('Ingresa la fecha del pedido.', 'error'); return; }
+  var datos = {
+    fecha: fmt(fecha),
+    insumo: insumo,
+    cantidad: cant,
+    solicitante: document.getElementById('p-solicitante').value,
+    estado: document.getElementById('p-estado').value,
+    obs: document.getElementById('p-obs').value
+  };
+  var btn = document.getElementById('btn-guardar-pedido'); btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    if (editPedidoIdx !== null) { datos._fila = pedidosData[editPedidoIdx]._fila; await api({ accion:'editar', hoja:'pedidos', datos:datos }); }
+    else await api({ accion:'agregar', hoja:'pedidos', datos:datos });
+    await recargarInventario('pedidos');
+    document.getElementById('overlay-pedido').classList.remove('show');
+    renderInventario(); toast('Pedido guardado');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Guardar';
+}
+async function marcarEntregado(i) {
+  var p = pedidosData[i];
+  if (!await confirmar('¿Marcas como entregado "' + (p.insumo || '') + '" (' + (p.cantidad || '?') + ' unidades)?', 'Entregado')) return;
+  var datos = {
+    fecha: fmt(p.fecha), insumo: p.insumo, cantidad: p.cantidad,
+    solicitante: p.solicitante || '', estado: 'Entregado', obs: p.obs || '', _fila: p._fila
+  };
+  try {
+    await api({ accion:'editar', hoja:'pedidos', datos:datos });
+    await recargarInventario('pedidos');
+    renderInventario(); toast('Pedido marcado como entregado');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+async function eliminarPedido(i) {
+  if (!await confirmar('¿Eliminas el pedido de "' + (pedidosData[i].insumo || '') + '"?', 'Eliminar')) return;
+  try {
+    await api({ accion:'eliminar', hoja:'pedidos', datos:{ _fila: pedidosData[i]._fila } });
+    await recargarInventario('pedidos');
+    renderInventario(); toast('Pedido eliminado');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
 
 function renderConfigAgentes() {
-  document.getElementById('agentes-config-lista').innerHTML = agentes.length ? agentes.map(function(a, i){ return '<div class="agente-item"><div style="display:flex;align-items:center;gap:10px"><div class="avatar">' + esc(initials(a)) + '</div><span style="font-size:14px">' + esc(a) + '</span></div><button class="btn sm danger" onclick="eliminarAgente(' + i + ')">Eliminar</button></div>'; }).join('') : '<div class="alert">👥 No hay agentes cargados.</div>';
+  var MESES_CUMPLE = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  document.getElementById('agentes-config-lista').innerHTML = agentes.length ? agentes.map(function(a, i){
+    var md = cumpleMesDia(a);
+    var mesSel = md ? md.slice(0,2) : '', diaSel = md ? md.slice(3,5) : '';
+    var optsMes = '<option value="">Mes</option>' + MESES_CUMPLE.map(function(m, idx){ var v = String(idx+1).padStart(2,'0'); return '<option value="' + v + '"' + (v===mesSel?' selected':'') + '>' + m + '</option>'; }).join('');
+    var optsDia = '<option value="">Día</option>' + Array.from({length:31}, function(_, idx){ var v = String(idx+1).padStart(2,'0'); return '<option value="' + v + '"' + (v===diaSel?' selected':'') + '>' + (idx+1) + '</option>'; }).join('');
+    var esDir = a === DIRECTOR;
+    var badgeDir = esDir ? '<span class="chip" style="background:var(--green-100);color:var(--green-900)" title="Accede a todas las pestañas y paneles con la clave maestra">👑 Director</span>' : '';
+    var tieneClave = !!claveHashDe(a);
+    var claveCtrl = '<span style="display:flex;align-items:center;gap:4px;font-size:12px;color:#888">🔑<button class="btn sm" onclick="abrirSetClave(' + i + ')">' + (tieneClave ? 'Cambiar clave' : 'Asignar clave') + '</button>' + (tieneClave ? '<span title="Contraseña asignada" style="color:var(--green-700)">🔒</span>' : '<span title="Sin contraseña" style="color:var(--muted-3)">— sin clave</span>') + '</span>';
+    return '<div class="agente-item"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="avatar">' + esc(initials(a)) + '</div><span style="font-size:14px">' + esc(a) + '</span>' + badgeDir + '<span style="display:flex;align-items:center;gap:4px;font-size:12px;color:#888" title="Cumpleaños (dia y mes, se repite todos los años)">🎂<select id="cumple-mes-' + i + '" onchange="actualizarCumpleAgente(' + i + ')" style="padding:4px 6px;font-size:12px;border:1px solid #d0d0c8;border-radius:6px">' + optsMes + '</select><select id="cumple-dia-' + i + '" onchange="actualizarCumpleAgente(' + i + ')" style="padding:4px 6px;font-size:12px;border:1px solid #d0d0c8;border-radius:6px">' + optsDia + '</select></span>' + claveCtrl + '</div><button class="btn sm danger" onclick="eliminarAgente(' + i + ')">Eliminar</button></div>';
+  }).join('') : '<div class="alert">👥 No hay agentes cargados.</div>';
 }
 async function agregarAgente() {
+  if (!zonaDesbloqueada()) { toast('Acceso restringido.', 'error'); return; }
   var inp = document.getElementById('nuevo-agente'); var nombre = inp.value.trim(); if (!nombre) return;
-  try { await api({ accion:'agregar', hoja:'agentes', datos:{ nombre:nombre } }); inp.value = ''; agentes.push(nombre); fillSelects(); renderConfigAgentes(); toast('Agente agregado'); } catch (e) { toast('Error: ' + e.message, 'error'); }
+  try { await api({ accion:'agregar', hoja:'agentes', datos:{ nombre:nombre } }); inp.value = ''; agentes.push(nombre); agentesInfo.push({ nombre:nombre, cumple_mes:'', cumple_dia:'' }); fillSelects(); renderConfigAgentes(); toast('Agente agregado'); } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 async function eliminarAgente(i) {
+  if (!zonaDesbloqueada()) { toast('Acceso restringido.', 'error'); return; }
   if (!await confirmar('¿Eliminas a "' + agentes[i] + '"?', 'Eliminar')) return;
-  try { await api({ accion:'eliminar', hoja:'agentes', datos:{ _fila:i+2 } }); agentes.splice(i, 1); fillSelects(); renderConfigAgentes(); toast('Agente eliminado'); } catch (e) { toast('Error: ' + e.message, 'error'); }
+  try { await api({ accion:'eliminar', hoja:'agentes', datos:{ _fila:i+2 } }); agentes.splice(i, 1); agentesInfo.splice(i, 1); fillSelects(); renderConfigAgentes(); toast('Agente eliminado'); } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+async function actualizarCumpleAgente(i) {
+  if (!zonaDesbloqueada()) { toast('Acceso restringido.', 'error'); return; }
+  var mes = document.getElementById('cumple-mes-' + i).value;
+  var dia = document.getElementById('cumple-dia-' + i).value;
+  // Si todavia falta elegir el mes o el dia, no guardar nada: antes esto disparaba un
+  // guardado con los dos campos en blanco (borrando lo ya guardado) apenas se elegia
+  // el primero de los dos selects, y esa peticion "en blanco" podia llegar despues de
+  // la peticion buena (con el mes y el dia completos) si el backend responde lento,
+  // pisandola. Con este corte solo se guarda una vez que estan los dos elegidos.
+  if (!mes || !dia) return;
+  var mesNum = parseInt(mes, 10), diaNum = parseInt(dia, 10);
+  try {
+    // Se guardan como STRING (no numero): si la celda quedo con formato Fecha, un numero
+    // lo coerce a fecha (1900-...) y se pierde. El string ademas "cura" el formato de la celda.
+    await api({ accion:'editar', hoja:'agentes', datos:{ _fila:i+2, nombre:agentes[i], cumple_mes:String(mesNum), cumple_dia:String(diaNum) } });
+    agentesInfo[i] = agentesInfo[i] || { nombre:agentes[i] };
+    agentesInfo[i].cumple_mes = mesNum;
+    agentesInfo[i].cumple_dia = diaNum;
+    toast('Cumpleaños actualizado');
+    if (document.getElementById('tab-licencias').classList.contains('active')) renderLicencias();
+    celebrarCumpleanos();
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+var setClaveIdx = null;
+function abrirSetClave(i) {
+  if (!zonaDesbloqueada()) { toast('Acceso restringido.', 'error'); return; }
+  setClaveIdx = i;
+  document.getElementById('set-clave-title').textContent = 'Contraseña de ' + agentes[i];
+  document.getElementById('set-clave-1').value = '';
+  document.getElementById('set-clave-2').value = '';
+  document.getElementById('btn-quitar-clave').style.display = claveHashDe(agentes[i]) ? 'inline-block' : 'none';
+  document.getElementById('overlay-set-clave').classList.add('show');
+  setTimeout(function(){ document.getElementById('set-clave-1').focus(); }, 100);
+}
+async function guardarClaveAgente() {
+  if (!zonaDesbloqueada()) { toast('Acceso restringido.', 'error'); return; }
+  var i = setClaveIdx;
+  var c1 = document.getElementById('set-clave-1').value, c2 = document.getElementById('set-clave-2').value;
+  if (!c1) { toast('Ingresá una contraseña', 'error'); return; }
+  if (c1 !== c2) { toast('Las contraseñas no coinciden', 'error'); return; }
+  var hash = await sha256Hex(c1);
+  var btn = document.getElementById('btn-set-clave'); btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    await api({ accion:'editar', hoja:'agentes', datos:{ _fila:i+2, nombre:agentes[i], clave_hash:hash } });
+    agentesInfo[i] = agentesInfo[i] || { nombre:agentes[i] };
+    agentesInfo[i].clave_hash = hash;
+    try { sessionStorage.removeItem('panel-ok-' + agentes[i]); } catch (e) {}
+    document.getElementById('overlay-set-clave').classList.remove('show');
+    renderConfigAgentes();
+    toast('Contraseña asignada');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Guardar';
+}
+async function quitarClaveAgente() {
+  if (!zonaDesbloqueada()) { toast('Acceso restringido.', 'error'); return; }
+  var i = setClaveIdx;
+  if (!await confirmar('¿Quitar la contraseña de "' + agentes[i] + '"? Su panel quedará abierto.', 'Quitar')) return;
+  try {
+    await api({ accion:'editar', hoja:'agentes', datos:{ _fila:i+2, nombre:agentes[i], clave_hash:'' } });
+    if (agentesInfo[i]) agentesInfo[i].clave_hash = '';
+    try { sessionStorage.removeItem('panel-ok-' + agentes[i]); } catch (e) {}
+    document.getElementById('overlay-set-clave').classList.remove('show');
+    renderConfigAgentes();
+    toast('Contraseña quitada');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+
+// Autogestion desde Mi Panel: el propio agente fija/cambia/quita su contraseña
+// (solo disponible una vez que ya esta viendo su panel desbloqueado - con clave
+// vieja correcta, con la clave maestra del Director, o porque todavia no tenia clave).
+function abrirModalMiClave() {
+  if (!panelAgente || !puedeVerPanel(panelAgente)) return;
+  document.getElementById('mi-clave-1').value = '';
+  document.getElementById('mi-clave-2').value = '';
+  document.getElementById('btn-quitar-mi-clave').style.display = claveHashDe(panelAgente) ? 'inline-block' : 'none';
+  document.getElementById('overlay-mi-clave').classList.add('show');
+  setTimeout(function(){ document.getElementById('mi-clave-1').focus(); }, 100);
+}
+function cerrarModalMiClave() { document.getElementById('overlay-mi-clave').classList.remove('show'); }
+async function guardarMiClave() {
+  if (!panelAgente || !puedeVerPanel(panelAgente)) return;
+  var c1 = document.getElementById('mi-clave-1').value, c2 = document.getElementById('mi-clave-2').value;
+  if (!c1) { toast('Ingresá una contraseña', 'error'); return; }
+  if (c1 !== c2) { toast('Las contraseñas no coinciden', 'error'); return; }
+  var idx = agentes.indexOf(panelAgente);
+  if (idx < 0) return;
+  var hash = await sha256Hex(c1);
+  var btn = document.getElementById('btn-guardar-mi-clave'); btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    await api({ accion:'editar', hoja:'agentes', datos:{ _fila:idx+2, nombre:panelAgente, clave_hash:hash } });
+    agentesInfo[idx] = agentesInfo[idx] || { nombre:panelAgente };
+    agentesInfo[idx].clave_hash = hash;
+    try { sessionStorage.setItem('panel-ok-' + panelAgente, '1'); } catch (e) {}
+    cerrarModalMiClave();
+    toast('Contraseña guardada');
+    renderPanel();
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Guardar';
+}
+async function quitarMiClave() {
+  if (!panelAgente || !puedeVerPanel(panelAgente)) return;
+  if (!await confirmar('¿Quitar tu contraseña? Tu panel quedará abierto para cualquiera que elija tu nombre.', 'Quitar')) return;
+  var idx = agentes.indexOf(panelAgente);
+  if (idx < 0) return;
+  try {
+    await api({ accion:'editar', hoja:'agentes', datos:{ _fila:idx+2, nombre:panelAgente, clave_hash:'' } });
+    if (agentesInfo[idx]) agentesInfo[idx].clave_hash = '';
+    cerrarModalMiClave();
+    toast('Contraseña quitada');
+    renderPanel();
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 
 function fillSelects() {
@@ -1359,6 +2958,7 @@ async function guardar() {
   btn.disabled = false; btn.textContent = 'Guardar';
 }
 async function eliminar(idx) {
+  if (!zonaDesbloqueada()) { toast('Solo el Director puede borrar expedientes.', 'error'); return; }
   if (!await confirmar('¿Eliminas este expediente? Esta accion no se puede deshacer.', 'Eliminar')) return;
   try { await api({ accion:'eliminar', hoja:'expedientes', datos:{ _fila:expedientes[idx]._fila } }); toast('Expediente eliminado'); await cargar(); } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
