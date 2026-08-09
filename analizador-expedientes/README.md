@@ -10,7 +10,8 @@ Aplicación de escritorio para Windows (funciona también en Linux/macOS) destin
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Interfaz (PySide6)                            │
 │  Pestañas: Procesamiento · Texto por página · Resúmenes ·        │
-│  Cronología · Documentos detectados · Preguntas · Revisión Claude│
+│  Cronología · Documentos detectados · Preguntas · Dictamen ·     │
+│  Revisión con Claude · Exportar                                  │
 └──────────────┬──────────────────────────────────────────────────┘
                │  señales Qt / hilos QThread (workers)
 ┌──────────────┴──────────────────────────────────────────────────┐
@@ -36,6 +37,8 @@ Aplicación de escritorio para Windows (funciona también en Linux/macOS) destin
 │                                                                  │
 │  [analisis]   cronología (fechas) + clasificación de documentos  │
 │  [busqueda]   embeddings locales (Ollama) + ChromaDB/FAISS/numpy │
+│  [dictamen]   normativa → requisitos (reglas) → cotejo contra el │
+│               expediente (reglas) → redacción con Ollama         │
 │  [exportacion] DOCX (python-docx) · PDF (ReportLab) · TXT · JSON │
 │  [claude_api] revisión opcional: SOLO resúmenes/cronología/datos │
 │  [almacenamiento] SQLite: proyectos, páginas, resúmenes, caché   │
@@ -65,6 +68,7 @@ analizador-expedientes/
 │   ├── resumen/                # cliente Ollama, prompts, resumidor con caché
 │   ├── analisis/               # cronología (fechas) y clasificación de documentos
 │   ├── busqueda/               # embeddings + base vectorial (Chroma/FAISS/numpy)
+│   ├── dictamen/                # requisitos normativos, cotejo y redacción del dictamen
 │   ├── exportacion/            # DOCX, PDF, TXT, JSON
 │   ├── claude_api/             # integración opcional con Claude + estimador de tokens
 │   ├── almacenamiento/         # SQLite: proyectos, páginas, resúmenes, caché
@@ -149,7 +153,20 @@ setx ANTHROPIC_API_KEY "sk-ant-..."
 10. **Exportación**: DOCX profesional (carátula, índice, encabezado/pie, numeración, tablas de fechas/montos/documentos), PDF, TXT y JSON.
 11. **Revisión con Claude (opcional)**: desactivada por defecto. Al activarla se muestra exactamente qué se enviará (solo resúmenes, cronología y datos estructurados), la estimación de tokens, y se pide confirmación expresa. El PDF completo jamás se envía salvo selección manual y advertida.
 
-## 6. Decisiones técnicas
+## 6. Módulo de Dictamen jurídico (pestaña "Dictamen")
+
+Genera un dictamen jurídico sobre el expediente ya procesado, cotejándolo contra una normativa cargada por el usuario y replicando la estructura de un modelo de dictamen (.docx) también cargado por el usuario. **El cumplimiento de cada requisito lo determina siempre un cotejo por reglas, nunca un LLM** — Ollama sólo redacta la prosa de lo que ya se verificó. Esto lo hace auditable (cada afirmación es trazable a una regla y a una página del expediente) y de costo cero, incluso si no hay Ollama corriendo (en ese caso el cotejo igual se genera y se puede revisar en la tabla, sólo falta la redacción final).
+
+Flujo:
+
+1. **Cargar normativa**: PDF, DOCX o TXT con la norma aplicable (ley, decreto, reglamento, pliego).
+2. **Extracción de requisitos** (`app/dictamen/requisitos.py`, sin IA): se recorre el texto detectando el artículo vigente (`Artículo N°...`) y, dentro de cada artículo, las oraciones con lenguaje de obligación ("deberá", "es obligatorio", "se requiere", "corresponde acompañar", etc.). Cada requisito guarda su oración original, el artículo de origen, palabras clave y — si la oración menciona un tipo de documento conocido (informe técnico, presupuesto, dictamen, acta, factura...) — ese tipo, para poder cruzarlo directamente con los documentos ya detectados en el expediente.
+3. **Cotejo determinístico** (`app/dictamen/cotejo.py`, sin IA): por cada requisito se busca evidencia en el expediente — primero entre los documentos ya clasificados (más confiable), si no por coincidencia de palabras clave página por página — y se marca **Cumple** (con la página de evidencia), **No consta** (evidencia parcial, requiere revisión manual) o **Falta**. El resultado se guarda en SQLite (`requisitos_dictamen`) y se muestra en una tabla en la pestaña.
+4. **Cargar modelo de dictamen (.docx)**: se detectan sus títulos de sección en orden (por estilo "Heading" o líneas cortas en mayúsculas: VISTO, CONSIDERANDO, RESUELVE, o los que use el organismo).
+5. **Redacción con Ollama** (`app/dictamen/fundamentacion.py`): a partir del listado ya cerrado de requisitos y sus estados (el prompt indica explícitamente no agregar hechos fuera de esa lista), Ollama redacta un párrafo "Que..." por requisito para el CONSIDERANDO, citando artículo y página, y una conclusión numerada para el RESUELVE. Se cachea por hash del cotejo + modelo en SQLite (`dictamen_redaccion`): si nada cambió, no se vuelve a generar.
+6. **Ensamblado y exportación** (`app/dictamen/generador.py`): arma un `.docx` nuevo replicando la estructura del modelo cargado — VISTO con los datos del expediente (tomados del resumen general si ya existe), CONSIDERANDO con la prosa generada **más una tabla de cumplimiento siempre incluida** (auditoría independiente de la redacción), RESUELVE con la conclusión. Las secciones del modelo que no se reconocen se copian con un aviso para completar a mano.
+
+## 7. Decisiones técnicas
 
 | Decisión | Motivo |
 |---|---|
@@ -164,8 +181,9 @@ setx ANTHROPIC_API_KEY "sk-ant-..."
 | **Logging sin contenido sensible** | se registran acciones y metadatos (archivo, páginas, duración, modelo) pero nunca texto del expediente. |
 | **Estimación de tokens local** (~1 token ≈ 3,5 caracteres en español) | orden de magnitud suficiente para advertir el costo antes de llamar a Claude, sin depender de tokenizadores externos. |
 | **Workers en `QThread`** | OCR y resumen tardan minutos; la GUI permanece fluida y muestra progreso por página/bloque, con posibilidad de cancelar. |
+| **Cumplimiento de requisitos por reglas, no por LLM** (`dictamen/`) | el mismo criterio que cronología/documentos: determinista y auditable — cada "Cumple/No consta/Falta" es trazable a una regla y a una página, sin riesgo de que el modelo invente un cumplimiento inexistente. Ollama sólo redacta la prosa de lo ya decidido. |
 
-## 7. Manejo de errores previsto
+## 8. Manejo de errores previsto
 
 La aplicación muestra mensajes claros y accionables cuando:
 
@@ -176,8 +194,9 @@ La aplicación muestra mensajes claros y accionables cuando:
 - **PDF dañado** → informa que el archivo no puede abrirse.
 - **El OCR no detecta texto** → advierte que el escaneo puede ser ilegible (resolución/contraste).
 - **Memoria insuficiente** → sugiere reducir el tamaño de bloque o usar un modelo más liviano.
+- **La normativa no arroja ningún requisito** → avisa que no se detectó lenguaje de obligación y sugiere revisar el archivo cargado.
 
-## 8. Pruebas
+## 9. Pruebas
 
 ```bash
 pytest tests/ -v

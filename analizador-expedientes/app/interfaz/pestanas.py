@@ -337,3 +337,82 @@ class PestanaExportar(QWidget):
             etiqueta.setStyleSheet("color:#666; margin-left: 6px;")
             capa.addWidget(etiqueta)
         capa.addStretch()
+
+
+class PestanaDictamen(QWidget):
+    """Generación de dictámenes jurídicos por reglas (sin IA) + redacción
+    con Ollama. El cumplimiento de cada requisito lo determina el cotejo
+    determinístico; el modelo local sólo redacta la prosa, citando lo que
+    ya se verificó."""
+
+    elegir_normativa_pedido = Signal()
+    elegir_plantilla_pedido = Signal()
+    generar_pedido = Signal()
+    exportar_pedido = Signal()
+
+    def __init__(self):
+        super().__init__()
+        aviso = QLabel(
+            "Cargá la normativa aplicable y un modelo de dictamen (.docx). "
+            "El sistema determina por reglas qué requisitos cumple el "
+            "expediente (auditable) y usa el modelo local de Ollama sólo "
+            "para redactar el texto — no decide nada por su cuenta."
+        )
+        aviso.setWordWrap(True)
+        aviso.setStyleSheet("color:#333; background:#eef3fb; padding:8px; border-radius:6px;")
+
+        self.boton_normativa = QPushButton("Cargar normativa (PDF, DOCX o TXT)…")
+        self.etiqueta_normativa = QLabel("Normativa: no cargada")
+        self.boton_plantilla = QPushButton("Cargar modelo de dictamen (.docx)…")
+        self.etiqueta_plantilla = QLabel("Plantilla: no cargada")
+        self.boton_generar = QPushButton("Generar dictamen (cotejo + redacción)")
+        self.boton_generar.setMinimumHeight(36)
+        self.etiqueta_resumen = QLabel("")
+
+        self._tabla = QTableWidget(0, 4)
+        self._tabla.setHorizontalHeaderLabels(["Artículo", "Requisito", "Estado", "Página"])
+        self._tabla.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self._tabla.setEditTriggers(QTableWidget.NoEditTriggers)
+
+        self.boton_exportar = QPushButton("Exportar dictamen a Word (.docx)")
+
+        capa = QVBoxLayout(self)
+        capa.addWidget(aviso)
+        fila1 = QHBoxLayout()
+        fila1.addWidget(self.boton_normativa)
+        fila1.addWidget(self.etiqueta_normativa, 1)
+        capa.addLayout(fila1)
+        fila2 = QHBoxLayout()
+        fila2.addWidget(self.boton_plantilla)
+        fila2.addWidget(self.etiqueta_plantilla, 1)
+        capa.addLayout(fila2)
+        capa.addWidget(self.boton_generar)
+        capa.addWidget(self.etiqueta_resumen)
+        capa.addWidget(self._tabla, 1)
+        capa.addWidget(self.boton_exportar)
+
+        self.boton_normativa.clicked.connect(self.elegir_normativa_pedido.emit)
+        self.boton_plantilla.clicked.connect(self.elegir_plantilla_pedido.emit)
+        self.boton_generar.clicked.connect(self.generar_pedido.emit)
+        self.boton_exportar.clicked.connect(self.exportar_pedido.emit)
+
+    def mostrar_normativa(self, nombre: str):
+        self.etiqueta_normativa.setText(f"Normativa: {nombre}")
+
+    def mostrar_plantilla(self, nombre: str):
+        self.etiqueta_plantilla.setText(f"Plantilla: {nombre}")
+
+    def actualizar_resultados(self, resultados: list[dict]):
+        etiquetas = {"cumple": "Cumple", "no_consta": "No consta", "falta": "Falta"}
+        self._tabla.setRowCount(len(resultados))
+        conteo = {"cumple": 0, "no_consta": 0, "falta": 0}
+        for fila, r in enumerate(resultados):
+            conteo[r["estado"]] = conteo.get(r["estado"], 0) + 1
+            self._tabla.setItem(fila, 0, QTableWidgetItem(r["articulo"]))
+            self._tabla.setItem(fila, 1, QTableWidgetItem(r["texto"]))
+            self._tabla.setItem(fila, 2, QTableWidgetItem(etiquetas.get(r["estado"], r["estado"])))
+            self._tabla.setItem(fila, 3, QTableWidgetItem(str(r["pagina"]) if r["pagina"] else "—"))
+        self.etiqueta_resumen.setText(
+            f"Requisitos: {len(resultados)}  ·  Cumplen: {conteo['cumple']}  ·  "
+            f"No constan: {conteo['no_consta']}  ·  Faltan: {conteo['falta']}"
+        )

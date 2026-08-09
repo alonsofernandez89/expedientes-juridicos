@@ -26,11 +26,12 @@ def test_ventana_principal_se_construye(app_qt, tmp_path, monkeypatch):
     from app.interfaz.ventana_principal import VentanaPrincipal
 
     ventana = VentanaPrincipal()
-    assert ventana.pestanas.count() == 8
+    assert ventana.pestanas.count() == 9
     titulos = [ventana.pestanas.tabText(i) for i in range(ventana.pestanas.count())]
     assert "Cronología" in titulos
     assert "Documentos detectados" in titulos
     assert "Revisión con Claude" in titulos
+    assert "Dictamen" in titulos
     # la revisión con Claude arranca deshabilitada
     assert ventana.pestana_claude.habilitar.isChecked() is False
     assert ventana.pestana_claude.boton_revisar.isEnabled() is False
@@ -39,6 +40,23 @@ def test_ventana_principal_se_construye(app_qt, tmp_path, monkeypatch):
         w.wait(15000)
     app_qt.processEvents()
     ventana.close()
+
+
+def test_pestana_dictamen_muestra_resultados(app_qt):
+    from app.interfaz.pestanas import PestanaDictamen
+
+    pestana = PestanaDictamen()
+    pestana.mostrar_normativa("norma.pdf")
+    pestana.mostrar_plantilla("modelo.docx")
+    assert "norma.pdf" in pestana.etiqueta_normativa.text()
+    assert "modelo.docx" in pestana.etiqueta_plantilla.text()
+    pestana.actualizar_resultados([
+        {"articulo": "Art. 5", "texto": "req A", "estado": "cumple", "pagina": 3, "evidencia": ""},
+        {"articulo": "Art. 8", "texto": "req B", "estado": "falta", "pagina": None, "evidencia": ""},
+    ])
+    assert pestana._tabla.rowCount() == 2
+    assert "Cumplen: 1" in pestana.etiqueta_resumen.text()
+    assert "Faltan: 1" in pestana.etiqueta_resumen.text()
 
 
 def test_pestanas_muestran_datos(app_qt):

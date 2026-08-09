@@ -62,6 +62,21 @@ CREATE TABLE IF NOT EXISTS embeddings (
     vector BLOB,                         -- float32 empaquetado
     modelo TEXT
 );
+CREATE TABLE IF NOT EXISTS requisitos_dictamen (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    articulo TEXT,
+    texto TEXT,
+    estado TEXT,                         -- cumple | no_consta | falta
+    pagina INTEGER,
+    evidencia TEXT
+);
+CREATE TABLE IF NOT EXISTS dictamen_redaccion (
+    hash TEXT PRIMARY KEY,               -- sha256(cotejo + modelo + version)
+    modelo TEXT,
+    considerando TEXT,
+    resuelve TEXT,
+    creado REAL
+);
 """
 
 
@@ -236,4 +251,41 @@ class BaseDatosProyecto:
 
     def borrar_embeddings(self) -> None:
         self._con.execute("DELETE FROM embeddings")
+        self._con.commit()
+
+    # --- dictamen: cotejo de requisitos normativos ---
+
+    def guardar_requisitos_dictamen(self, resultados: list[dict]) -> None:
+        self._con.execute("DELETE FROM requisitos_dictamen")
+        self._con.executemany(
+            "INSERT INTO requisitos_dictamen (articulo, texto, estado, pagina, evidencia) "
+            "VALUES (:articulo, :texto, :estado, :pagina, :evidencia)",
+            resultados,
+        )
+        self._con.commit()
+
+    def leer_requisitos_dictamen(self) -> list[dict]:
+        filas = self._con.execute(
+            "SELECT articulo, texto, estado, pagina, evidencia "
+            "FROM requisitos_dictamen ORDER BY id"
+        ).fetchall()
+        return [dict(f) for f in filas]
+
+    # --- dictamen: redacción con Ollama (cacheada por hash) ---
+
+    def buscar_redaccion_dictamen(self, hash_: str) -> dict | None:
+        fila = self._con.execute(
+            "SELECT considerando, resuelve FROM dictamen_redaccion WHERE hash = ?",
+            (hash_,),
+        ).fetchone()
+        return dict(fila) if fila else None
+
+    def guardar_redaccion_dictamen(
+        self, hash_: str, modelo: str, considerando: str, resuelve: str
+    ) -> None:
+        self._con.execute(
+            "INSERT OR REPLACE INTO dictamen_redaccion "
+            "(hash, modelo, considerando, resuelve, creado) VALUES (?, ?, ?, ?, ?)",
+            (hash_, modelo, considerando, resuelve, time.time()),
+        )
         self._con.commit()

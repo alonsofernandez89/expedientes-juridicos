@@ -70,6 +70,26 @@ def test_base_datos_cronologia_ordena_por_fecha(tmp_path):
     assert [e["fecha_iso"] for e in eventos] == ["2023-01-15", "2024-05-01"]
 
 
+def test_base_datos_requisitos_y_redaccion_dictamen(tmp_path):
+    with BaseDatosProyecto(tmp_path / "p.db") as db:
+        db.guardar_requisitos_dictamen([
+            {"articulo": "Art. 5", "texto": "requisito A", "estado": "cumple",
+             "pagina": 3, "evidencia": "consta el informe"},
+            {"articulo": "Art. 8", "texto": "requisito B", "estado": "falta",
+             "pagina": None, "evidencia": ""},
+        ])
+        guardados = db.leer_requisitos_dictamen()
+        assert len(guardados) == 2
+        assert guardados[0]["estado"] == "cumple"
+
+        h = hash_bloque("cotejo-serializado", "llama3.2", 1)
+        assert db.buscar_redaccion_dictamen(h) is None
+        db.guardar_redaccion_dictamen(h, "llama3.2", "texto considerando", "texto resuelve")
+        cache = db.buscar_redaccion_dictamen(h)
+        assert cache["considerando"] == "texto considerando"
+        assert cache["resuelve"] == "texto resuelve"
+
+
 def test_base_datos_meta_y_resumen_general(tmp_path):
     with BaseDatosProyecto(tmp_path / "p.db") as db:
         db.guardar_meta("nombre", "EXP-123/2024")

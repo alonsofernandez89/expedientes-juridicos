@@ -23,6 +23,11 @@ from PySide6.QtWidgets import (
 from app.busqueda.buscador import BuscadorSemantico
 from app.almacenamiento.base_datos import BaseDatosProyecto
 from app.claude_api import cliente_claude
+from app.dictamen.cotejo import ResultadoCotejo, cotejar_requisitos
+from app.dictamen.fundamentacion import generar_redaccion
+from app.dictamen.generador import datos_expediente_desde_resumen, generar_dictamen
+from app.dictamen.plantilla import leer_estructura_plantilla, leer_texto_normativa
+from app.dictamen.requisitos import extraer_requisitos
 from app.config.settings import (
     BLOQUE_PAGINAS_MAX,
     BLOQUE_PAGINAS_MIN,
@@ -36,6 +41,7 @@ from app.exportacion.exportar_texto import exportar_json, exportar_txt
 from app.interfaz.pestanas import (
     PestanaClaude,
     PestanaCronologia,
+    PestanaDictamen,
     PestanaDocumentos,
     PestanaExportar,
     PestanaPreguntas,
@@ -46,6 +52,7 @@ from app.interfaz.widgets import ZonaArrastre
 from app.interfaz.workers import Worker
 from app.pipeline import ProcesadorExpediente, ResultadoProcesamiento
 from app.resumen.cliente_ollama import ClienteOllama
+from app.utils.errores import ErrorAplicacion
 from app.utils.registro import obtener_logger
 
 log = obtener_logger("interfaz")
@@ -61,6 +68,12 @@ class VentanaPrincipal(QMainWindow):
         self.resultado: ResultadoProcesamiento | None = None
         self._workers: list[Worker] = []
         self._buscador: BuscadorSemantico | None = None
+
+        # estado del módulo de dictamen jurídico
+        self._ruta_normativa: Path | None = None
+        self._ruta_plantilla_dictamen: Path | None = None
+        self._resultados_dictamen: list[ResultadoCotejo] = []
+        self._redaccion_dictamen: dict = {}
 
         self._armar_interfaz()
         self._refrescar_modelos_ollama()
@@ -129,6 +142,7 @@ class VentanaPrincipal(QMainWindow):
         self.pestana_preguntas = PestanaPreguntas()
         self.pestana_claude = PestanaClaude()
         self.pestana_exportar = PestanaExportar()
+        self.pestana_dictamen = PestanaDictamen()
 
         self.pestanas.addTab(self.bitacora, "Procesamiento")
         self.pestanas.addTab(self.pestana_texto, "Texto por página")
@@ -136,6 +150,7 @@ class VentanaPrincipal(QMainWindow):
         self.pestanas.addTab(self.pestana_cronologia, "Cronología")
         self.pestanas.addTab(self.pestana_documentos, "Documentos detectados")
         self.pestanas.addTab(self.pestana_preguntas, "Preguntas")
+        self.pestanas.addTab(self.pestana_dictamen, "Dictamen")
         self.pestanas.addTab(self.pestana_claude, "Revisión con Claude")
         self.pestanas.addTab(self.pestana_exportar, "Exportar")
         capa.addWidget(self.pestanas, 1)
@@ -144,6 +159,10 @@ class VentanaPrincipal(QMainWindow):
         self.pestana_preguntas.pregunta_enviada.connect(self._preguntar)
         self.pestana_claude.revisar_pedido.connect(self._revisar_con_claude)
         self.pestana_exportar.exportar_pedido.connect(self._exportar)
+        self.pestana_dictamen.elegir_normativa_pedido.connect(self._elegir_normativa)
+        self.pestana_dictamen.elegir_plantilla_pedido.connect(self._elegir_plantilla_dictamen)
+        self.pestana_dictamen.generar_pedido.connect(self._generar_dictamen)
+        self.pestana_dictamen.exportar_pedido.connect(self._exportar_dictamen)
 
         self.setCentralWidget(central)
 
@@ -446,4 +465,120 @@ class VentanaPrincipal(QMainWindow):
         self._lanzar_worker(
             tarea,
             al_terminar=lambda destino: self._avisar(f"✔ Informe exportado: {destino}"),
+        )
+
+    # ------------------------------------------------------------ dictamen
+    def _elegir_normativa(self):
+        ruta, _ = QFileDialog.getOpenFileName(
+            self, "Elegir normativa aplicable", str(Path.home()),
+            "Documentos (*.pdf *.docx *.doc *.txt)",
+        )
+        if not ruta:
+            return
+        self._ruta_normativa = Path(ruta)
+        self.pestana_dictamen.mostrar_normativa(self._ruta_normativa.name)
+
+    def _elegir_plantilla_dictamen(self):
+        ruta, _ = QFileDialog.getOpenFileName(
+            self, "Elegir modelo de dictamen", str(Path.home()),
+            "Documentos Word (*.docx)",
+        )
+        if not ruta:
+            return
+        self._ruta_plantilla_dictamen = Path(ruta)
+        self.pestana_dictamen.mostrar_plantilla(self._ruta_plantilla_dictamen.name)
+
+    @staticmethod
+    def _resultado_a_dict(r: ResultadoCotejo) -> dict:
+        return {
+            "articulo": r.requisito.articulo,
+            "texto": r.requisito.texto,
+            "estado": r.estado,
+            "pagina": r.pagina,
+            "evidencia": r.evidencia,
+        }
+
+    def _generar_dictamen(self):
+        if not self._exigir_resultado():
+            return
+        if self._ruta_normativa is None:
+            QMessageBox.information(
+                self, "Falta la normativa",
+                "Primero cargá la normativa aplicable (PDF, DOCX o TXT).",
+            )
+            return
+        r = self.resultado
+        modelo = self.combo_modelo.currentText() or self.config.modelo_resumen
+
+        def tarea(progreso=None):
+            if progreso:
+                progreso("Extrayendo requisitos de la normativa…")
+            texto_normativa = leer_texto_normativa(self._ruta_normativa)
+            requisitos = extraer_requisitos(texto_normativa)
+            if not requisitos:
+                raise ErrorAplicacion(
+                    "No se detectó ningún requisito con lenguaje de obligación "
+                    "('deberá', 'es obligatorio', 'se requiere'...) en la "
+                    "normativa cargada. Revisá el archivo."
+                )
+            if progreso:
+                progreso(f"{len(requisitos)} requisitos detectados. Cotejando contra el expediente…")
+            resultados = cotejar_requisitos(
+                requisitos, r.paginas_limpias or r.paginas, r.documentos
+            )
+            if progreso:
+                progreso(f"Redactando el dictamen con {modelo}…")
+            cliente = ClienteOllama()
+            with BaseDatosProyecto(r.carpeta / "proyecto.db") as db:
+                db.guardar_requisitos_dictamen(
+                    [self._resultado_a_dict(x) for x in resultados]
+                )
+                redaccion = generar_redaccion(cliente, db, modelo, resultados)
+            return resultados, redaccion
+
+        def listo(paquete):
+            resultados, redaccion = paquete
+            self._resultados_dictamen = resultados
+            self._redaccion_dictamen = redaccion
+            self.pestana_dictamen.actualizar_resultados(
+                [self._resultado_a_dict(x) for x in resultados]
+            )
+            self._avisar("Dictamen listo para exportar (pestaña Dictamen).")
+
+        self._avisar("Generando dictamen: cotejo de requisitos + redacción con Ollama…")
+        self._lanzar_worker(tarea, al_terminar=listo)
+
+    def _exportar_dictamen(self):
+        if not self._resultados_dictamen:
+            QMessageBox.information(
+                self, "Falta generar el dictamen",
+                "Primero presioná 'Generar dictamen' para cotejar los requisitos.",
+            )
+            return
+        if self._ruta_plantilla_dictamen is None:
+            QMessageBox.information(
+                self, "Falta la plantilla",
+                "Cargá un modelo de dictamen (.docx) para replicar su estructura.",
+            )
+            return
+        r = self.resultado
+        ruta, _ = QFileDialog.getSaveFileName(
+            self, "Guardar dictamen", str(r.carpeta / f"dictamen_{r.carpeta.name}.docx"),
+            "Documento Word (*.docx)",
+        )
+        if not ruta:
+            return
+
+        def tarea():
+            titulos = leer_estructura_plantilla(self._ruta_plantilla_dictamen)
+            datos_expediente = datos_expediente_desde_resumen(r.resumen_general)
+            generar_dictamen(
+                titulos, self._resultados_dictamen, self._redaccion_dictamen,
+                datos_expediente, Path(ruta),
+            )
+            return ruta
+
+        self._lanzar_worker(
+            tarea,
+            al_terminar=lambda destino: self._avisar(f"✔ Dictamen exportado: {destino}"),
         )
