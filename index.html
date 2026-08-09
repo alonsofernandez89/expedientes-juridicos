@@ -203,6 +203,7 @@ tbody tr:hover td{background:var(--green-50)}
     <button class="tab" onclick="switchTab('inventario')">Inventario</button>
     <button class="tab" onclick="switchTab('normativas')">Normativas</button>
     <button class="tab" onclick="switchTab('historico')">Histórico</button>
+    <button class="tab" onclick="switchTab('dictamen')">🔒 Dictamen</button>
   </div>
 
   <div class="section active" id="tab-registro">
@@ -472,6 +473,21 @@ tbody tr:hover td{background:var(--green-50)}
       </table>
     </div>
     <div class="alert" id="hist-sin-resultados" style="display:none">🔍 No se encontraron expedientes con ese criterio.</div>
+  </div>
+
+  <div class="section" id="tab-dictamen">
+    <div style="font-size:15px;font-weight:600;margin-bottom:6px">Dictamen (acceso Director)</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px">
+      Los dictámenes se redactan en la aplicación de escritorio del Analizador de Expedientes (OCR + IA local, sin enviar el expediente a internet) y quedan guardados en la carpeta de Drive vinculada a cada número de expediente. Acá podés buscarlos y abrirlos.
+    </div>
+    <div class="card">
+      <div class="fg" style="margin-bottom:10px">
+        <label>Número de expediente</label>
+        <input type="text" id="dictamen-tab-nro" placeholder="Ej: 3426401" onkeydown="if(event.key==='Enter')buscarDictamenesTab()">
+      </div>
+      <button class="btn primary" onclick="buscarDictamenesTab()">Buscar dictámenes</button>
+    </div>
+    <div id="dictamen-tab-resultado"></div>
   </div>
 </div>
 
@@ -1150,7 +1166,12 @@ function nombreCanonico(nombre) {
   var norm = normTexto(nombre);
   var grupo = GRUPOS_ALIAS_AGENTE.filter(function(g){ return g.some(function(n){ return normTexto(n) === norm; }); })[0];
   if (!grupo) return nombre;
-  var enLista = grupo.filter(function(n){ return agentes.indexOf(n) >= 0; })[0];
+  // Buscamos el nombre TAL CUAL figura en la planilla de agentes (comparando
+  // sin distinguir mayúsculas/tildes/espacios), no la palabra literal del
+  // grupo de arriba: si en la planilla está escrito distinto (mayúsculas,
+  // espacio de más, etc.) la comparación exacta anterior fallaba y dejaba a
+  // esa persona sin expedientes en "Mi Panel" ni en el filtro por agente.
+  var enLista = agentes.filter(function(a){ return grupo.some(function(n){ return normTexto(n) === normTexto(a); }); })[0];
   return enLista || grupo[0];
 }
 function getRespAsig(e){ return nombreCanonico(e.agente); }
@@ -1215,7 +1236,7 @@ function agruparPorOrganismo(maxCategorias) {
 }
 function toast(msg, tipo){ var t = document.getElementById('toast'); t.textContent = msg; t.classList.toggle('error', tipo === 'error'); t.classList.add('show'); setTimeout(function(){ t.classList.remove('show'); }, 2600); }
 
-var TABS_PROTEGIDAS = ['config'];
+var TABS_PROTEGIDAS = ['config', 'dictamen'];
 var CLAVE_HASH = 'a181eb72cec525f96f8f9e27201eb05d073b80ccd41d36440397e5b1b0b3699a';
 var tabPendienteClave = null;
 
@@ -1252,7 +1273,7 @@ async function confirmarClave() {
 function switchTab(t) {
   if (TABS_PROTEGIDAS.indexOf(t) >= 0 && !zonaDesbloqueada()) { abrirModalClave(t); return; }
   var tabsEls = document.querySelectorAll('.container > .tabs > .tab');
-  var orden = ['registro','panel','analisis','programas','licencias','inventario','normativas','historico'];
+  var orden = ['registro','panel','analisis','programas','licencias','inventario','normativas','historico','dictamen'];
   tabsEls.forEach(function(el, i){ el.classList.toggle('active', orden[i] === t); });
   document.querySelectorAll('.section').forEach(function(el){ el.classList.remove('active'); });
   document.getElementById('tab-' + t).classList.add('active');
@@ -1450,28 +1471,52 @@ function consultarExpte(nro) {
   window.open('https://apps2.entrerios.gov.ar/consulta/expedientes/#/ver?nro=' + s, '_blank');
 }
 
+function renderListaDictamenes(lista) {
+  if (!Array.isArray(lista) || !lista.length) {
+    return '<div class="alert">📄 No se encontraron dictamenes para este expediente en la carpeta de Drive.</div>';
+  }
+  var html = lista.filter(function(d){ return /^https?:\/\//i.test(d.link || ''); }).map(function(d){
+    return '<a href="' + esc(d.link) + '" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #e0e0d8;border-radius:8px;margin-bottom:8px;text-decoration:none;color:#1a1a1a" onmouseover="this.style.background=\'#f7fbf0\'" onmouseout="this.style.background=\'#fff\'">' +
+      '<span style="font-size:20px">📄</span>' +
+      '<div style="flex:1;min-width:0"><div style="font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(d.nombre) + '</div><div style="font-size:11px;color:#5a9216">Abrir en Drive</div></div>' +
+    '</a>';
+  }).join('');
+  return '<div style="font-size:12px;color:#888;margin-bottom:10px">' + lista.length + ' dictamen(es) encontrado(s):</div>' + html;
+}
+
+async function buscarDictamenesEnDrive(nro) {
+  var s = String(nro || '').replace(/\D/g, '');
+  if (!s) throw new Error('Número de expediente inválido.');
+  var r = await fetch(SCRIPT_URL + '?hoja=dictamenes&nro=' + encodeURIComponent(s) + '&t=' + Date.now());
+  return await r.json();
+}
+
 async function verDictamenes(nro) {
   if (!nro) { toast('Este expediente no tiene numero.', 'error'); return; }
   document.getElementById('dict-title').textContent = 'Dictamenes - Expte. ' + nro;
   document.getElementById('dict-contenido').innerHTML = '<div style="text-align:center;color:#888;padding:16px"><span class="spinner"></span>Buscando dictamenes en Drive...</div>';
   document.getElementById('overlay-dictamen').classList.add('show');
   try {
-    var s = String(nro).replace(/\D/g, '');
-    var r = await fetch(SCRIPT_URL + '?hoja=dictamenes&nro=' + encodeURIComponent(s) + '&t=' + Date.now());
-    var lista = await r.json();
-    if (!Array.isArray(lista) || !lista.length) {
-      document.getElementById('dict-contenido').innerHTML = '<div class="alert">📄 No se encontraron dictamenes para este expediente en la carpeta de Drive.</div>';
-      return;
-    }
-    var html = lista.filter(function(d){ return /^https?:\/\//i.test(d.link || ''); }).map(function(d){
-      return '<a href="' + esc(d.link) + '" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #e0e0d8;border-radius:8px;margin-bottom:8px;text-decoration:none;color:#1a1a1a" onmouseover="this.style.background=\'#f7fbf0\'" onmouseout="this.style.background=\'#fff\'">' +
-        '<span style="font-size:20px">📄</span>' +
-        '<div style="flex:1;min-width:0"><div style="font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(d.nombre) + '</div><div style="font-size:11px;color:#5a9216">Abrir en Drive</div></div>' +
-      '</a>';
-    }).join('');
-    document.getElementById('dict-contenido').innerHTML = '<div style="font-size:12px;color:#888;margin-bottom:10px">' + lista.length + ' dictamen(es) encontrado(s):</div>' + html;
+    var lista = await buscarDictamenesEnDrive(nro);
+    document.getElementById('dict-contenido').innerHTML = renderListaDictamenes(lista);
   } catch (e) {
     document.getElementById('dict-contenido').innerHTML = '<div class="alert">Error al buscar: ' + e.message + '</div>';
+  }
+}
+
+// Pestaña "Dictamen" (solo Director): busca dictámenes ya generados con el
+// Analizador de Expedientes de escritorio (OCR + IA local) y guardados en la
+// carpeta de Drive del expediente. No genera nada nuevo ni corre IA en la web.
+async function buscarDictamenesTab() {
+  var nro = document.getElementById('dictamen-tab-nro').value;
+  var destino = document.getElementById('dictamen-tab-resultado');
+  if (!String(nro || '').replace(/\D/g, '')) { toast('Ingresá un número de expediente.', 'error'); return; }
+  destino.innerHTML = '<div style="text-align:center;color:#888;padding:16px"><span class="spinner"></span>Buscando dictamenes en Drive...</div>';
+  try {
+    var lista = await buscarDictamenesEnDrive(nro);
+    destino.innerHTML = renderListaDictamenes(lista);
+  } catch (e) {
+    destino.innerHTML = '<div class="alert">Error al buscar: ' + e.message + '</div>';
   }
 }
 
