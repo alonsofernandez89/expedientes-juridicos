@@ -1166,7 +1166,12 @@ function nombreCanonico(nombre) {
   var norm = normTexto(nombre);
   var grupo = GRUPOS_ALIAS_AGENTE.filter(function(g){ return g.some(function(n){ return normTexto(n) === norm; }); })[0];
   if (!grupo) return nombre;
-  var enLista = grupo.filter(function(n){ return agentes.indexOf(n) >= 0; })[0];
+  // Buscamos el nombre TAL CUAL figura en la planilla de agentes (comparando
+  // sin distinguir mayúsculas/tildes/espacios), no la palabra literal del
+  // grupo de arriba: si en la planilla está escrito distinto (mayúsculas,
+  // espacio de más, etc.) la comparación exacta anterior fallaba y dejaba a
+  // esa persona sin expedientes en "Mi Panel" ni en el filtro por agente.
+  var enLista = agentes.filter(function(a){ return grupo.some(function(n){ return normTexto(n) === normTexto(a); }); })[0];
   return enLista || grupo[0];
 }
 function getRespAsig(e){ return nombreCanonico(e.agente); }
