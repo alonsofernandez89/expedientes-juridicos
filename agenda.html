@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi Semana - Planificador</title>
+<style>
+:root{
+  --green-900:#3B6D11;--green-700:#5a9216;--green-600:#76aa30;--green-500:#8bc53f;
+  --green-100:#EAF3DE;--green-50:#f7fbf0;--green-tint:#e6f2d5;
+  --amber-700:#854F0B;--amber-bg:#FDF6E7;
+  --ink:#1a1a1a;--ink-soft:#3a3a3a;--muted:#888;--muted-2:#6b6b6b;--muted-3:#999;
+  --line:#e0e0d8;--line-soft:#f0f0ee;--input-line:#d0d0c8;
+  --surface:#fff;--surface-muted:#fafaf8;--bg:#f5f5f3;
+  --danger:#A32D2D;--danger-bg:#fdf0f0;
+  --blue-700:#2b5f9e;--blue-bg:#eef4fb;
+  --radius-sm:6px;--radius:8px;--radius-lg:10px;--radius-xl:12px;
+  --shadow-sm:0 1px 2px rgba(26,26,26,.05);
+  --shadow:0 1px 3px rgba(26,26,26,.06),0 1px 2px rgba(26,26,26,.04);
+  --shadow-lg:0 16px 36px rgba(26,26,26,.16),0 2px 8px rgba(26,26,26,.06);
+  --ease:cubic-bezier(.4,0,.2,1);
+  --font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,"Helvetica Neue",Arial,sans-serif;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-7:32px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-ui);background:var(--bg);color:var(--ink);min-height:100vh;line-height:1.5;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+::selection{background:var(--green-100);color:var(--green-900)}
+button,input,select,textarea{font-family:inherit;font-size:inherit}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--green-500);outline-offset:2px;border-radius:4px}
+
+/* ---------- Topbar ---------- */
+.topbar{background:var(--surface);border-bottom:3px solid var(--green-500);padding:14px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:60;box-shadow:0 1px 0 rgba(26,26,26,.03);flex-wrap:wrap}
+.logo-box{background:var(--green-500);border-radius:var(--radius-sm);padding:6px 10px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm)}
+.logo-box span{color:#fff;font-weight:800;font-size:20px;letter-spacing:-.03em;line-height:1}
+.brand{display:flex;flex-direction:column;gap:1px}
+.brand h1{font-size:17px;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
+.brand p{font-size:11px;font-weight:600;color:var(--muted-2);text-transform:uppercase;letter-spacing:.04em}
+.spacer{flex:1}
+
+/* week nav */
+.weeknav{display:flex;align-items:center;gap:6px}
+.weeknav .range{min-width:210px;text-align:center;font-weight:700;font-size:14px;color:var(--ink-soft)}
+.weeknav .range small{display:block;font-size:11px;font-weight:600;color:var(--muted-3);text-transform:uppercase;letter-spacing:.03em}
+.icon-btn{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-soft);font-size:16px;transition:.15s var(--ease)}
+.icon-btn:hover{background:var(--green-50);border-color:var(--green-500);color:var(--green-700)}
+.btn{background:var(--green-600);color:#fff;border:none;border-radius:var(--radius-sm);padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;transition:.15s var(--ease);white-space:nowrap}
+.btn:hover{background:var(--green-700)}
+.btn.ghost{background:var(--surface);color:var(--ink-soft);border:1px solid var(--line)}
+.btn.ghost:hover{background:var(--green-50);border-color:var(--green-500);color:var(--green-700)}
+.btn.sm{padding:5px 10px;font-size:12px}
+
+/* ---------- Layout ---------- */
+.wrap{max-width:1240px;margin:0 auto;padding:22px 24px 60px}
+
+/* ---------- Progress hero ---------- */
+.hero{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-xl);padding:20px 22px;box-shadow:var(--shadow);margin-bottom:22px;display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:22px;align-items:center}
+.hero .msg h2{font-size:19px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px}
+.hero .msg p{font-size:13px;color:var(--muted-2)}
+.bar{height:12px;background:var(--green-100);border-radius:99px;overflow:hidden;margin-top:12px}
+.bar span{display:block;height:100%;background:linear-gradient(90deg,var(--green-500),var(--green-700));border-radius:99px;transition:width .5s var(--ease)}
+.stat{text-align:center;padding:6px 4px;border-left:1px solid var(--line-soft)}
+.stat .n{font-size:28px;font-weight:800;letter-spacing:-.03em;color:var(--green-700);line-height:1}
+.stat .l{font-size:11px;font-weight:700;color:var(--muted-2);text-transform:uppercase;letter-spacing:.04em;margin-top:6px}
+
+/* ---------- Panels row ---------- */
+.panels{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden}
+.panel-head{padding:13px 16px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:8px}
+.panel-head h3{font-size:14px;font-weight:800;letter-spacing:-.01em}
+.panel-head .em{font-size:16px}
+.panel-head .count{margin-left:auto;font-size:12px;font-weight:700;color:var(--muted-3);background:var(--surface-muted);border:1px solid var(--line-soft);border-radius:99px;padding:2px 9px}
+.panel-body{padding:8px 10px 12px}
+.addrow{display:flex;gap:6px;padding:8px 6px}
+.addrow input{flex:1;border:1px solid var(--input-line);border-radius:var(--radius-sm);padding:8px 10px;font-size:13px;color:var(--ink)}
+.addrow input:focus{border-color:var(--green-500);outline:none}
+
+/* list item (goals / meetings) */
+.li{display:flex;align-items:flex-start;gap:10px;padding:9px 8px;border-radius:var(--radius-sm);transition:.12s var(--ease)}
+.li:hover{background:var(--surface-muted)}
+.li+.li{border-top:1px solid var(--line-soft)}
+.chk{appearance:none;-webkit-appearance:none;width:19px;height:19px;min-width:19px;border:2px solid var(--input-line);border-radius:5px;cursor:pointer;position:relative;margin-top:1px;transition:.15s var(--ease);background:var(--surface)}
+.chk:hover{border-color:var(--green-500)}
+.chk:checked{background:var(--green-600);border-color:var(--green-600)}
+.chk:checked::after{content:"";position:absolute;left:5px;top:1px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.li .txt{flex:1;font-size:13.5px;color:var(--ink-soft);word-break:break-word}
+.li.done .txt{text-decoration:line-through;color:var(--muted-3)}
+.li .meta{font-size:11.5px;color:var(--muted-3);margin-top:1px}
+.del{opacity:0;background:none;border:none;color:var(--muted-3);cursor:pointer;font-size:15px;padding:2px 5px;border-radius:4px;transition:.12s var(--ease)}
+.li:hover .del,.act:hover .del{opacity:1}
+.del:hover{color:var(--danger);background:var(--danger-bg)}
+.empty{text-align:center;color:var(--muted-3);font-size:12.5px;padding:14px 8px;font-style:italic}
+
+/* ---------- Week grid ---------- */
+.section-title{display:flex;align-items:center;gap:8px;margin:4px 2px 14px}
+.section-title h2{font-size:16px;font-weight:800;letter-spacing:-.01em}
+.section-title .em{font-size:18px}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:12px}
+.day{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);display:flex;flex-direction:column;min-height:150px;overflow:hidden}
+.day.today{border-color:var(--green-500);box-shadow:0 0 0 1px var(--green-500),var(--shadow)}
+.day-head{padding:10px 11px 8px;border-bottom:1px solid var(--line-soft)}
+.day.today .day-head{background:var(--green-50)}
+.day-head .dow{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted-2)}
+.day.today .day-head .dow{color:var(--green-700)}
+.day-head .dnum{font-size:20px;font-weight:800;letter-spacing:-.02em;color:var(--ink);line-height:1.1}
+.day-head .todaytag{display:inline-block;font-size:9.5px;font-weight:800;color:#fff;background:var(--green-600);border-radius:99px;padding:1px 7px;text-transform:uppercase;letter-spacing:.04em;vertical-align:middle;margin-left:5px}
+.day-head .dsum{font-size:10.5px;font-weight:700;color:var(--muted-3);margin-top:2px}
+.acts{flex:1;padding:6px 6px 4px;display:flex;flex-direction:column;gap:5px}
+.act{border:1px solid var(--line-soft);border-left:3px solid var(--green-500);border-radius:var(--radius-sm);padding:7px 8px;background:var(--surface);display:flex;gap:7px;align-items:flex-start;transition:.12s var(--ease)}
+.act[data-type="reunion"]{border-left-color:var(--blue-700)}
+.act[data-type="meta"]{border-left-color:var(--amber-700)}
+.act.done{background:var(--green-50);border-color:var(--green-100)}
+.act .achk{appearance:none;-webkit-appearance:none;width:17px;height:17px;min-width:17px;border:2px solid var(--input-line);border-radius:5px;cursor:pointer;position:relative;margin-top:1px;transition:.15s var(--ease);background:var(--surface)}
+.act .achk:hover{border-color:var(--green-500)}
+.act .achk:checked{background:var(--green-600);border-color:var(--green-600)}
+.act .achk:checked::after{content:"";position:absolute;left:4px;top:0;width:4px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.act .body{flex:1;min-width:0}
+.act .title{font-size:12.5px;font-weight:600;color:var(--ink-soft);word-break:break-word;line-height:1.25}
+.act.done .title{text-decoration:line-through;color:var(--muted-3)}
+.act .sub{font-size:10.5px;color:var(--muted-3);margin-top:2px;display:flex;flex-wrap:wrap;gap:4px 8px}
+.act .sub .tag{font-weight:700}
+.act .sub .tag.reunion{color:var(--blue-700)}
+.act .sub .tag.meta{color:var(--amber-700)}
+.act .del{align-self:flex-start;font-size:13px}
+.add-act{margin:0 6px 8px;background:none;border:1px dashed var(--input-line);border-radius:var(--radius-sm);color:var(--muted-2);font-size:12px;font-weight:700;padding:7px;cursor:pointer;transition:.12s var(--ease)}
+.add-act:hover{border-color:var(--green-500);color:var(--green-700);background:var(--green-50)}
+
+/* ---------- Modal ---------- */
+.overlay{position:fixed;inset:0;background:rgba(26,26,26,.42);display:none;align-items:center;justify-content:center;z-index:100;padding:18px}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--radius-xl);box-shadow:var(--shadow-lg);width:100%;max-width:420px;overflow:hidden;animation:pop .18s var(--ease)}
+@keyframes pop{from{transform:scale(.96) translateY(8px);opacity:0}to{transform:none;opacity:1}}
+.modal-head{padding:16px 20px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center}
+.modal-head h3{font-size:16px;font-weight:800;letter-spacing:-.01em}
+.modal-head .x{margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted-3);cursor:pointer;line-height:1;padding:0 4px}
+.modal-head .x:hover{color:var(--ink)}
+.modal-body{padding:18px 20px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:700;color:var(--muted-2);text-transform:uppercase;letter-spacing:.03em;margin-bottom:5px}
+.field input,.field select{width:100%;border:1px solid var(--input-line);border-radius:var(--radius-sm);padding:9px 11px;font-size:14px;color:var(--ink);background:var(--surface)}
+.field input:focus,.field select:focus{border-color:var(--green-500);outline:none}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.type-pick{display:flex;gap:8px}
+.type-pick label{flex:1;border:1px solid var(--input-line);border-radius:var(--radius-sm);padding:8px;text-align:center;font-size:12.5px;font-weight:700;cursor:pointer;color:var(--muted-2);transition:.12s var(--ease);text-transform:none;letter-spacing:0}
+.type-pick input{display:none}
+.type-pick input:checked+span{color:var(--green-700)}
+.type-pick label:has(input:checked){border-color:var(--green-500);background:var(--green-50);color:var(--green-700)}
+.modal-foot{padding:14px 20px 18px;display:flex;gap:10px;justify-content:flex-end}
+
+/* preset chips */
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{border:1px solid var(--line);background:var(--surface-muted);border-radius:99px;padding:4px 11px;font-size:12px;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:.12s var(--ease)}
+.chip:hover{border-color:var(--green-500);background:var(--green-50);color:var(--green-700)}
+
+.foot-note{text-align:center;color:var(--muted-3);font-size:11.5px;margin-top:34px}
+
+/* ---------- Responsive ---------- */
+@media(max-width:1000px){
+  .hero{grid-template-columns:1fr 1fr;gap:16px}
+  .hero .msg{grid-column:1 / -1}
+  .stat{border-left:none;border-top:1px solid var(--line-soft);padding-top:12px}
+  .week{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:720px){
+  .panels{grid-template-columns:1fr}
+  .weeknav .range{min-width:150px;font-size:13px}
+  .brand p{display:none}
+}
+@media(max-width:520px){
+  .wrap{padding:16px 14px 50px}
+  .week{grid-template-columns:1fr}
+  .hero{grid-template-columns:1fr 1fr}
+  .field-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="logo-box"><span>MS</span></div>
+  <div class="brand">
+    <h1>Mi Semana</h1>
+    <p>Planificador de actividades</p>
+  </div>
+  <div class="spacer"></div>
+  <div class="weeknav">
+    <button class="icon-btn" id="prevWeek" title="Semana anterior" aria-label="Semana anterior">‹</button>
+    <div class="range"><span id="rangeMain">—</span><small id="rangeSub">—</small></div>
+    <button class="icon-btn" id="nextWeek" title="Semana siguiente" aria-label="Semana siguiente">›</button>
+    <button class="btn ghost sm" id="todayBtn">Hoy</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- Progress hero -->
+  <section class="hero">
+    <div class="msg">
+      <h2 id="heroTitle">¡A por la semana! 💪</h2>
+      <p id="heroSub">Agregá tus actividades y marcá lo que vas cumpliendo.</p>
+      <div class="bar"><span id="progBar" style="width:0%"></span></div>
+    </div>
+    <div class="stat"><div class="n" id="stPct">0%</div><div class="l">Cumplido</div></div>
+    <div class="stat"><div class="n" id="stDone">0/0</div><div class="l">Tareas hechas</div></div>
+  </section>
+
+  <!-- Goals + Meetings panels -->
+  <section class="panels">
+    <div class="panel">
+      <div class="panel-head"><span class="em">🎯</span><h3>Metas de la semana</h3><span class="count" id="goalsCount">0</span></div>
+      <div class="panel-body">
+        <div class="addrow">
+          <input id="goalInput" type="text" placeholder="Nueva meta… (ej: practicar guitarra 3 veces)" maxlength="120">
+          <button class="btn sm" id="addGoal">Agregar</button>
+        </div>
+        <div id="goalsList"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><span class="em">🕑</span><h3>Tiempo de la semana</h3><span class="count" id="timeCount">0h</span></div>
+      <div class="panel-body" style="padding:14px 16px 16px">
+        <div style="display:flex;gap:18px;flex-wrap:wrap">
+          <div style="flex:1;min-width:130px">
+            <div style="font-size:11px;font-weight:700;color:var(--muted-2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Planificado</div>
+            <div style="font-size:24px;font-weight:800;color:var(--ink);letter-spacing:-.02em" id="timePlanned">0 min</div>
+          </div>
+          <div style="flex:1;min-width:130px">
+            <div style="font-size:11px;font-weight:700;color:var(--green-700);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Completado ✓</div>
+            <div style="font-size:24px;font-weight:800;color:var(--green-700);letter-spacing:-.02em" id="timeDone">0 min</div>
+          </div>
+        </div>
+        <div class="bar" style="margin-top:14px"><span id="timeBar" style="width:0%"></span></div>
+        <p style="font-size:12px;color:var(--muted-2);margin-top:10px" id="timeMsg">Sumá la duración de cada actividad para ver tu tiempo invertido.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Week grid -->
+  <div class="section-title"><span class="em">📅</span><h2>Tu semana día a día</h2></div>
+  <section class="week" id="weekGrid"></section>
+
+  <p class="foot-note">Todo se guarda automáticamente en este navegador. Es privado y solo tuyo. 🌱</p>
+</div>
+
+<!-- Activity modal -->
+<div class="overlay" id="overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-head"><h3 id="modalTitle">Nueva actividad</h3><button class="x" id="closeModal" aria-label="Cerrar">×</button></div>
+    <div class="modal-body">
+      <div class="field">
+        <label for="actTitle">¿Qué querés hacer?</label>
+        <input id="actTitle" type="text" placeholder="Ej: Practicar guitarra" maxlength="80" autocomplete="off">
+        <div class="presets" id="presets"></div>
+      </div>
+      <div class="field">
+        <label>Tipo</label>
+        <div class="type-pick" id="typePick">
+          <label><input type="radio" name="atype" value="actividad" checked><span>🎸 Actividad</span></label>
+          <label><input type="radio" name="atype" value="reunion"><span>👥 Reunión</span></label>
+          <label><input type="radio" name="atype" value="meta"><span>🎯 Meta</span></label>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="actTime">Hora (opcional)</label>
+          <input id="actTime" type="time">
+        </div>
+        <div class="field">
+          <label for="actDur">Duración (min)</label>
+          <input id="actDur" type="number" min="0" step="5" placeholder="30" inputmode="numeric">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="cancelModal">Cancelar</button>
+      <button class="btn" id="saveAct">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+(function(){
+  const STORAGE_KEY = "mi-semana-v1";
+  const DOW = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+  const MONTHS = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  const PRESETS = ["Practicar guitarra","Ir al gimnasio","Leer","Estudiar","Caminar","Meditar","Correr","Cocinar sano"];
+
+  // ---------- storage ----------
+  function loadDB(){
+    try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+    catch(e){ return {}; }
+  }
+  function saveDB(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }
+  let db = loadDB(); // { weeks:{ [weekKey]:{ goals:[], days:{0:[...],...} } } }
+  if(!db.weeks) db.weeks = {};
+
+  // ---------- dates ----------
+  function startOfWeek(d){
+    const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const day = (x.getDay()+6)%7; // Monday=0
+    x.setDate(x.getDate()-day);
+    return x;
+  }
+  function fmtKey(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+  function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+  function sameDay(a,b){ return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate(); }
+
+  let current = startOfWeek(new Date());
+
+  function weekKey(){ return fmtKey(current); }
+  function getWeek(){
+    const k = weekKey();
+    if(!db.weeks[k]) db.weeks[k] = { goals:[], days:{} };
+    if(!db.weeks[k].goals) db.weeks[k].goals=[];
+    if(!db.weeks[k].days) db.weeks[k].days={};
+    return db.weeks[k];
+  }
+  function getDay(i){
+    const w = getWeek();
+    if(!w.days[i]) w.days[i]=[];
+    return w.days[i];
+  }
+
+  function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+  function esc(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+  // ---------- render ----------
+  const $ = id=>document.getElementById(id);
+
+  function fmtDur(min){
+    min = Number(min)||0;
+    if(min<=0) return "0 min";
+    const h=Math.floor(min/60), m=min%60;
+    if(h&&m) return h+"h "+m+"m";
+    if(h) return h+"h";
+    return m+" min";
+  }
+
+  function render(){
+    const w = getWeek();
+    const monday = current, sunday = addDays(current,6);
+
+    // range label
+    let range;
+    if(monday.getMonth()===sunday.getMonth()){
+      range = monday.getDate()+" – "+sunday.getDate()+" "+MONTHS[monday.getMonth()];
+    }else{
+      range = monday.getDate()+" "+MONTHS[monday.getMonth()].slice(0,3)+" – "+sunday.getDate()+" "+MONTHS[sunday.getMonth()].slice(0,3);
+    }
+    $("rangeMain").textContent = range;
+    $("rangeSub").textContent = monday.getFullYear();
+
+    renderGoals(w);
+    renderWeek(w);
+    renderStats(w);
+  }
+
+  function renderGoals(w){
+    const list = $("goalsList");
+    $("goalsCount").textContent = w.goals.length;
+    if(!w.goals.length){ list.innerHTML = '<div class="empty">Todavía no cargaste metas. ¿Qué querés lograr esta semana?</div>'; return; }
+    list.innerHTML = w.goals.map(g=>`
+      <div class="li ${g.done?'done':''}">
+        <input type="checkbox" class="chk" data-goal="${g.id}" ${g.done?'checked':''} aria-label="Meta cumplida">
+        <div class="txt">${esc(g.text)}</div>
+        <button class="del" data-delgoal="${g.id}" title="Eliminar" aria-label="Eliminar">×</button>
+      </div>`).join("");
+  }
+
+  function renderWeek(w){
+    const grid = $("weekGrid");
+    const today = new Date();
+    let html = "";
+    for(let i=0;i<7;i++){
+      const d = addDays(current,i);
+      const acts = (w.days[i]||[]);
+      const isToday = sameDay(d,today);
+      const doneN = acts.filter(a=>a.done).length;
+      const sum = acts.length ? `${doneN}/${acts.length} hechas` : "sin actividades";
+      const actsHtml = acts.length ? acts.map(a=>{
+        const sub=[];
+        if(a.type==="reunion") sub.push('<span class="tag reunion">Reunión</span>');
+        if(a.type==="meta") sub.push('<span class="tag meta">Meta</span>');
+        if(a.time) sub.push("🕑 "+esc(a.time));
+        if(a.dur>0) sub.push("⏱ "+fmtDur(a.dur));
+        return `
+        <div class="act ${a.done?'done':''}" data-type="${a.type}">
+          <input type="checkbox" class="achk" data-act="${a.id}" data-day="${i}" ${a.done?'checked':''} aria-label="Marcar como hecha">
+          <div class="body">
+            <div class="title">${esc(a.title)}</div>
+            ${sub.length?`<div class="sub">${sub.join("")}</div>`:""}
+          </div>
+          <button class="del" data-delact="${a.id}" data-day="${i}" title="Eliminar" aria-label="Eliminar">×</button>
+        </div>`;
+      }).join("") : '<div class="empty" style="padding:10px 4px">—</div>';
+      html += `
+      <div class="day ${isToday?'today':''}">
+        <div class="day-head">
+          <div class="dow">${DOW[i]}${isToday?'<span class="todaytag">Hoy</span>':''}</div>
+          <div class="dnum">${d.getDate()}</div>
+          <div class="dsum">${sum}</div>
+        </div>
+        <div class="acts">${actsHtml}</div>
+        <button class="add-act" data-addday="${i}">+ Agregar</button>
+      </div>`;
+    }
+    grid.innerHTML = html;
+  }
+
+  function renderStats(w){
+    let total=0, done=0, planned=0, doneMin=0;
+    for(let i=0;i<7;i++){
+      (w.days[i]||[]).forEach(a=>{
+        total++; if(a.done) done++;
+        const dur=Number(a.dur)||0; planned+=dur; if(a.done) doneMin+=dur;
+      });
+    }
+    // include goals in the "cumplido" spirit
+    const gTotal=w.goals.length, gDone=w.goals.filter(g=>g.done).length;
+    const allTotal=total+gTotal, allDone=done+gDone;
+    const pct = allTotal ? Math.round(allDone/allTotal*100) : 0;
+
+    $("stPct").textContent = pct+"%";
+    $("stDone").textContent = done+"/"+total;
+    $("progBar").style.width = pct+"%";
+    $("goalsCount").textContent = gTotal;
+
+    // time panel
+    $("timePlanned").textContent = fmtDur(planned);
+    $("timeDone").textContent = fmtDur(doneMin);
+    $("timeCount").textContent = fmtDur(planned).replace(" min","m").replace(" ","");
+    $("timeBar").style.width = (planned? Math.round(doneMin/planned*100):0)+"%";
+    $("timeMsg").textContent = planned
+      ? `Ya invertiste ${fmtDur(doneMin)} de ${fmtDur(planned)} planificados. ¡Seguí así!`
+      : "Sumá la duración de cada actividad para ver tu tiempo invertido.";
+
+    // motivational message
+    const t=$("heroTitle"), s=$("heroSub");
+    if(allTotal===0){ t.textContent="¡Empecemos! 🌱"; s.textContent="Agregá tus actividades y metas para arrancar la semana con foco."; }
+    else if(pct===100){ t.textContent="¡Semana completa! 🏆"; s.textContent="Cumpliste todo lo que te propusiste. Sos imparable."; }
+    else if(pct>=75){ t.textContent="¡Ya casi lo lográs! 🔥"; s.textContent=`Vas ${pct}% — un último empujón y cerrás la semana perfecta.`; }
+    else if(pct>=50){ t.textContent="¡Vas muy bien! 💪"; s.textContent=`Ya pasaste la mitad (${pct}%). El impulso está de tu lado.`; }
+    else if(pct>=25){ t.textContent="¡Buen comienzo! ✨"; s.textContent=`Llevás ${pct}% completado. Cada tarea suma.`; }
+    else{ t.textContent="¡A por la semana! 💪"; s.textContent="Marcá lo que vas cumpliendo y mirá crecer tu progreso."; }
+  }
+
+  // ---------- modal ----------
+  let modalDay = 0;
+  function openModal(dayIndex){
+    modalDay = dayIndex;
+    const d = addDays(current,dayIndex);
+    $("modalTitle").textContent = "Nueva actividad · "+DOW[dayIndex]+" "+d.getDate();
+    $("actTitle").value=""; $("actTime").value=""; $("actDur").value="";
+    document.querySelector('input[name="atype"][value="actividad"]').checked=true;
+    $("presets").innerHTML = PRESETS.map(p=>`<button type="button" class="chip" data-preset="${esc(p)}">${esc(p)}</button>`).join("");
+    $("overlay").classList.add("open");
+    setTimeout(()=>$("actTitle").focus(),60);
+  }
+  function closeModal(){ $("overlay").classList.remove("open"); }
+
+  function saveActivity(){
+    const title = $("actTitle").value.trim();
+    if(!title){ $("actTitle").focus(); return; }
+    const type = document.querySelector('input[name="atype"]:checked').value;
+    const time = $("actTime").value;
+    const dur = Math.max(0, Number($("actDur").value)||0);
+    const day = getDay(modalDay);
+    day.push({ id:uid(), title, type, time, dur, done:false });
+    // keep sorted by time (blank last)
+    day.sort((a,b)=>{ if(!a.time&&!b.time) return 0; if(!a.time) return 1; if(!b.time) return -1; return a.time<b.time?-1:1; });
+    saveDB(); closeModal(); render();
+  }
+
+  // ---------- events ----------
+  $("prevWeek").onclick = ()=>{ current=addDays(current,-7); render(); };
+  $("nextWeek").onclick = ()=>{ current=addDays(current,7); render(); };
+  $("todayBtn").onclick = ()=>{ current=startOfWeek(new Date()); render(); };
+
+  $("addGoal").onclick = addGoal;
+  $("goalInput").addEventListener("keydown",e=>{ if(e.key==="Enter") addGoal(); });
+  function addGoal(){
+    const v=$("goalInput").value.trim(); if(!v) return;
+    getWeek().goals.push({ id:uid(), text:v, done:false });
+    $("goalInput").value=""; saveDB(); render();
+  }
+
+  // delegated clicks
+  document.addEventListener("click",e=>{
+    const t=e.target;
+    if(t.dataset.addday!==undefined){ openModal(Number(t.dataset.addday)); }
+    else if(t.dataset.delgoal){ const w=getWeek(); w.goals=w.goals.filter(g=>g.id!==t.dataset.delgoal); saveDB(); render(); }
+    else if(t.dataset.delact){ const day=getDay(Number(t.dataset.day)); const i=day.findIndex(a=>a.id===t.dataset.delact); if(i>-1)day.splice(i,1); saveDB(); render(); }
+    else if(t.dataset.preset){ $("actTitle").value=t.dataset.preset; $("actTitle").focus(); }
+  });
+  // delegated checkbox changes
+  document.addEventListener("change",e=>{
+    const t=e.target;
+    if(t.dataset.goal){ const g=getWeek().goals.find(x=>x.id===t.dataset.goal); if(g){g.done=t.checked; saveDB(); render();} }
+    else if(t.dataset.act){ const day=getDay(Number(t.dataset.day)); const a=day.find(x=>x.id===t.dataset.act); if(a){a.done=t.checked; saveDB(); render();} }
+  });
+
+  $("closeModal").onclick=closeModal;
+  $("cancelModal").onclick=closeModal;
+  $("saveAct").onclick=saveActivity;
+  $("overlay").addEventListener("click",e=>{ if(e.target===$("overlay")) closeModal(); });
+  $("actTitle").addEventListener("keydown",e=>{ if(e.key==="Enter") saveActivity(); });
+  document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeModal(); });
+
+  render();
+})();
+</script>
+</body>
+</html>
