@@ -94,11 +94,16 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 .chk:hover{border-color:var(--green-500)}
 .chk:checked{background:var(--green-600);border-color:var(--green-600)}
 .chk:checked::after{content:"";position:absolute;left:5px;top:1px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
-.li .txt{flex:1;font-size:13.5px;color:var(--ink-soft);word-break:break-word}
+.li .txt{flex:1;font-size:13.5px;color:var(--ink-soft);word-break:break-word;cursor:text}
 .li.done .txt{text-decoration:line-through;color:var(--muted-3)}
-.del{opacity:0;background:none;border:none;color:var(--muted-3);cursor:pointer;font-size:15px;padding:2px 5px;border-radius:4px;transition:.12s var(--ease)}
-.li:hover .del,.act:hover .del,.rt:hover .del{opacity:1}
+.del,.edit{opacity:0;background:none;border:none;color:var(--muted-3);cursor:pointer;font-size:15px;padding:2px 5px;border-radius:4px;transition:.12s var(--ease);line-height:1}
+.edit{font-size:13px}
+.li:hover .del,.li:hover .edit,.act:hover .del,.act:hover .edit,.rt:hover .del,.rt:hover .edit{opacity:1}
 .del:hover{color:var(--danger);background:var(--danger-bg)}
+.edit:hover{color:var(--green-700);background:var(--green-50)}
+/* En pantallas tactiles no existe :hover, asi que los controles se muestran siempre */
+@media(hover:none){ .del,.edit{opacity:1} }
+.inline-edit{flex:1;min-width:0;border:1.5px solid var(--green-500);border-radius:var(--radius-sm);padding:6px 9px;font-size:13.5px;color:var(--ink);background:var(--surface);outline:none}
 .empty{text-align:center;color:var(--muted-3);font-size:12.5px;padding:14px 8px;font-style:italic}
 
 /* routines list */
@@ -106,7 +111,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 .rt:hover{background:var(--surface-muted)}
 .rt+.rt{border-top:1px solid var(--line-soft)}
 .rt .rt-em{font-size:15px;margin-top:1px}
-.rt .rt-body{flex:1;min-width:0}
+.rt .rt-body{flex:1;min-width:0;cursor:pointer}
 .rt .rt-title{font-size:13.5px;font-weight:600;color:var(--ink-soft);word-break:break-word}
 .rt .rt-sub{font-size:11px;color:var(--muted-3);margin-top:1px}
 .rt .rt-days{display:inline-flex;gap:3px;margin-top:4px}
@@ -136,7 +141,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 .act .achk:hover{border-color:var(--green-500)}
 .act .achk:checked{background:var(--green-600);border-color:var(--green-600)}
 .act .achk:checked::after{content:"";position:absolute;left:4px;top:0;width:4px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
-.act .body{flex:1;min-width:0}
+.act .body{flex:1;min-width:0;cursor:pointer}
 .act .title{font-size:12.5px;font-weight:600;color:var(--ink-soft);word-break:break-word;line-height:1.25;display:flex;align-items:center;gap:4px}
 .act.done .title{text-decoration:line-through;color:var(--muted-3)}
 .act .title .rep{font-size:10px}
@@ -541,7 +546,8 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
     list.innerHTML = w.goals.map(g=>`
       <div class="li ${g.done?'done':''}">
         <input type="checkbox" class="chk" data-goal="${g.id}" ${g.done?'checked':''} aria-label="Meta cumplida">
-        <div class="txt">${esc(g.text)}</div>
+        <div class="txt" data-editgoal="${g.id}" title="Tocá para editar">${esc(g.text)}</div>
+        <button class="edit" data-editgoal="${g.id}" title="Editar" aria-label="Editar">✎</button>
         <button class="del" data-delgoal="${g.id}" title="Eliminar" aria-label="Eliminar">×</button>
       </div>`).join("");
   }
@@ -555,11 +561,12 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
       const sub=[]; if(r.time) sub.push("🕑 "+esc(r.time)); if(r.dur>0) sub.push("⏱ "+fmtDur(r.dur));
       return `<div class="rt">
         <span class="rt-em">${EMOJI[r.type]||"🎸"}</span>
-        <div class="rt-body">
+        <div class="rt-body" data-editrt="${r.id}" title="Tocá para editar">
           <div class="rt-title">${esc(r.title)}</div>
           ${sub.length?`<div class="rt-sub">${sub.join(" · ")}</div>`:""}
           <div class="rt-days">${days}</div>
         </div>
+        <button class="edit" data-editrt="${r.id}" title="Editar rutina" aria-label="Editar rutina">✎</button>
         <button class="del" data-delrt="${r.id}" title="Eliminar rutina" aria-label="Eliminar rutina">×</button>
       </div>`;
     }).join("");
@@ -584,7 +591,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
         return `
         <div class="act ${a.done?'done':''}" data-type="${a.type}">
           <input type="checkbox" class="achk" data-act="${a.id}" data-day="${i}" ${a.done?'checked':''} aria-label="Marcar como hecha">
-          <div class="body">
+          <div class="body" data-editact="${a.id}" data-day="${i}" title="Tocá para editar">
             <div class="title">${a.rid?'<span class="rep" title="Rutina fija">🔁</span>':''}${esc(a.title)}</div>
             ${sub.length?`<div class="sub">${sub.join("")}</div>`:""}
           </div>
@@ -639,22 +646,69 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
     else{ t.textContent="¡A por la semana! 💪"; s.textContent="Marcá lo que vas cumpliendo y mirá crecer tu progreso."; }
   }
 
-  // ---------- activity modal ----------
+  // ---------- activity / routine modal ----------
   let modalDay = 0;
   let repeatSel = new Set();
-  function openModal(dayIndex){
-    modalDay = dayIndex;
-    repeatSel = new Set();
-    const d = addDays(current,dayIndex);
-    $("modalTitle").textContent = "Nueva actividad · "+DOW[dayIndex]+" "+d.getDate();
-    $("actTitle").value=""; $("actTime").value=""; $("actDur").value="";
-    document.querySelector('input[name="atype"][value="actividad"]').checked=true;
-    document.querySelectorAll("#wdays button").forEach(b=>b.classList.remove("on"));
-    $("presets").innerHTML = PRESETS.map(p=>`<button type="button" class="chip" data-preset="${esc(p)}">${esc(p)}</button>`).join("");
-    $("overlay").classList.add("open");
-    setTimeout(()=>$("actTitle").focus(),60);
+  let editState = null; // null | {type:'act',day,id} | {type:'routine',id}
+
+  function setType(v){ const el=document.querySelector('input[name="atype"][value="'+v+'"]'); if(el) el.checked=true; }
+  function setWdays(set){
+    repeatSel = new Set(set||[]);
+    document.querySelectorAll("#wdays button").forEach(b=>{ b.classList.toggle("on", repeatSel.has(Number(b.dataset.wd))); });
   }
+  function resetFields(){
+    $("actTitle").value=""; $("actTime").value=""; $("actDur").value="";
+    setType("actividad"); setWdays([]);
+    $("presets").innerHTML = PRESETS.map(p=>`<button type="button" class="chip" data-preset="${esc(p)}">${esc(p)}</button>`).join("");
+  }
+  function openOverlay(){ $("overlay").classList.add("open"); setTimeout(()=>$("actTitle").focus(),60); }
   function closeModal(){ $("overlay").classList.remove("open"); }
+
+  // Nueva actividad para un dia puntual
+  function openModal(dayIndex){
+    editState=null; modalDay=dayIndex; resetFields();
+    $("modalTitle").textContent = "Nueva actividad · "+DOW[dayIndex]+" "+addDays(current,dayIndex).getDate();
+    $("repeatField").style.display=""; $("saveAct").textContent="Guardar";
+    openOverlay();
+  }
+  // Nueva rutina semanal
+  function openNewRoutine(){
+    editState=null; modalDay=(new Date().getDay()+6)%7; resetFields();
+    $("modalTitle").textContent = "Nueva rutina semanal";
+    $("repeatField").style.display=""; $("saveAct").textContent="Guardar";
+    openOverlay();
+  }
+  // Editar actividad ya cargada (de un dia)
+  function openEditActivity(dayIndex,id){
+    const a=getDay(dayIndex).find(x=>x.id===id); if(!a) return;
+    editState={type:'act',day:dayIndex,id}; modalDay=dayIndex; resetFields();
+    $("actTitle").value=a.title; $("actTime").value=a.time||""; $("actDur").value=a.dur||"";
+    setType(a.type);
+    $("modalTitle").textContent = a.rid ? "Editar (solo este día)" : "Editar actividad";
+    $("repeatField").style.display="none"; // en un dia puntual no se convierte a rutina
+    $("saveAct").textContent="Guardar cambios";
+    openOverlay();
+  }
+  // Editar rutina fija
+  function openEditRoutine(rid){
+    const r=db.recurring.find(x=>x.id===rid); if(!r) return;
+    editState={type:'routine',id:rid}; resetFields();
+    $("actTitle").value=r.title; $("actTime").value=r.time||""; $("actDur").value=r.dur||"";
+    setType(r.type); setWdays(r.days||[]);
+    $("modalTitle").textContent = "Editar rutina";
+    $("repeatField").style.display=""; $("saveAct").textContent="Guardar cambios";
+    openOverlay();
+  }
+
+  function resyncRoutineCurrentWeek(r){
+    const w=getWeek();
+    for(let di=0;di<7;di++){ if(w.days[di]) w.days[di]=w.days[di].filter(a=>a.rid!==r.id); }
+    (r.days||[]).forEach(di=>{
+      if(!w.days[di]) w.days[di]=[];
+      w.days[di].push({ id:uid(), rid:r.id, title:r.title, type:r.type, time:r.time, dur:r.dur, done:false });
+      sortDay(w.days[di]);
+    });
+  }
 
   function saveActivity(){
     const title = $("actTitle").value.trim();
@@ -663,20 +717,24 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
     const time = $("actTime").value;
     const dur = Math.max(0, Number($("actDur").value)||0);
 
-    if(repeatSel.size>0){
-      // create a recurring routine + seed into current week
-      const days = [...repeatSel].sort((a,b)=>a-b);
-      const r = { id:uid(), title, type, time, dur, days };
-      db.recurring.push(r);
-      days.forEach(di=>{
-        if(!getWeek().days[di]) getWeek().days[di]=[];
-        getWeek().days[di].push({ id:uid(), rid:r.id, title, type, time, dur, done:false });
-        sortDay(getWeek().days[di]);
-      });
-    }else{
-      const day = getDay(modalDay);
-      day.push({ id:uid(), title, type, time, dur, done:false });
-      sortDay(day);
+    if(editState && editState.type==='act'){
+      const day=getDay(editState.day); const a=day.find(x=>x.id===editState.id);
+      if(a){ a.title=title; a.type=type; a.time=time; a.dur=dur; } sortDay(day);
+    }
+    else if(editState && editState.type==='routine'){
+      if(repeatSel.size===0){ alert("Elegí al menos un día para la rutina."); return; }
+      const r=db.recurring.find(x=>x.id===editState.id);
+      if(r){ r.title=title; r.type=type; r.time=time; r.dur=dur; r.days=[...repeatSel].sort((a,b)=>a-b); resyncRoutineCurrentWeek(r); }
+    }
+    else if(repeatSel.size>0){
+      // nueva rutina + sembrar en la semana actual
+      const days=[...repeatSel].sort((a,b)=>a-b);
+      const r={ id:uid(), title, type, time, dur, days }; db.recurring.push(r);
+      const w=getWeek();
+      days.forEach(di=>{ if(!w.days[di]) w.days[di]=[]; w.days[di].push({ id:uid(), rid:r.id, title, type, time, dur, done:false }); sortDay(w.days[di]); });
+    }
+    else{
+      const day=getDay(modalDay); day.push({ id:uid(), title, type, time, dur, done:false }); sortDay(day);
     }
     saveDB(); closeModal(); render();
   }
@@ -696,21 +754,40 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
   }
 
   // routines: open modal from panel (no specific day)
-  $("addRoutine").onclick = ()=>{ openModal((new Date().getDay()+6)%7); $("modalTitle").textContent="Nueva rutina semanal"; };
+  $("addRoutine").onclick = openNewRoutine;
 
   // weekday toggles
   document.querySelectorAll("#wdays button").forEach(b=>{
     b.onclick=()=>{ const wd=Number(b.dataset.wd); if(repeatSel.has(wd)){repeatSel.delete(wd);b.classList.remove("on");}else{repeatSel.add(wd);b.classList.add("on");} };
   });
 
+  // edicion inline de una meta
+  function startGoalEdit(id, liEl){
+    if(!liEl) return;
+    const g=getWeek().goals.find(x=>x.id===id); if(!g) return;
+    const txt=liEl.querySelector(".txt"); if(!txt || liEl.querySelector(".inline-edit")) return;
+    const inp=document.createElement("input");
+    inp.type="text"; inp.maxLength=120; inp.className="inline-edit"; inp.value=g.text;
+    txt.replaceWith(inp); inp.focus(); inp.setSelectionRange(inp.value.length,inp.value.length);
+    let done=false;
+    const commit=()=>{ if(done) return; done=true; const v=inp.value.trim(); if(v){ g.text=v; saveDB(); } render(); };
+    inp.addEventListener("keydown",ev=>{ if(ev.key==="Enter"){ ev.preventDefault(); commit(); } else if(ev.key==="Escape"){ done=true; render(); } });
+    inp.addEventListener("blur",commit);
+  }
+
   // delegated clicks
   document.addEventListener("click",e=>{
-    const t=e.target.closest("[data-addday],[data-delgoal],[data-delact],[data-delrt],[data-preset]") || e.target;
-    if(t.dataset.addday!==undefined){ openModal(Number(t.dataset.addday)); }
-    else if(t.dataset.delgoal){ const w=getWeek(); w.goals=w.goals.filter(g=>g.id!==t.dataset.delgoal); saveDB(); render(); }
-    else if(t.dataset.delact){ const day=getDay(Number(t.dataset.day)); const i=day.findIndex(a=>a.id===t.dataset.delact); if(i>-1)day.splice(i,1); saveDB(); render(); }
-    else if(t.dataset.delrt){ deleteRoutine(t.dataset.delrt); }
-    else if(t.dataset.preset){ $("actTitle").value=t.dataset.preset; $("actTitle").focus(); }
+    const t=e.target.closest("[data-addday],[data-editgoal],[data-delgoal],[data-editact],[data-delact],[data-editrt],[data-delrt],[data-preset]");
+    if(!t) return;
+    const d=t.dataset;
+    if(d.addday!==undefined){ openModal(Number(d.addday)); }
+    else if(d.editgoal){ startGoalEdit(d.editgoal, e.target.closest(".li")); }
+    else if(d.delgoal){ const w=getWeek(); w.goals=w.goals.filter(g=>g.id!==d.delgoal); saveDB(); render(); }
+    else if(d.editact){ openEditActivity(Number(d.day), d.editact); }
+    else if(d.delact){ const day=getDay(Number(d.day)); const i=day.findIndex(a=>a.id===d.delact); if(i>-1)day.splice(i,1); saveDB(); render(); }
+    else if(d.editrt){ openEditRoutine(d.editrt); }
+    else if(d.delrt){ deleteRoutine(d.delrt); }
+    else if(d.preset){ $("actTitle").value=d.preset; $("actTitle").focus(); }
   });
   function deleteRoutine(rid){
     if(!confirm("¿Eliminar esta rutina fija? Se quitará de esta semana en adelante (las semanas pasadas quedan como están).")) return;
