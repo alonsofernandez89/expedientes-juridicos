@@ -260,6 +260,11 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
     <span class="status" id="syncStatus"></span>
   </div>
 
+  <!-- Storage blocked warning -->
+  <div id="storageWarn" style="display:none;background:var(--danger-bg);border:1px solid #f0c4c4;color:var(--danger);font-size:13px;font-weight:600;padding:11px 14px;border-radius:var(--radius);margin-bottom:18px;line-height:1.45">
+    ⚠️ Tu navegador está bloqueando el guardado (suele pasar en <b>modo incógnito</b> o si el sitio no tiene permiso para guardar datos). Podés usar la app, pero <b>lo que cargues no se guardará al cerrar</b>. Probá abrirla en una ventana normal, o usá <b>Copia de seguridad</b> para respaldar y restaurar tus datos.
+  </div>
+
   <!-- Progress hero -->
   <section class="hero">
     <div class="msg">
@@ -419,7 +424,14 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
     try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
     catch(e){ return {}; }
   }
-  function saveDB(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }
+  let storageOK = true;
+  function saveDB(){
+    // Nunca dejar que un fallo de guardado (modo incognito / permisos bloqueados)
+    // corte la ejecucion: la app sigue andando en memoria y avisamos al usuario.
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }
+    catch(e){ storageOK=false; showStorageWarn(); }
+  }
+  function showStorageWarn(){ const el=document.getElementById("storageWarn"); if(el) el.style.display="block"; }
   let db = loadDB(); // { weeks:{[k]:{goals:[],days:{},seeded:bool}}, recurring:[] }
   if(!db.weeks) db.weeks = {};
   if(!db.recurring) db.recurring = [];
