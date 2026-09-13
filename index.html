@@ -516,7 +516,7 @@ tbody tr:hover td{background:var(--green-50)}
   <div class="modal" style="width:560px">
     <h3>🔄 Refrescar ubicación</h3>
     <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
-      Por cada expediente: abrí el portal de la provincia (ahí tenés que tildar "no soy robot" y buscarlo vos), fijate si el último movimiento ya salió de la Dirección de Jurídicos y decidí abajo.
+      Por cada expediente: "Abrir portal" te lo abre directo con el número ya cargado (sin captcha ni tipear nada). Fijate ahí si el último movimiento ya salió de la Dirección de Jurídicos y decidí abajo.
     </div>
     <div id="refrescar-progreso" style="font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:10px"></div>
     <div id="refrescar-lista" style="max-height:50vh;overflow-y:auto"></div>
@@ -1438,12 +1438,11 @@ function mostrarListaAgentes() {
 function cerrarListaAgentes() { document.getElementById('overlay-lista-agentes').classList.remove('show'); }
 
 // ===== Refrescar ubicacion (asistente semi-automatico) =====
-// El portal de la provincia (https://apps2.entrerios.gov.ar/consulta/expedientes/)
-// tiene un reCAPTCHA real: no se puede consultar automaticamente desde aca. Este
-// asistente solo evita la doble carga (anotar en un papel y despues tipear en el
-// Registro): abre el portal para que el agente busque a mano y, con el resultado
-// a la vista, un clic actualiza el expediente sin tener que ir a editarlo aparte.
-var PORTAL_EXPEDIENTES_ER = 'https://apps2.entrerios.gov.ar/consulta/expedientes/';
+// La busqueda general del portal de la provincia (por DNI/asunto/fecha) tiene un
+// reCAPTCHA real. Pero la vista directa "#/ver?nro=" (la misma que ya usa el boton
+// 🔗 "Consultar en el portal" de la tabla, ver consultarExpte()) no pasa por esa
+// busqueda ni pide captcha: alcanza con conocer el numero de expediente. Por eso
+// este asistente puede abrir cada expediente ya cargado con el numero puesto.
 var refrescarPendientes = [];
 var refrescarFechaFila = {};
 function abrirRefrescarUbicacion() {
@@ -1453,7 +1452,6 @@ function abrirRefrescarUbicacion() {
   document.getElementById('overlay-refrescar').classList.add('show');
 }
 function cerrarRefrescarUbicacion() { document.getElementById('overlay-refrescar').classList.remove('show'); }
-function abrirPortalExpedientes() { window.open(PORTAL_EXPEDIENTES_ER, '_blank'); }
 function refrescarSigueEnJuridicos(fila) {
   refrescarPendientes = refrescarPendientes.filter(function(f){ return f !== fila; });
   renderRefrescarLista();
@@ -1498,7 +1496,7 @@ function renderRefrescarLista() {
       '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">' +
         '<div><b>' + esc(getExpte(e)) + '</b> &middot; ' + esc(getRespAsig(e)||'-') +
           '<div style="font-size:12px;color:var(--muted);max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(getTema(e)||'-') + '</div></div>' +
-        '<button class="btn sm" onclick="abrirPortalExpedientes()">🔗 Abrir portal</button>' +
+        '<button class="btn sm" onclick="consultarExpte(\'' + jsArg(getExpte(e)) + '\')">🔗 Abrir portal</button>' +
       '</div>' +
       (editando
         ? '<div style="display:flex;gap:6px;align-items:center;margin-top:8px">' +

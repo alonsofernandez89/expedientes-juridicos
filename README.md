@@ -21,9 +21,11 @@ App de gestión de expedientes de la Dirección General de Asuntos Jurídicos. E
 
 ### Botón "🔄 Refrescar ubicación" (Registro)
 
-Asistente semi-automático para no tener que anotar en un papel y después cargar a mano si un expediente ya salió de la Dirección. **No hace la consulta sola**: el portal de la provincia (`https://apps2.entrerios.gov.ar/consulta/expedientes/`) tiene un reCAPTCHA real del lado del cliente y del servidor (se salta solo si la IP de origen es interna del gobierno, `10.x.x.x`), así que no se puede automatizar desde el navegador de la app ni desde Apps Script sin resolver ese captcha — y no corresponde intentar sortearlo.
+Asistente semi-automático para no tener que anotar en un papel y después cargar a mano si un expediente ya salió de la Dirección. **No hace la consulta sola**: la búsqueda general del portal de la provincia (`https://apps2.entrerios.gov.ar/consulta/expedientes/`, por DNI/asunto/fecha) tiene un reCAPTCHA real, así que esa búsqueda no se automatiza. Pero la vista directa por número (`#/ver?nro=...`, la misma que usa el botón 🔗 "Consultar en el portal" de la tabla — ver `consultarExpte()`) no pasa por esa búsqueda ni pide captcha: alcanza con conocer el número de expediente.
 
-En cambio, el botón abre un listado de los expedientes en la Dirección; por cada uno hay un link que abre el portal en una pestaña nueva (ahí el agente tilda "no soy robot" y busca a mano) y dos acciones: "✅ Sigue en Jurídicos" (lo saca de la lista, sin tocar datos) o "📤 Ya salió" (pide la fecha de salida, con hoy precargado, y graba `salio` en la hoja `expedientes` con la misma acción `editar` que ya usa el formulario de edición). No requiere ningún cambio de backend.
+Por eso el botón abre un listado de los expedientes en la Dirección; por cada uno, "🔗 Abrir portal" lo abre directo en esa vista con el número ya cargado (sin captcha ni tipear nada) para que el agente mire el último movimiento, y después hay dos acciones: "✅ Sigue en Jurídicos" (lo saca de la lista, sin tocar datos) o "📤 Ya salió" (pide la fecha de salida, con hoy precargado, y graba `salio` en la hoja `expedientes` con la misma acción `editar` que ya usa el formulario de edición). No requiere ningún cambio de backend.
+
+> 💡 Como esa vista por número no tiene captcha, en principio también se podría automatizar del todo agregando al Apps Script una acción que llame a `https://apps2.entrerios.gov.ar/consulta/expedientes-api/detalle/{numero}?intranet=false` (devuelve JSON con los movimientos, sin captcha) y lea el `ente_destino` del último movimiento. Es la app la que tendría que hacer esa llamada — el navegador no puede por CORS. Todavía no está implementado.
 
 ### Pestaña "Mi Panel" (rendimiento por agente)
 
