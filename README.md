@@ -19,6 +19,12 @@ App de gestión de expedientes de la Dirección General de Asuntos Jurídicos. E
 
 > **Para activar la pestaña Normativas**: en Drive, crear una carpeta contenedora y adentro 4 subcarpetas con el nombre **exacto** de cada categoría: `Programas`, `Contrataciones`, `Dictámenes Fiscalía`, `Legal y Técnica`. Los archivos que se suban a cada subcarpeta aparecen automáticamente en esa sub-pestaña de la app (nombre del archivo, fecha de última modificación y link para abrirlo) — no hace falta ni hoja de cálculo ni cargar nada desde la app. Hay que agregar al `doGet` del Apps Script el manejo de `hoja === 'normativas'` (mismo patrón que ya usa `dictamenes` para leer una carpeta de Drive), con el ID de la carpeta contenedora en una constante nueva (`CARPETA_NORMATIVAS`).
 
+### Botón "🔄 Refrescar ubicación" (Registro)
+
+Asistente semi-automático para no tener que anotar en un papel y después cargar a mano si un expediente ya salió de la Dirección. **No hace la consulta sola**: el portal de la provincia (`https://apps2.entrerios.gov.ar/consulta/expedientes/`) tiene un reCAPTCHA real del lado del cliente y del servidor (se salta solo si la IP de origen es interna del gobierno, `10.x.x.x`), así que no se puede automatizar desde el navegador de la app ni desde Apps Script sin resolver ese captcha — y no corresponde intentar sortearlo.
+
+En cambio, el botón abre un listado de los expedientes en la Dirección; por cada uno hay un link que abre el portal en una pestaña nueva (ahí el agente tilda "no soy robot" y busca a mano) y dos acciones: "✅ Sigue en Jurídicos" (lo saca de la lista, sin tocar datos) o "📤 Ya salió" (pide la fecha de salida, con hoy precargado, y graba `salio` en la hoja `expedientes` con la misma acción `editar` que ya usa el formulario de edición). No requiere ningún cambio de backend.
+
 ### Pestaña "Mi Panel" (rendimiento por agente)
 
 Control personal de expedientes de cada agente: elige su nombre en un selector (sin contraseña, para acceso rápido; la elección se recuerda en `localStorage` bajo la clave `panel-agente`). Es una vista enfocada en gestionar los expedientes propios, sin gamificación ni analítica:
