@@ -96,13 +96,13 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 .chk:checked::after{content:"";position:absolute;left:5px;top:1px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
 .li .txt{flex:1;font-size:13.5px;color:var(--ink-soft);word-break:break-word;cursor:text}
 .li.done .txt{text-decoration:line-through;color:var(--muted-3)}
-.del,.edit{opacity:0;background:none;border:none;color:var(--muted-3);cursor:pointer;font-size:15px;padding:2px 5px;border-radius:4px;transition:.12s var(--ease);line-height:1}
-.edit{font-size:13px}
+/* Los controles editar/eliminar se muestran SIEMPRE (en cualquier dispositivo),
+   apenas atenuados, y se resaltan al pasar el mouse o tocarlos. */
+.del,.edit{opacity:.6;background:none;border:1px solid var(--line);color:var(--muted-2);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:5px;transition:.12s var(--ease);line-height:1.1}
+.edit{font-size:12px}
 .li:hover .del,.li:hover .edit,.act:hover .del,.act:hover .edit,.rt:hover .del,.rt:hover .edit{opacity:1}
-.del:hover{color:var(--danger);background:var(--danger-bg)}
-.edit:hover{color:var(--green-700);background:var(--green-50)}
-/* En pantallas tactiles no existe :hover, asi que los controles se muestran siempre */
-@media(hover:none){ .del,.edit{opacity:1} }
+.del:hover{color:var(--danger);background:var(--danger-bg);border-color:#f0c4c4}
+.edit:hover{color:var(--green-700);background:var(--green-50);border-color:var(--green-tint)}
 .inline-edit{flex:1;min-width:0;border:1.5px solid var(--green-500);border-radius:var(--radius-sm);padding:6px 9px;font-size:13.5px;color:var(--ink);background:var(--surface);outline:none}
 .empty{text-align:center;color:var(--muted-3);font-size:12.5px;padding:14px 8px;font-style:italic}
 
@@ -328,7 +328,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
   <div class="section-title"><span class="em">📅</span><h2>Tu semana día a día</h2></div>
   <section class="week" id="weekGrid"></section>
 
-  <p class="foot-note">Todo se guarda en este navegador. Usá <b>Sincronizar</b> para verlo en otros dispositivos o <b>Copia de seguridad</b> para respaldarlo. 🌱</p>
+  <p class="foot-note">Todo se guarda en este navegador. Usá <b>Sincronizar</b> para verlo en otros dispositivos o <b>Copia de seguridad</b> para respaldarlo. 🌱<br><span style="opacity:.7">Versión v3 · con edición y botones siempre visibles</span></p>
 </div>
 
 <!-- Activity modal -->
