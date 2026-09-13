@@ -223,6 +223,7 @@ tbody tr:hover td{background:var(--green-50)}
         <option value="50" selected>50 por pagina</option>
         <option value="100">100 por pagina</option>
       </select>
+      <button class="btn" onclick="abrirRefrescarUbicacion()" title="Revisar en el portal de la provincia si cada expediente en la Direccion ya salio">🔄 Refrescar ubicación</button>
     </div>
     <div id="loading" class="card">
       <div class="sk-row" style="width:35%"></div>
@@ -507,6 +508,20 @@ tbody tr:hover td{background:var(--green-50)}
     <div class="modal-actions">
       <button class="btn" onclick="cerrarModalAsignar()">Cancelar</button>
       <button class="btn primary" onclick="asignarExpediente()">Asignar seleccionado</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-refrescar">
+  <div class="modal" style="width:560px">
+    <h3>🔄 Refrescar ubicación</h3>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+      Por cada expediente: abrí el portal de la provincia (ahí tenés que tildar "no soy robot" y buscarlo vos), fijate si el último movimiento ya salió de la Dirección de Jurídicos y decidí abajo.
+    </div>
+    <div id="refrescar-progreso" style="font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:10px"></div>
+    <div id="refrescar-lista" style="max-height:50vh;overflow-y:auto"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="cerrarRefrescarUbicacion()">Cerrar</button>
     </div>
   </div>
 </div>
@@ -1421,6 +1436,83 @@ function mostrarListaAgentes() {
   document.getElementById('overlay-lista-agentes').classList.add('show');
 }
 function cerrarListaAgentes() { document.getElementById('overlay-lista-agentes').classList.remove('show'); }
+
+// ===== Refrescar ubicacion (asistente semi-automatico) =====
+// El portal de la provincia (https://apps2.entrerios.gov.ar/consulta/expedientes/)
+// tiene un reCAPTCHA real: no se puede consultar automaticamente desde aca. Este
+// asistente solo evita la doble carga (anotar en un papel y despues tipear en el
+// Registro): abre el portal para que el agente busque a mano y, con el resultado
+// a la vista, un clic actualiza el expediente sin tener que ir a editarlo aparte.
+var PORTAL_EXPEDIENTES_ER = 'https://apps2.entrerios.gov.ar/consulta/expedientes/';
+var refrescarPendientes = [];
+var refrescarFechaFila = {};
+function abrirRefrescarUbicacion() {
+  refrescarPendientes = expedientes.filter(function(e){ return !estaEgresado(e); }).map(function(e){ return e._fila; });
+  refrescarFechaFila = {};
+  renderRefrescarLista();
+  document.getElementById('overlay-refrescar').classList.add('show');
+}
+function cerrarRefrescarUbicacion() { document.getElementById('overlay-refrescar').classList.remove('show'); }
+function abrirPortalExpedientes() { window.open(PORTAL_EXPEDIENTES_ER, '_blank'); }
+function refrescarSigueEnJuridicos(fila) {
+  refrescarPendientes = refrescarPendientes.filter(function(f){ return f !== fila; });
+  renderRefrescarLista();
+}
+function refrescarMostrarFecha(fila) {
+  refrescarFechaFila[fila] = toInput(new Date());
+  renderRefrescarLista();
+}
+function refrescarCancelarFecha(fila) {
+  delete refrescarFechaFila[fila];
+  renderRefrescarLista();
+}
+async function refrescarConfirmarSalida(fila) {
+  var input = document.getElementById('refrescar-fecha-' + fila);
+  var valor = input ? input.value : '';
+  if (!valor) { toast('Elegí la fecha de salida', 'error'); return; }
+  try {
+    await api({ accion:'editar', hoja:'expedientes', datos:{ _fila:fila, salio: fmt(valor) } });
+    var exp = expedientes.filter(function(e){ return e._fila === fila; })[0];
+    if (exp) exp.salio = valor;
+    delete refrescarFechaFila[fila];
+    refrescarPendientes = refrescarPendientes.filter(function(f){ return f !== fila; });
+    renderRefrescarLista();
+    renderMetrics('metrics-top'); renderMetrics('metrics-analisis'); renderTabla();
+    toast('Expediente marcado como egresado');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+function renderRefrescarLista() {
+  var cont = document.getElementById('refrescar-lista');
+  var prog = document.getElementById('refrescar-progreso');
+  if (!refrescarPendientes.length) {
+    prog.textContent = '';
+    cont.innerHTML = '<div class="alert">✅ No queda ningún expediente en la Dirección por revisar.</div>';
+    return;
+  }
+  prog.textContent = refrescarPendientes.length + ' expediente(s) en la Dirección por revisar';
+  cont.innerHTML = refrescarPendientes.map(function(fila){
+    var e = expedientes.filter(function(x){ return x._fila === fila; })[0];
+    if (!e) return '';
+    var editando = refrescarFechaFila.hasOwnProperty(fila);
+    return '<div class="mini-exp" style="flex-direction:column;align-items:stretch">' +
+      '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">' +
+        '<div><b>' + esc(getExpte(e)) + '</b> &middot; ' + esc(getRespAsig(e)||'-') +
+          '<div style="font-size:12px;color:var(--muted);max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(getTema(e)||'-') + '</div></div>' +
+        '<button class="btn sm" onclick="abrirPortalExpedientes()">🔗 Abrir portal</button>' +
+      '</div>' +
+      (editando
+        ? '<div style="display:flex;gap:6px;align-items:center;margin-top:8px">' +
+            '<input type="date" id="refrescar-fecha-' + fila + '" value="' + esc(refrescarFechaFila[fila]) + '" style="flex:1;padding:6px 8px;font-size:13px;border:1px solid var(--input-line);border-radius:var(--radius)">' +
+            '<button class="btn sm primary" onclick="refrescarConfirmarSalida(' + fila + ')">Guardar</button>' +
+            '<button class="btn sm" onclick="refrescarCancelarFecha(' + fila + ')">Cancelar</button>' +
+          '</div>'
+        : '<div style="display:flex;gap:6px;margin-top:8px">' +
+            '<button class="btn sm" onclick="refrescarSigueEnJuridicos(' + fila + ')">✅ Sigue en Jurídicos</button>' +
+            '<button class="btn sm danger" onclick="refrescarMostrarFecha(' + fila + ')">📤 Ya salió</button>' +
+          '</div>') +
+      '</div>';
+  }).join('');
+}
 
 function getValorOrden(e, col) {
   switch (col) {
