@@ -513,8 +513,9 @@ tbody tr:hover td{background:var(--green-50)}
   <div class="modal" style="width:560px">
     <h3>🔄 Refrescar ubicación</h3>
     <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
-      Por cada expediente: "Abrir portal" te lo abre directo con el número ya cargado (sin captcha ni tipear nada). Fijate ahí si el último movimiento ya salió de la Dirección de Jurídicos y decidí abajo.
+      "Revisar automáticamente" consulta el portal de la provincia por número de expediente (sin captcha) y detecta solo los que ya no están en Jurídicos. También podés revisar uno a uno con "Abrir portal".
     </div>
+    <div id="refrescar-auto-controles" style="margin-bottom:10px"></div>
     <div id="refrescar-progreso" style="font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:10px"></div>
     <div id="refrescar-lista" style="max-height:50vh;overflow-y:auto"></div>
     <div class="modal-actions">
@@ -1387,22 +1388,37 @@ function mostrarListaAgentes() {
 }
 function cerrarListaAgentes() { document.getElementById('overlay-lista-agentes').classList.remove('show'); }
 
-// ===== Refrescar ubicacion (asistente semi-automatico) =====
+// ===== Refrescar ubicacion (asistente semi-automatico + revision automatica) =====
 // La busqueda general del portal de la provincia (por DNI/asunto/fecha) tiene un
 // reCAPTCHA real. Pero la vista directa "#/ver?nro=" (la misma que ya usa el boton
 // 🔗 "Consultar en el portal" de la tabla, ver consultarExpte()) no pasa por esa
-// busqueda ni pide captcha: alcanza con conocer el numero de expediente. Por eso
-// este asistente puede abrir cada expediente ya cargado con el numero puesto.
+// busqueda ni pide captcha: alcanza con conocer el numero de expediente, y la API
+// que usa esa vista (expedientes-api/detalle/:numero) tampoco la pide. Por eso el
+// Apps Script puede consultarla directo (accion "ubicacion", ver README) y esta
+// pantalla puede revisar sola cada expediente, dejando solo los cambios para
+// confirmar (nunca escribe nada sin que el usuario lo apruebe).
 var refrescarPendientes = [];
 var refrescarFechaFila = {};
+var refrescarAutoActivo = false;
+var refrescarAutoDetener = false;
+var refrescarAutoDetectado = {}; // fila -> {enteDestino, fecha} que la revision automatica encontro fuera de Juridicos
+var refrescarAutoError = {};     // fila -> mensaje de error de la ultima consulta automatica
 function abrirRefrescarUbicacion() {
   refrescarPendientes = expedientes.filter(function(e){ return !estaEgresado(e); }).map(function(e){ return e._fila; });
   refrescarFechaFila = {};
+  refrescarAutoDetectado = {};
+  refrescarAutoError = {};
+  refrescarAutoDetener = false;
   renderRefrescarLista();
   document.getElementById('overlay-refrescar').classList.add('show');
 }
-function cerrarRefrescarUbicacion() { document.getElementById('overlay-refrescar').classList.remove('show'); }
+function cerrarRefrescarUbicacion() {
+  refrescarAutoDetener = true;
+  document.getElementById('overlay-refrescar').classList.remove('show');
+}
 function refrescarSigueEnJuridicos(fila) {
+  delete refrescarAutoDetectado[fila];
+  delete refrescarAutoError[fila];
   refrescarPendientes = refrescarPendientes.filter(function(f){ return f !== fila; });
   renderRefrescarLista();
 }
@@ -1414,45 +1430,128 @@ function refrescarCancelarFecha(fila) {
   delete refrescarFechaFila[fila];
   renderRefrescarLista();
 }
-async function refrescarConfirmarSalida(fila) {
+function refrescarDescartarDeteccion(fila) {
+  delete refrescarAutoDetectado[fila];
+  delete refrescarFechaFila[fila];
+  renderRefrescarLista();
+}
+async function refrescarConfirmarSalida(fila, silencioso) {
   var input = document.getElementById('refrescar-fecha-' + fila);
   var valor = input ? input.value : '';
-  if (!valor) { toast('Elegí la fecha de salida', 'error'); return; }
+  if (!valor) { if (!silencioso) toast('Elegí la fecha de salida', 'error'); return false; }
   try {
     await api({ accion:'editar', hoja:'expedientes', datos:{ _fila:fila, salio: fmt(valor) } });
     var exp = expedientes.filter(function(e){ return e._fila === fila; })[0];
     if (exp) exp.salio = valor;
     delete refrescarFechaFila[fila];
+    delete refrescarAutoDetectado[fila];
+    delete refrescarAutoError[fila];
     refrescarPendientes = refrescarPendientes.filter(function(f){ return f !== fila; });
     renderRefrescarLista();
     renderMetrics('metrics-top'); renderMetrics('metrics-analisis'); renderTabla();
-    toast('Expediente marcado como egresado');
-  } catch (e) { toast('Error: ' + e.message, 'error'); }
+    if (!silencioso) toast('Expediente marcado como egresado');
+    return true;
+  } catch (e) { if (!silencioso) toast('Error: ' + e.message, 'error'); return false; }
+}
+async function refrescarAplicarTodosLosCambios() {
+  var filas = Object.keys(refrescarAutoDetectado).map(Number).filter(function(f){ return refrescarPendientes.indexOf(f) >= 0; });
+  if (!filas.length) return;
+  var ok = 0;
+  for (var i = 0; i < filas.length; i++) { if (await refrescarConfirmarSalida(filas[i], true)) ok++; }
+  toast(ok + ' expediente(s) marcado(s) como egresados');
+}
+// Convierte "10/09/2026" (formato del portal) a "2026-09-10" (formato de <input type=date>).
+function parseFechaDDMMYYYY(s) {
+  var m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s || '').trim());
+  if (!m) return '';
+  return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+}
+function sigueEnJuridicos(enteDestino) { return normTexto(enteDestino || '').indexOf('asuntos juridicos') >= 0; }
+async function consultarUbicacionExterna(nro) {
+  var s = String(nro || '').replace(/\D/g, '');
+  if (!s) return { error: 'Sin número de expediente' };
+  try {
+    var r = await fetch(SCRIPT_URL + '?hoja=ubicacion&nro=' + encodeURIComponent(s) + '&t=' + Date.now());
+    var data = await r.json();
+    if (data && data.error) return { error: data.error };
+    return data || {};
+  } catch (e) { return { error: e.message }; }
+}
+function detenerRefrescarAutomatico() { refrescarAutoDetener = true; }
+async function refrescarAutomatico() {
+  if (refrescarAutoActivo) return;
+  refrescarAutoActivo = true;
+  refrescarAutoDetener = false;
+  var filas = refrescarPendientes.slice();
+  var total = filas.length, hechos = 0, cambios = 0, errores = 0;
+  renderRefrescarLista();
+  for (var i = 0; i < filas.length; i++) {
+    if (refrescarAutoDetener) break;
+    var fila = filas[i];
+    if (refrescarPendientes.indexOf(fila) < 0) continue; // ya se resolvio a mano mientras corria
+    var e = expedientes.filter(function(x){ return x._fila === fila; })[0];
+    if (!e) continue;
+    hechos++;
+    document.getElementById('refrescar-progreso').textContent =
+      'Revisando automáticamente: ' + hechos + ' / ' + total +
+      (cambios ? ' · ' + cambios + ' cambio(s) detectado(s)' : '') +
+      (errores ? ' · ' + errores + ' sin verificar' : '');
+    var res = await consultarUbicacionExterna(getExpte(e));
+    if (res.error) {
+      errores++;
+      refrescarAutoError[fila] = res.error;
+    } else if (sigueEnJuridicos(res.enteDestino)) {
+      refrescarPendientes = refrescarPendientes.filter(function(f){ return f !== fila; });
+    } else {
+      cambios++;
+      refrescarAutoDetectado[fila] = res;
+      refrescarFechaFila[fila] = parseFechaDDMMYYYY(res.fecha) || toInput(new Date());
+    }
+    renderRefrescarLista();
+  }
+  refrescarAutoActivo = false;
+  renderRefrescarLista();
 }
 function renderRefrescarLista() {
   var cont = document.getElementById('refrescar-lista');
   var prog = document.getElementById('refrescar-progreso');
+  var autoCont = document.getElementById('refrescar-auto-controles');
+  var cambiosPendientes = Object.keys(refrescarAutoDetectado).map(Number).filter(function(f){ return refrescarPendientes.indexOf(f) >= 0; });
+  if (autoCont) {
+    if (refrescarAutoActivo) {
+      autoCont.innerHTML = '<button class="btn sm danger" onclick="detenerRefrescarAutomatico()">⏸ Detener</button>';
+    } else if (refrescarPendientes.length) {
+      autoCont.innerHTML = '<button class="btn sm primary" onclick="refrescarAutomatico()">🤖 Revisar automáticamente</button>' +
+        (cambiosPendientes.length > 1 ? ' <button class="btn sm" onclick="refrescarAplicarTodosLosCambios()">✅ Aplicar los ' + cambiosPendientes.length + ' cambios detectados</button>' : '');
+    } else {
+      autoCont.innerHTML = '';
+    }
+  }
   if (!refrescarPendientes.length) {
-    prog.textContent = '';
+    if (!refrescarAutoActivo) prog.textContent = '';
     cont.innerHTML = '<div class="alert">✅ No queda ningún expediente en la Dirección por revisar.</div>';
     return;
   }
-  prog.textContent = refrescarPendientes.length + ' expediente(s) en la Dirección por revisar';
+  if (!refrescarAutoActivo) prog.textContent = refrescarPendientes.length + ' expediente(s) en la Dirección por revisar';
   cont.innerHTML = refrescarPendientes.map(function(fila){
     var e = expedientes.filter(function(x){ return x._fila === fila; })[0];
     if (!e) return '';
     var editando = refrescarFechaFila.hasOwnProperty(fila);
-    return '<div class="mini-exp" style="flex-direction:column;align-items:stretch">' +
+    var detectado = refrescarAutoDetectado[fila];
+    var error = refrescarAutoError[fila];
+    return '<div class="mini-exp" style="flex-direction:column;align-items:stretch' + (detectado ? ';border-color:var(--amber-700);background:#fdf6e8' : '') + '">' +
       '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">' +
         '<div><b>' + esc(getExpte(e)) + '</b> &middot; ' + esc(getRespAsig(e)||'-') +
           '<div style="font-size:12px;color:var(--muted);max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(getTema(e)||'-') + '</div></div>' +
         '<button class="btn sm" onclick="consultarExpte(\'' + jsArg(getExpte(e)) + '\')">🔗 Abrir portal</button>' +
       '</div>' +
+      (detectado ? '<div style="font-size:12px;color:var(--amber-700);margin-top:6px">🤖 Ya no figura en Jurídicos: pasó a <b>' + esc(detectado.enteDestino || '(otro destino)') + '</b>' + (detectado.fecha ? ' el ' + esc(detectado.fecha) : '') + '.</div>' : '') +
+      (error && !detectado ? '<div style="font-size:11px;color:var(--muted);margin-top:6px">⚠️ No se pudo revisar automáticamente (' + esc(error) + '). Podés revisarlo a mano con el link de arriba.</div>' : '') +
       (editando
         ? '<div style="display:flex;gap:6px;align-items:center;margin-top:8px">' +
             '<input type="date" id="refrescar-fecha-' + fila + '" value="' + esc(refrescarFechaFila[fila]) + '" style="flex:1;padding:6px 8px;font-size:13px;border:1px solid var(--input-line);border-radius:var(--radius)">' +
             '<button class="btn sm primary" onclick="refrescarConfirmarSalida(' + fila + ')">Guardar</button>' +
-            '<button class="btn sm" onclick="refrescarCancelarFecha(' + fila + ')">Cancelar</button>' +
+            '<button class="btn sm" onclick="' + (detectado ? 'refrescarDescartarDeteccion' : 'refrescarCancelarFecha') + '(' + fila + ')">' + (detectado ? 'Descartar' : 'Cancelar') + '</button>' +
           '</div>'
         : '<div style="display:flex;gap:6px;margin-top:8px">' +
             '<button class="btn sm" onclick="refrescarSigueEnJuridicos(' + fila + ')">✅ Sigue en Jurídicos</button>' +
