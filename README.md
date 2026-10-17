@@ -27,7 +27,21 @@ Revisa los expedientes "en la Dirección" contra el portal de expedientes de la 
 - **"🔗 Abrir portal"** (por expediente): para revisar a mano un caso puntual, sin esperar a la revisión automática.
 - **"✅ Sigue en Jurídicos"** / **"📤 Ya salió"**: las mismas acciones manuales de siempre, por si se prefiere no usar la revisión automática.
 
-**Requiere agregar al `doGet` del Apps Script** el manejo de `hoja === 'ubicacion'` (mismo patrón que ya usa `dictamenes`/`normativas` para pegarse a un servicio externo), con una llamada a `UrlFetchApp.fetch` hacia la API pública del portal. Sin ese agregado, "Revisar automáticamente" simplemente no encuentra nada y todo queda para revisión manual con "🔗 Abrir portal" — no rompe nada.
+**Requiere agregar al `doGet` del Apps Script** el manejo de `hoja === 'ubicacion'` (mismo patrón que ya usa `dictamenes`/`normativas` para pegarse a un servicio externo), con una llamada a `UrlFetchApp.fetch` hacia la API pública del portal. Sin ese agregado, "Revisar automáticamente" simplemente no encuentra nada y todo queda para revisión manual con "🔗 Abrir portal" — no rompe nada. El Apps Script devuelve el JSON del portal tal cual, más dos campos calculados (`enteDestino` y `fecha`, del movimiento más reciente), así que para agregar funciones que usen otros datos del expediente no hace falta volver a tocar el backend.
+
+> ⚠️ El `UrlFetchApp` necesita un permiso que el script no tenía (`script.external_request`). Google lo pide una sola vez: hay que correr a mano, desde el editor, cualquier función que llame a `UrlFetchApp` y aceptar la autorización. Correr `doGet` no sirve: falla antes de llegar a esa línea y nunca dispara el pedido de permiso.
+
+### Autocompletar el alta con el número de expediente (Registro → Nuevo expediente)
+
+Al cargar el número en "Nuevo expediente" (y salir del campo, o con el botón 🔍), la app consulta el portal con la misma acción `ubicacion` y completa:
+
+| Campo | De dónde sale |
+|---|---|
+| Iniciador | primer organismo de `involucrados`, en formato título |
+| Tema | el `asunto` oficial, tal cual (en mayúsculas, para recortarlo a mano si hace falta) |
+| Fecha de ingreso | la **fecha de recepción** (`fecha_rec`) del pase que mandó el expediente a Asuntos Jurídicos — no la fecha del pase ni la de inicio del expediente, porque el ingreso es cuando entró realmente a la Dirección |
+
+Si el expediente todavía no tiene pase a Jurídicos, avisa y deja la fecha de ingreso para cargar a mano. Completando el tema automáticamente, además, la asignación por palabras clave a Programas funciona mejor (tiene el texto completo del asunto para buscar). En el modo automático sólo completa los campos vacíos, para no pisar lo ya escrito; el botón 🔍 sí sobrescribe.
 
 ### Pestaña "Mi Panel" (rendimiento por agente)
 

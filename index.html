@@ -482,7 +482,13 @@ tbody tr:hover td{background:var(--green-50)}
   <div class="modal">
     <h3 id="modal-title">Nuevo expediente</h3>
     <div class="form-grid">
-      <div class="fg"><label>Expte. *</label><input type="text" id="m-expte" placeholder="Ej: 12345-D-2026"></div>
+      <div class="fg"><label>Expte. *</label>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="m-expte" placeholder="Ej: 3462973" style="flex:1;min-width:0" onchange="buscarDatosPortal(true)">
+          <button class="btn" type="button" id="btn-buscar-portal" onclick="buscarDatosPortal(false)" title="Traer iniciador, tema y fecha de ingreso desde el portal de la provincia">🔍</button>
+        </div>
+        <div id="m-portal-estado" style="font-size:11px;display:none"></div>
+      </div>
       <div class="fg"><label>Iniciador</label><input type="text" id="m-iniciador" placeholder="Nombre del iniciador"></div>
       <div class="fg"><label>Fecha de ingreso *</label><input type="date" id="m-ingreso"></div>
       <div class="fg"><label>Reparto</label><input type="date" id="m-reparto"></div>
@@ -1196,7 +1202,10 @@ function normalizarOrganismo(s) {
   ABREV_ORGANISMO.forEach(function(par){ t = t.replace(par[0], par[1]); });
   return t.replace(/\s+/g, ' ').trim();
 }
-function tituloCase(s) { return s.toLowerCase().replace(/\b\w/g, function(c){ return c.toUpperCase(); }); }
+// Ojo con los acentos: \b\w trata a "í" como separador, asi que "politica" salia
+// bien pero "política" quedaba como "PolíTica". Por eso se busca el inicio de
+// palabra explicitamente (arranque del texto o separador) con clases unicode.
+function tituloCase(s) { return String(s || '').toLowerCase().replace(/(^|[\s.,;:/(\[-])(\p{L})/gu, function(_, pre, c){ return pre + c.toUpperCase(); }); }
 
 // Clave de agrupamiento: mas agresiva que normalizarOrganismo(). Saca conectores
 // ("de", "del", "la"...) y singulariza palabras (comedores/comedor, adultos/adulto)
@@ -3110,6 +3119,70 @@ function fillSelects() {
   mSel.innerHTML = '<option value="">Seleccionar...</option>' + agentes.map(function(a){ return '<option value="' + esc(a) + '">' + esc(a) + '</option>'; }).join('');
   fSel.value = cF; mSel.value = cM;
 }
+// ===== Autocompletado del alta desde el portal de la provincia =====
+// Con solo el numero de expediente trae iniciador, tema y fecha de ingreso, usando
+// la misma accion "ubicacion" del Apps Script que usa Refrescar ubicacion (el
+// navegador no puede pegarle al portal directo por CORS, ver README).
+// - iniciador: el primer organismo de "involucrados" (el que lo inicio).
+// - tema: el "asunto" oficial, tal cual, para despues recortarlo a mano si hace falta.
+// - ingreso: la fecha de RECEPCION del pase que lo mando a Asuntos Juridicos, que es
+//   cuando el expediente entro realmente a la Direccion (no la fecha del pase ni la
+//   de inicio del expediente).
+var portalBuscando = false;
+function estadoPortal(msg, tipo) {
+  var el = document.getElementById('m-portal-estado');
+  if (!el) return;
+  if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+  el.style.display = 'block';
+  el.textContent = msg;
+  el.style.color = tipo === 'error' ? 'var(--danger)' : (tipo === 'ok' ? 'var(--green-700)' : 'var(--muted)');
+}
+function primerOrganismo(involucrados) { return String(involucrados || '').split(' - ')[0].trim(); }
+function fechaIngresoAJuridicos(movs) {
+  for (var i = 0; i < (movs || []).length; i++) {
+    if (sigueEnJuridicos(movs[i].ente_destino)) return movs[i].fecha_rec || movs[i].fecha || '';
+  }
+  return '';
+}
+async function buscarDatosPortal(automatico) {
+  if (portalBuscando) return;
+  var nro = String(document.getElementById('m-expte').value || '').replace(/\D/g, '');
+  if (!nro) { if (!automatico) toast('Ingresá primero el número de expediente', 'error'); return; }
+  var btn = document.getElementById('btn-buscar-portal');
+  portalBuscando = true; if (btn) btn.disabled = true;
+  estadoPortal('Buscando en el portal...');
+  try {
+    var r = await fetch(SCRIPT_URL + '?hoja=ubicacion&nro=' + encodeURIComponent(nro) + '&t=' + Date.now());
+    var d = await r.json();
+    if (!d || d.error) { estadoPortal('No se pudo traer del portal' + (d && d.error ? ': ' + d.error : ''), 'error'); return; }
+    var ingreso = parseFechaDDMMYYYY(fechaIngresoAJuridicos(d.movimientos));
+    var hoy = new Date().toISOString().slice(0, 10);
+    var campos = [
+      ['m-iniciador', tituloCase(primerOrganismo(d.involucrados))],
+      ['m-tema', String(d.asunto || '').trim()],
+      ['m-ingreso', ingreso]
+    ];
+    var puestos = 0;
+    campos.forEach(function(par){
+      if (!par[1]) return;
+      var el = document.getElementById(par[0]);
+      // En automatico solo completa lo vacio, para no pisar lo que ya hayas escrito.
+      // La fecha de ingreso arranca en la de hoy por defecto, asi que esa si se reemplaza.
+      var vacio = !el.value || (par[0] === 'm-ingreso' && el.value === hoy);
+      if (automatico && !vacio) return;
+      el.value = par[1];
+      puestos++;
+    });
+    if (!puestos) estadoPortal('El portal no agregó datos nuevos (ya estaban cargados).', 'error');
+    else if (!ingreso) estadoPortal('✓ Datos traídos. Ojo: todavía no figura el pase a Jurídicos, cargá vos la fecha de ingreso.', 'ok');
+    else estadoPortal('✓ Datos traídos del portal. Revisalos antes de guardar.', 'ok');
+  } catch (e) {
+    estadoPortal('No se pudo consultar el portal: ' + e.message, 'error');
+  } finally {
+    portalBuscando = false;
+    if (btn) btn.disabled = false;
+  }
+}
 function abrirModal(idx) {
   if (idx === undefined) idx = null;
   editIdx = idx;
@@ -3124,6 +3197,7 @@ function abrirModal(idx) {
     ['m-expte','m-iniciador','m-reparto','m-tema','m-salio'].forEach(function(id){ document.getElementById(id).value = ''; });
     document.getElementById('m-ingreso').value = today; document.getElementById('m-agente').value = '';
   }
+  estadoPortal('');
   document.getElementById('overlay').classList.add('show');
 }
 function cerrarModal(){ document.getElementById('overlay').classList.remove('show'); }
