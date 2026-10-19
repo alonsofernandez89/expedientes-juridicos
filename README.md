@@ -39,7 +39,7 @@ Al cargar el número en "Nuevo expediente" (y salir del campo, o con el botón �
 |---|---|
 | Iniciador | primer organismo de `involucrados`, en formato título |
 | Tema | el `asunto` oficial, tal cual (en mayúsculas, para recortarlo a mano si hace falta) |
-| Fecha de ingreso | la **fecha de recepción** (`fecha_rec`) del pase que mandó el expediente a Asuntos Jurídicos — no la fecha del pase ni la de inicio del expediente, porque el ingreso es cuando entró realmente a la Dirección |
+| Fecha de ingreso | la **fecha de recepción** (`fecha_rec`) del pase que mandó el expediente a Asuntos Jurídicos — no la fecha del pase ni la de inicio del expediente, porque el ingreso es cuando entró realmente a la Dirección. Si el expediente entró **más de una vez** a Jurídicos (vuelve a la Dirección tiempo después), se toma la entrada más reciente, que es la que corresponde al alta que se está cargando |
 
 Si el expediente todavía no tiene pase a Jurídicos, avisa y deja la fecha de ingreso para cargar a mano. Completando el tema automáticamente, además, la asignación por palabras clave a Programas funciona mejor (tiene el texto completo del asunto para buscar). En el modo automático sólo completa los campos vacíos, para no pisar lo ya escrito; el botón 🔍 sí sobrescribe.
 
