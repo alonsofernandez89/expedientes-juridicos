@@ -3155,6 +3155,9 @@ async function buscarDatosPortal(automatico) {
     var r = await fetch(SCRIPT_URL + '?hoja=ubicacion&nro=' + encodeURIComponent(nro) + '&t=' + Date.now());
     var d = await r.json();
     if (!d || d.error) { estadoPortal('No se pudo traer del portal' + (d && d.error ? ': ' + d.error : ''), 'error'); return; }
+    // El Apps Script viejo devolvia solo la ubicacion (enteDestino/fecha) y ninguno de
+    // los datos del expediente. Se avisa puntual para no confundirlo con "no hay datos".
+    if (!d.movimientos && d.enteDestino) { estadoPortal('El Apps Script está desactualizado: devuelve la ubicación pero no los datos del expediente.', 'error'); return; }
     var ingreso = parseFechaDDMMYYYY(fechaIngresoAJuridicos(d.movimientos));
     var hoy = new Date().toISOString().slice(0, 10);
     var campos = [
@@ -3173,7 +3176,9 @@ async function buscarDatosPortal(automatico) {
       el.value = par[1];
       puestos++;
     });
-    if (!puestos) estadoPortal('El portal no agregó datos nuevos (ya estaban cargados).', 'error');
+    var disponibles = campos.filter(function(par){ return !!par[1]; }).length;
+    if (!disponibles) estadoPortal('El portal no devolvió datos de este expediente. Revisá el número.', 'error');
+    else if (!puestos) estadoPortal('Los campos ya estaban cargados. Tocá 🔍 si querés reemplazarlos.', 'error');
     else if (!ingreso) estadoPortal('✓ Datos traídos. Ojo: todavía no figura el pase a Jurídicos, cargá vos la fecha de ingreso.', 'ok');
     else estadoPortal('✓ Datos traídos del portal. Revisalos antes de guardar.', 'ok');
   } catch (e) {
