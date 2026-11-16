@@ -31,6 +31,16 @@ Revisa los expedientes "en la Dirección" contra el portal de expedientes de la 
 
 > ⚠️ El `UrlFetchApp` necesita un permiso que el script no tenía (`script.external_request`). Google lo pide una sola vez: hay que correr a mano, desde el editor, cualquier función que llame a `UrlFetchApp` y aceptar la autorización. Correr `doGet` no sirve: falla antes de llegar a esa línea y nunca dispara el pedido de permiso.
 
+### Botón "🧹 Refrescar carga" (Registro)
+
+Mantenimiento de los expedientes **ya cargados**, en tres pasos. Nada se escribe sin confirmación explícita, y los botones de aplicar están bloqueados hasta descargar el backup.
+
+1. **Copia de seguridad**: descarga un CSV con la hoja `expedientes` tal cual está (todas las columnas, más `_fila` para poder ubicar cada registro). Es el punto de retorno si algo sale mal.
+2. **Unificar iniciadores**: agrupa los iniciadores con la misma lógica que el gráfico de organismos (`normalizarOrganismo` + `claveComparacionOrganismo`, que ya ignoran mayúsculas, acentos, abreviaturas, conectores y plurales). Por cada organismo escrito de varias formas ("Direc. Comedores" / "Direccion de Comedores" / "Dir Comedores"…) se elige cuál queda. **El canónico siempre es una de las formas que ya están cargadas** — por defecto la más usada, cambiable con un desplegable por grupo; nunca se inventa un nombre nuevo. Cada grupo se puede excluir.
+3. **Corroborar número y traer el tema**: consulta cada expediente en el portal con la acción `ubicacion`. Si el portal no lo reconoce, o devuelve un número distinto del cargado, queda listado como "sin confirmar" **sin modificarse** (se revisa a mano). Si lo reconoce, propone escribir en `tema` el **`asunto` de la carátula, tal cual** (sólo se normalizan los espacios): no es un resumen redactado ni generado, es el texto oficial del expediente. Por defecto sólo completa los temas vacíos; una casilla permite además reemplazar los ya cargados. El alcance se elige entre "sólo los que están en la Dirección" y "todos".
+
+Las escrituras van de a 3 en paralelo con la acción `editar` de siempre (sólo manda la columna que cambia), con progreso a la vista. Requiere la acción `ubicacion` en el Apps Script (ver arriba) para el paso 3; los pasos 1 y 2 funcionan sin backend nuevo.
+
 ### Autocompletar el alta con el número de expediente (Registro → Nuevo expediente)
 
 Al cargar el número en "Nuevo expediente" (y salir del campo, o con el botón 🔍), la app consulta el portal con la misma acción `ubicacion` y completa:
