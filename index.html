@@ -1621,12 +1621,12 @@ function renderRefrescarLista() {
 var cargaBackupHecho = false;
 var cargaGrupos = [];
 var cargaCorriendo = false, cargaDetener = false;
-var cargaNoEncontrados = [], cargaTemasPropuestos = [];
+var cargaNoEncontrados = [], cargaTemasPropuestos = [], cargaTemasRiesgo = [];
 var CARGA_CONCURRENCIA = 3; // de a 3 para no golpear de golpe al portal ni a la planilla
 
 function abrirRefrescarCarga() {
   cargaGrupos = calcularGruposIniciador();
-  cargaNoEncontrados = []; cargaTemasPropuestos = [];
+  cargaNoEncontrados = []; cargaTemasPropuestos = []; cargaTemasRiesgo = [];
   cargaCorriendo = false; cargaDetener = false;
   document.getElementById('carga-progreso').textContent = '';
   document.getElementById('carga-resultado').innerHTML = '';
@@ -1750,6 +1750,18 @@ async function aplicarUnificacion() {
 }
 
 // --- 3. Corroborar numero y traer el tema de la caratula ---
+// El tema cargado a mano suele llevar datos que la caratula del portal NO tiene: sobre
+// todo la localidad de destino (anotada como "- <lugar>"), que es justamente lo que
+// alimenta el mapa y la deteccion de programas. Reemplazarlo a ciegas la borra, asi que
+// esos casos se separan y no se aplican junto con el resto.
+function perdidaAlReemplazar(actual, nuevo) {
+  if (!actual) return '';
+  var antes = detectarProgramaYDepto(actual), despues = detectarProgramaYDepto(nuevo);
+  var falta = [];
+  if (antes.departamento && !despues.departamento) falta.push('localidad ' + antes.departamento);
+  if (antes.programa && !despues.programa) falta.push('programa ' + antes.programa);
+  return falta.join(' · ');
+}
 function expedientesDelAlcance() {
   var sel = document.querySelector('input[name="carga-alcance"]:checked');
   var todos = sel && sel.value === 'todos';
@@ -1770,7 +1782,7 @@ function detenerVerificacionCarga() { cargaDetener = true; }
 async function correrVerificacionCarga() {
   if (cargaCorriendo) return;
   cargaCorriendo = true; cargaDetener = false;
-  cargaNoEncontrados = []; cargaTemasPropuestos = [];
+  cargaNoEncontrados = []; cargaTemasPropuestos = []; cargaTemasRiesgo = [];
   renderControlesCarga();
   var lista = expedientesDelAlcance();
   var pisar = document.getElementById('carga-pisar-tema').checked;
@@ -1790,11 +1802,13 @@ async function correrVerificacionCarga() {
         var asunto = String(res.asunto || '').replace(/\s+/g, ' ').trim();
         var actual = String(getTema(e) || '').trim();
         if (asunto && (!actual || (pisar && normTexto(actual) !== normTexto(asunto)))) {
-          cargaTemasPropuestos.push({ _fila: e._fila, expte: getExpte(e), actual: actual, nuevo: asunto });
+          var prop = { _fila: e._fila, expte: getExpte(e), actual: actual, nuevo: asunto, pierde: perdidaAlReemplazar(actual, asunto) };
+          (prop.pierde ? cargaTemasRiesgo : cargaTemasPropuestos).push(prop);
         }
       }
       prog.textContent = 'Revisando ' + hechos + ' / ' + lista.length +
-        ' · ' + cargaNoEncontrados.length + ' sin confirmar · ' + cargaTemasPropuestos.length + ' tema(s) para cargar';
+        ' · ' + cargaNoEncontrados.length + ' sin confirmar · ' + cargaTemasPropuestos.length + ' tema(s) para cargar' +
+        (cargaTemasRiesgo.length ? ' · ' + cargaTemasRiesgo.length + ' con datos propios' : '');
       if (hechos % 15 === 0) renderResultadoCarga();
     }
   }
@@ -1803,7 +1817,8 @@ async function correrVerificacionCarga() {
   await Promise.all(hilos);
   cargaCorriendo = false;
   prog.textContent = 'Listo: ' + hechos + ' de ' + lista.length + ' revisados' + (cargaDetener ? ' (detenido)' : '') +
-    ' · ' + cargaNoEncontrados.length + ' sin confirmar · ' + cargaTemasPropuestos.length + ' tema(s) para cargar';
+    ' · ' + cargaNoEncontrados.length + ' sin confirmar · ' + cargaTemasPropuestos.length + ' tema(s) para cargar' +
+    (cargaTemasRiesgo.length ? ' · ' + cargaTemasRiesgo.length + ' con datos propios que se conservan' : '');
   renderControlesCarga();
   renderResultadoCarga();
 }
@@ -1825,25 +1840,43 @@ function renderResultadoCarga() {
         (x.actual ? '<div style="color:var(--muted);font-size:11px">reemplaza: ' + esc(x.actual.slice(0, 100)) + '</div>' : '') + '</div>';
     }).join('');
     if (cargaTemasPropuestos.length > 25) html += '<div style="font-size:11px;color:var(--muted)">… y ' + (cargaTemasPropuestos.length - 25) + ' más</div>';
-    html += '<div style="margin-top:8px"><button class="btn sm primary" onclick="aplicarTemasCarga()"' +
+    html += '<div style="margin-top:8px"><button class="btn sm primary" onclick="aplicarTemasCarga(false)"' +
       (cargaBackupHecho ? '' : ' disabled title="Descargá primero el backup"') +
       '>Aplicar ' + cargaTemasPropuestos.length + ' tema(s)</button></div>';
+  }
+  if (cargaTemasRiesgo.length) {
+    html += '<div style="font-size:12px;font-weight:600;margin:14px 0 4px;color:var(--amber-700)">⚠️ ' + cargaTemasRiesgo.length +
+      ' tema(s) que NO se van a tocar: lo cargado a mano tiene datos que la carátula no trae</div>' +
+      '<div style="font-size:11px;color:var(--muted);margin-bottom:6px">Son los que pierden la localidad o el programa si se reemplazan — de ahí sale el mapa.</div>';
+    html += cargaTemasRiesgo.slice(0, 15).map(function(x){
+      return '<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--line-soft)"><b>' + esc(x.expte) + '</b> ' +
+        '<span style="color:var(--amber-700)">(perdería ' + esc(x.pierde) + ')</span>' +
+        '<div style="color:var(--muted);font-size:11px">queda: ' + esc(x.actual.slice(0, 100)) + '</div></div>';
+    }).join('');
+    if (cargaTemasRiesgo.length > 15) html += '<div style="font-size:11px;color:var(--muted)">… y ' + (cargaTemasRiesgo.length - 15) + ' más</div>';
+    html += '<div style="margin-top:8px"><button class="btn sm danger" onclick="aplicarTemasCarga(true)"' +
+      (cargaBackupHecho ? '' : ' disabled title="Descargá primero el backup"') +
+      '>Reemplazarlos igual (' + cargaTemasRiesgo.length + ')</button></div>';
   }
   if (!html && !cargaCorriendo) html = '<div class="alert">Todavía no hay nada para proponer.</div>';
   cont.innerHTML = html;
 }
-async function aplicarTemasCarga() {
+async function aplicarTemasCarga(conRiesgo) {
   if (!cargaBackupHecho) { toast('Descargá primero el backup', 'error'); return; }
   if (cargaCorriendo) { toast('Esperá a que termine la revisión contra el portal', 'error'); return; }
-  if (!cargaTemasPropuestos.length) return;
+  var lista = conRiesgo ? cargaTemasRiesgo : cargaTemasPropuestos;
+  if (!lista.length) return;
   cargaDetener = false;
-  if (!await confirmar('Se va a escribir el asunto del portal en el Tema de ' + cargaTemasPropuestos.length + ' expediente(s). ¿Seguimos?', 'Cargar temas')) return;
-  var cambios = cargaTemasPropuestos.map(function(x){ return { _fila: x._fila, datos: { tema: x.nuevo } }; });
+  var aviso = conRiesgo
+    ? 'Estos ' + lista.length + ' expediente(s) tienen cargada a mano la localidad o el programa, y la carátula del portal no los trae: al reemplazarlos se pierde ese dato y el mapa deja de ubicarlos. ¿Reemplazar igual?'
+    : 'Se va a escribir el asunto del portal en el Tema de ' + lista.length + ' expediente(s). ¿Seguimos?';
+  if (!await confirmar(aviso, conRiesgo ? 'Reemplazar igual' : 'Cargar temas')) return;
+  var cambios = lista.map(function(x){ return { _fila: x._fila, datos: { tema: x.nuevo } }; });
   var prog = document.getElementById('carga-progreso');
   var r = await aplicarEnLote(cambios, function(hechos, total, fallos){
     prog.textContent = 'Guardando ' + hechos + ' / ' + total + (fallos ? ' · ' + fallos + ' con error' : '');
   });
-  cargaTemasPropuestos = [];
+  if (conRiesgo) cargaTemasRiesgo = []; else cargaTemasPropuestos = [];
   renderResultadoCarga();
   renderMetrics('metrics-top'); renderMetrics('metrics-analisis'); renderTabla();
   toast(r.ok + ' tema(s) cargados' + (r.fallos ? ', ' + r.fallos + ' con error' : ''));
