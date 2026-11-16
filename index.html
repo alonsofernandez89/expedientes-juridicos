@@ -224,6 +224,7 @@ tbody tr:hover td{background:var(--green-50)}
         <option value="100">100 por pagina</option>
       </select>
       <button class="btn" onclick="abrirRefrescarUbicacion()" title="Revisar en el portal de la provincia si cada expediente en la Direccion ya salio">🔄 Refrescar ubicación</button>
+      <button class="btn" onclick="abrirRefrescarCarga()" title="Corroborar los numeros contra el portal, traer el asunto de la caratula al tema y unificar iniciadores">🧹 Refrescar carga</button>
     </div>
     <div id="loading" class="card">
       <div class="sk-row" style="width:35%"></div>
@@ -529,6 +530,45 @@ tbody tr:hover td{background:var(--green-50)}
     <div id="refrescar-lista" style="max-height:50vh;overflow-y:auto"></div>
     <div class="modal-actions">
       <button class="btn" onclick="cerrarRefrescarUbicacion()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-refrescar-carga">
+  <div class="modal" style="width:700px">
+    <h3>🧹 Refrescar carga</h3>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+      Corrobora cada número contra el portal, trae al campo Tema el asunto tal cual figura en la carátula, y unifica los iniciadores que son el mismo organismo escrito de formas distintas. No inventa texto: todo sale del portal o de lo que ya está cargado. Nada se guarda sin que lo confirmes.
+    </div>
+
+    <div class="card" style="padding:12px;margin-bottom:12px;border-color:var(--amber-700);background:#fdf6e8">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px">1 · Copia de seguridad</div>
+      <div style="font-size:12px;color:var(--muted-2);margin-bottom:8px">Descargá el estado actual de la hoja antes de tocar nada. Los botones de aplicar se habilitan recién después.</div>
+      <button class="btn sm" id="btn-backup-carga" onclick="descargarBackupCarga()">⬇️ Descargar backup</button>
+      <span id="estado-backup-carga" style="font-size:12px;margin-left:8px"></span>
+    </div>
+
+    <div class="card" style="padding:12px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px">2 · Unificar iniciadores</div>
+      <div id="unif-resumen" style="font-size:12px;color:var(--muted);margin-bottom:8px"></div>
+      <div id="unif-lista" style="max-height:30vh;overflow-y:auto"></div>
+      <div id="unif-acciones" style="margin-top:8px"></div>
+    </div>
+
+    <div class="card" style="padding:12px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px">3 · Corroborar número y traer el tema de la carátula</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:12px;margin-bottom:6px">
+        <label><input type="radio" name="carga-alcance" value="direccion" checked onchange="renderControlesCarga()"> Sólo los que están en la Dirección</label>
+        <label><input type="radio" name="carga-alcance" value="todos" onchange="renderControlesCarga()"> Todos</label>
+      </div>
+      <label style="display:block;font-size:12px;margin-bottom:8px"><input type="checkbox" id="carga-pisar-tema"> Reemplazar también los temas ya cargados (si no, sólo completa los vacíos)</label>
+      <div id="carga-controles"></div>
+      <div id="carga-progreso" style="font-size:12px;font-weight:600;margin:8px 0"></div>
+      <div id="carga-resultado" style="max-height:30vh;overflow-y:auto"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn" onclick="cerrarRefrescarCarga()">Cerrar</button>
     </div>
   </div>
 </div>
@@ -1618,6 +1658,272 @@ function renderRefrescarLista() {
           '</div>') +
       '</div>';
   }).join('');
+}
+
+// ===== Refrescar carga =====
+// Tres cosas sobre los expedientes ya cargados, ninguna automatica a ciegas:
+//  1. backup descargable (hasta que no se baja, los botones de aplicar estan bloqueados);
+//  2. unificar iniciadores: agrupa con la misma logica que el grafico de organismos
+//     (normalizarOrganismo + claveComparacionOrganismo) y deja elegir, por grupo, cual de
+//     las formas YA CARGADAS queda como la buena. Nunca inventa un nombre nuevo;
+//  3. corroborar cada numero contra el portal y traer el "asunto" de la caratula al tema,
+//     tal cual viene (no es un resumen redactado: es el texto oficial del expediente).
+var cargaBackupHecho = false;
+var cargaGrupos = [];
+var cargaCorriendo = false, cargaDetener = false;
+var cargaNoEncontrados = [], cargaTemasPropuestos = [];
+var CARGA_CONCURRENCIA = 3; // de a 3 para no golpear de golpe al portal ni a la planilla
+
+function abrirRefrescarCarga() {
+  cargaGrupos = calcularGruposIniciador();
+  cargaNoEncontrados = []; cargaTemasPropuestos = [];
+  cargaCorriendo = false; cargaDetener = false;
+  document.getElementById('carga-progreso').textContent = '';
+  document.getElementById('carga-resultado').innerHTML = '';
+  document.getElementById('estado-backup-carga').textContent = cargaBackupHecho ? '✓ Backup ya descargado en esta sesión' : '';
+  renderUnificacion();
+  renderControlesCarga();
+  document.getElementById('overlay-refrescar-carga').classList.add('show');
+}
+function cerrarRefrescarCarga() {
+  cargaDetener = true;
+  document.getElementById('overlay-refrescar-carga').classList.remove('show');
+}
+
+// --- 1. Backup ---
+async function descargarBackupCarga() {
+  var btn = document.getElementById('btn-backup-carga');
+  var est = document.getElementById('estado-backup-carga');
+  btn.disabled = true;
+  est.textContent = 'Generando backup...'; est.style.color = 'var(--muted)';
+  try {
+    // Se relee la hoja cruda (no los datos ya normalizados en memoria) para que el
+    // backup tenga todas las columnas tal cual estan en la planilla.
+    var crudo = await api({ method: 'GET', hoja: 'expedientes' });
+    if (!Array.isArray(crudo) || !crudo.length) throw new Error('no se pudo leer la hoja');
+    var cols = ['_fila'].concat(Object.keys(crudo[0]).filter(function(k){ return k !== '_fila'; }));
+    var lineas = [filaCSV(cols)];
+    crudo.forEach(function(r){
+      lineas.push(filaCSV(cols.map(function(c){ return (r[c] === undefined || r[c] === null) ? '' : r[c]; })));
+    });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + lineas.join('\n')], { type: 'text/csv;charset=utf-8;' }));
+    a.download = 'backup-expedientes-' + fechaAInputStr(new Date()) + '.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    cargaBackupHecho = true;
+    est.textContent = '✓ Backup descargado (' + crudo.length + ' filas)'; est.style.color = 'var(--green-700)';
+    renderUnificacion(); renderResultadoCarga();
+  } catch (e) {
+    est.textContent = 'No se pudo generar: ' + e.message; est.style.color = 'var(--danger)';
+  }
+  btn.disabled = false;
+}
+
+// --- 2. Unificar iniciadores ---
+function filasQueCambian(g) {
+  return g.variantes.reduce(function(s, v){ return s + (v.texto === g.canonico ? 0 : v.n); }, 0);
+}
+function calcularGruposIniciador() {
+  var porClave = {};
+  expedientes.forEach(function(e){
+    var raw = String(getIniciador(e) || '').trim();
+    if (!raw) return;
+    var completo = normalizarOrganismo(raw);
+    if (!completo) return;
+    var k = claveComparacionOrganismo(completo);
+    porClave[k] = porClave[k] || { conteo: {}, filas: {} };
+    porClave[k].conteo[raw] = (porClave[k].conteo[raw] || 0) + 1;
+    (porClave[k].filas[raw] = porClave[k].filas[raw] || []).push(e._fila);
+  });
+  return Object.keys(porClave).map(function(k){
+    var g = porClave[k];
+    var variantes = Object.keys(g.conteo).map(function(t){ return { texto: t, n: g.conteo[t] }; })
+      .sort(function(a, b){ return b.n - a.n || a.texto.localeCompare(b.texto); });
+    // Por defecto gana la forma mas usada en la oficina, pero se puede cambiar por grupo.
+    return { variantes: variantes, filas: g.filas, canonico: variantes[0].texto, incluir: true };
+  }).filter(function(g){ return g.variantes.length > 1; })
+    .sort(function(a, b){ return filasQueCambian(b) - filasQueCambian(a); });
+}
+function elegirCanonico(i, valor) { cargaGrupos[i].canonico = valor; renderUnificacion(); }
+function toggleGrupoUnif(i) { cargaGrupos[i].incluir = !cargaGrupos[i].incluir; renderUnificacion(); }
+function renderUnificacion() {
+  var cont = document.getElementById('unif-lista');
+  var resumen = document.getElementById('unif-resumen');
+  var acciones = document.getElementById('unif-acciones');
+  if (!cont) return;
+  if (!cargaGrupos.length) {
+    resumen.textContent = 'No hay iniciadores que sean el mismo organismo escrito distinto.';
+    cont.innerHTML = ''; acciones.innerHTML = ''; return;
+  }
+  var totalFilas = cargaGrupos.reduce(function(s, g){ return s + (g.incluir ? filasQueCambian(g) : 0); }, 0);
+  resumen.textContent = cargaGrupos.length + ' organismo(s) escritos de varias formas · ' + totalFilas + ' fila(s) se unificarían';
+  cont.innerHTML = cargaGrupos.map(function(g, i){
+    var reemplaza = g.variantes.filter(function(v){ return v.texto !== g.canonico; }).map(function(v){ return v.texto + ' (' + v.n + ')'; }).join(' · ');
+    return '<div class="mini-exp" style="flex-direction:column;align-items:stretch;gap:4px' + (g.incluir ? '' : ';opacity:.45') + '">' +
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+        '<label style="font-size:12px"><input type="checkbox"' + (g.incluir ? ' checked' : '') + ' onchange="toggleGrupoUnif(' + i + ')"> queda como</label>' +
+        '<select onchange="elegirCanonico(' + i + ', this.value)" style="font-size:12px;padding:4px 6px;border:1px solid var(--input-line);border-radius:var(--radius);max-width:340px">' +
+          g.variantes.map(function(v){ return '<option value="' + esc(v.texto) + '"' + (v.texto === g.canonico ? ' selected' : '') + '>' + esc(v.texto) + ' (' + v.n + ')</option>'; }).join('') +
+        '</select>' +
+        '<span style="font-size:11px;color:var(--amber-700)">' + filasQueCambian(g) + ' fila(s)</span>' +
+      '</div>' +
+      '<div style="font-size:11px;color:var(--muted)">reemplaza a: ' + esc(reemplaza) + '</div>' +
+    '</div>';
+  }).join('');
+  acciones.innerHTML = '<button class="btn sm primary" onclick="aplicarUnificacion()"' +
+    (cargaBackupHecho ? '' : ' disabled title="Descargá primero el backup"') +
+    '>Aplicar unificación (' + totalFilas + ' fila(s))</button>';
+}
+async function aplicarUnificacion() {
+  if (!cargaBackupHecho) { toast('Descargá primero el backup', 'error'); return; }
+  if (cargaCorriendo) { toast('Esperá a que termine la revisión contra el portal', 'error'); return; }
+  cargaDetener = false;
+  var cambios = [];
+  cargaGrupos.forEach(function(g){
+    if (!g.incluir) return;
+    g.variantes.forEach(function(v){
+      if (v.texto === g.canonico) return;
+      (g.filas[v.texto] || []).forEach(function(fila){ cambios.push({ _fila: fila, datos: { iniciador: g.canonico } }); });
+    });
+  });
+  if (!cambios.length) { toast('No hay nada para unificar', 'error'); return; }
+  if (!await confirmar('Se van a actualizar ' + cambios.length + ' fila(s) del Registro con el iniciador unificado. ¿Seguimos?', 'Unificar')) return;
+  var prog = document.getElementById('unif-resumen');
+  var r = await aplicarEnLote(cambios, function(hechos, total, fallos){
+    prog.textContent = 'Guardando ' + hechos + ' / ' + total + (fallos ? ' · ' + fallos + ' con error' : '');
+  });
+  cargaGrupos = calcularGruposIniciador();
+  renderUnificacion();
+  renderMetrics('metrics-top'); renderMetrics('metrics-analisis'); fillSelects(); renderTabla();
+  toast(r.ok + ' fila(s) unificadas' + (r.fallos ? ', ' + r.fallos + ' con error' : ''));
+}
+
+// --- 3. Corroborar numero y traer el tema de la caratula ---
+function expedientesDelAlcance() {
+  var sel = document.querySelector('input[name="carga-alcance"]:checked');
+  var todos = sel && sel.value === 'todos';
+  return expedientes.filter(function(e){ return todos || !estaEgresado(e); });
+}
+function renderControlesCarga() {
+  var cont = document.getElementById('carga-controles');
+  if (!cont) return;
+  if (cargaCorriendo) {
+    cont.innerHTML = '<button class="btn sm danger" onclick="detenerVerificacionCarga()">⏸ Detener</button>';
+  } else {
+    var n = expedientesDelAlcance().length;
+    cont.innerHTML = '<button class="btn sm primary" onclick="correrVerificacionCarga()">🔍 Revisar ' + n + ' expediente(s) contra el portal</button>' +
+      '<span style="font-size:11px;color:var(--muted);margin-left:8px">tarda ~1 segundo por expediente; se puede detener</span>';
+  }
+}
+function detenerVerificacionCarga() { cargaDetener = true; }
+async function correrVerificacionCarga() {
+  if (cargaCorriendo) return;
+  cargaCorriendo = true; cargaDetener = false;
+  cargaNoEncontrados = []; cargaTemasPropuestos = [];
+  renderControlesCarga();
+  var lista = expedientesDelAlcance();
+  var pisar = document.getElementById('carga-pisar-tema').checked;
+  var prog = document.getElementById('carga-progreso');
+  var i = 0, hechos = 0;
+  async function worker() {
+    while (i < lista.length && !cargaDetener) {
+      var e = lista[i++];
+      var nro = String(getExpte(e) || '').replace(/\D/g, '');
+      var res = nro ? await consultarUbicacionExterna(nro) : { error: 'el expediente no tiene número cargado' };
+      hechos++;
+      if (res.error || !res.movimientos) {
+        cargaNoEncontrados.push({ expte: getExpte(e), motivo: res.error || 'el portal no devolvió los datos' });
+      } else if (nro && String(res.nro_expediente || '').replace(/\D/g, '') !== nro) {
+        cargaNoEncontrados.push({ expte: getExpte(e), motivo: 'el portal devolvió otro número: ' + res.nro_expediente });
+      } else {
+        var asunto = String(res.asunto || '').replace(/\s+/g, ' ').trim();
+        var actual = String(getTema(e) || '').trim();
+        if (asunto && (!actual || (pisar && normTexto(actual) !== normTexto(asunto)))) {
+          cargaTemasPropuestos.push({ _fila: e._fila, expte: getExpte(e), actual: actual, nuevo: asunto });
+        }
+      }
+      prog.textContent = 'Revisando ' + hechos + ' / ' + lista.length +
+        ' · ' + cargaNoEncontrados.length + ' sin confirmar · ' + cargaTemasPropuestos.length + ' tema(s) para cargar';
+      if (hechos % 15 === 0) renderResultadoCarga();
+    }
+  }
+  var hilos = [];
+  for (var h = 0; h < Math.min(CARGA_CONCURRENCIA, lista.length); h++) hilos.push(worker());
+  await Promise.all(hilos);
+  cargaCorriendo = false;
+  prog.textContent = 'Listo: ' + hechos + ' de ' + lista.length + ' revisados' + (cargaDetener ? ' (detenido)' : '') +
+    ' · ' + cargaNoEncontrados.length + ' sin confirmar · ' + cargaTemasPropuestos.length + ' tema(s) para cargar';
+  renderControlesCarga();
+  renderResultadoCarga();
+}
+function renderResultadoCarga() {
+  var cont = document.getElementById('carga-resultado');
+  if (!cont) return;
+  var html = '';
+  if (cargaNoEncontrados.length) {
+    html += '<div style="font-size:12px;font-weight:600;margin:8px 0 4px">❌ ' + cargaNoEncontrados.length + ' número(s) que no se pudieron confirmar (revisalos a mano, no se tocan solos)</div>';
+    html += cargaNoEncontrados.slice(0, 40).map(function(x){
+      return '<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--line-soft)"><b>' + esc(x.expte || '(sin número)') + '</b> <span style="color:var(--muted)">' + esc(x.motivo) + '</span></div>';
+    }).join('');
+    if (cargaNoEncontrados.length > 40) html += '<div style="font-size:11px;color:var(--muted)">… y ' + (cargaNoEncontrados.length - 40) + ' más</div>';
+  }
+  if (cargaTemasPropuestos.length) {
+    html += '<div style="font-size:12px;font-weight:600;margin:10px 0 4px">📝 ' + cargaTemasPropuestos.length + ' tema(s) a cargar con el asunto de la carátula</div>';
+    html += cargaTemasPropuestos.slice(0, 25).map(function(x){
+      return '<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--line-soft)"><b>' + esc(x.expte) + '</b>: ' + esc(x.nuevo.slice(0, 120)) +
+        (x.actual ? '<div style="color:var(--muted);font-size:11px">reemplaza: ' + esc(x.actual.slice(0, 100)) + '</div>' : '') + '</div>';
+    }).join('');
+    if (cargaTemasPropuestos.length > 25) html += '<div style="font-size:11px;color:var(--muted)">… y ' + (cargaTemasPropuestos.length - 25) + ' más</div>';
+    html += '<div style="margin-top:8px"><button class="btn sm primary" onclick="aplicarTemasCarga()"' +
+      (cargaBackupHecho ? '' : ' disabled title="Descargá primero el backup"') +
+      '>Aplicar ' + cargaTemasPropuestos.length + ' tema(s)</button></div>';
+  }
+  if (!html && !cargaCorriendo) html = '<div class="alert">Todavía no hay nada para proponer.</div>';
+  cont.innerHTML = html;
+}
+async function aplicarTemasCarga() {
+  if (!cargaBackupHecho) { toast('Descargá primero el backup', 'error'); return; }
+  if (cargaCorriendo) { toast('Esperá a que termine la revisión contra el portal', 'error'); return; }
+  if (!cargaTemasPropuestos.length) return;
+  cargaDetener = false;
+  if (!await confirmar('Se va a escribir el asunto del portal en el Tema de ' + cargaTemasPropuestos.length + ' expediente(s). ¿Seguimos?', 'Cargar temas')) return;
+  var cambios = cargaTemasPropuestos.map(function(x){ return { _fila: x._fila, datos: { tema: x.nuevo } }; });
+  var prog = document.getElementById('carga-progreso');
+  var r = await aplicarEnLote(cambios, function(hechos, total, fallos){
+    prog.textContent = 'Guardando ' + hechos + ' / ' + total + (fallos ? ' · ' + fallos + ' con error' : '');
+  });
+  cargaTemasPropuestos = [];
+  renderResultadoCarga();
+  renderMetrics('metrics-top'); renderMetrics('metrics-analisis'); renderTabla();
+  toast(r.ok + ' tema(s) cargados' + (r.fallos ? ', ' + r.fallos + ' con error' : ''));
+}
+
+// Escribe los cambios de a CARGA_CONCURRENCIA en paralelo y refleja cada uno en memoria
+// para no tener que recargar toda la planilla al terminar.
+async function aplicarEnLote(cambios, onProgreso) {
+  var i = 0, ok = 0, fallos = 0;
+  async function worker() {
+    while (i < cambios.length && !cargaDetener) {
+      var c = cambios[i++];
+      try {
+        var datos = { _fila: c._fila };
+        Object.keys(c.datos).forEach(function(k){ datos[k] = c.datos[k]; });
+        await api({ accion: 'editar', hoja: 'expedientes', datos: datos });
+        var exp = expedientes.filter(function(e){ return e._fila === c._fila; })[0];
+        if (exp) {
+          if (c.datos.iniciador !== undefined) exp.iniciador = c.datos.iniciador;
+          if (c.datos.tema !== undefined) exp.tema = c.datos.tema;
+        }
+        ok++;
+      } catch (e) { fallos++; }
+      if (onProgreso) onProgreso(ok + fallos, cambios.length, fallos);
+    }
+  }
+  var hilos = [];
+  for (var h = 0; h < Math.min(CARGA_CONCURRENCIA, cambios.length); h++) hilos.push(worker());
+  await Promise.all(hilos);
+  return { ok: ok, fallos: fallos };
 }
 
 function getValorOrden(e, col) {
